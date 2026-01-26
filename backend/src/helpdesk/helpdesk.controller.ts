@@ -86,4 +86,14 @@ export class HelpdeskController {
     async resolveTicket(@Param('id') ticketId: string) {
         return this.helpdeskService.resolveTicket(ticketId);
     }
+
+    /**
+     * PATCH /helpdesk/:id/toggle-status
+     * Toggle ticket status between resolved and pending (Admin only).
+     */
+    @Patch(':id/toggle-status')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    async toggleStatus(@Param('id') ticketId: string) {
+        return this.helpdeskService.toggleStatus(ticketId);
+    }
 }

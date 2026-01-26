@@ -2,15 +2,23 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/lib/store';
+import Image from 'next/image';
 
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated, loading } = useAuth();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const loading = useAuthStore((state) => state.loading);
+  const hydrate = useAuthStore((state) => state.hydrate);
+
+  // Hydrate auth on mount
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
 
   useEffect(() => {
     if (!loading) {
-      if (isAuthenticated) {
+      if (isAuthenticated()) {
         router.push('/dashboard');
       } else {
         router.push('/login');
@@ -22,8 +30,14 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500"></div>
-        <p className="text-slate-400">Loading...</p>
+        <Image
+          src="/Spinner@1x-1.0s-200px-200px.png"
+          alt="Loading..."
+          width={100}
+          height={100}
+          className="animate-spin"
+          priority
+        />
       </div>
     </div>
   );

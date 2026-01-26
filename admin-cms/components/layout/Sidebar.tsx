@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useNavigationStore } from '@/lib/store';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Navigation items for admin sidebar
 const navItems = [
@@ -104,32 +105,40 @@ const questionPaperSubItems = [
 
 export default function Sidebar() {
     const pathname = usePathname();
-    const { logout } = useAuth();
+    const startNavigation = useNavigationStore((state) => state.startNavigation);
     const [paperSettersOpen, setPaperSettersOpen] = useState(pathname.startsWith('/paper-setters'));
     const [questionPaperOpen, setQuestionPaperOpen] = useState(pathname.startsWith('/question-paper-tracking'));
 
     const isPaperSettersActive = pathname.startsWith('/paper-setters');
     const isQuestionPaperActive = pathname.startsWith('/question-paper-tracking');
 
+    const handleNavClick = (href: string) => {
+        // Only show loader when navigating to a different page
+        // and the page requires data fetching
+        if (pathname !== href && !pathname.startsWith(href + '/')) {
+            startNavigation();
+        }
+    };
+
     return (
-        <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-slate-900 border-r border-slate-800">
+        <aside className="fixed left-0 top-0 z-40 h-screen w-72 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-r border-slate-800/50">
             {/* Logo / Brand */}
-            <div className="flex h-16 items-center justify-center border-b border-slate-800">
+            <div className="flex h-20 items-center justify-center border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg shadow-blue-500/20">
                         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                     </div>
                     <div>
                         <h1 className="text-lg font-bold text-white">Secure Track</h1>
-                        <p className="text-xs text-slate-400">Admin CMS</p>
+                        <p className="text-xs text-blue-400">Admin CMS</p>
                     </div>
                 </div>
             </div>
 
             {/* Navigation */}
-            <nav className="flex flex-col h-[calc(100vh-4rem)] justify-between p-4 overflow-y-auto">
+            <nav className="flex flex-col h-[calc(100vh-5rem)] justify-between p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
                 <ul className="space-y-2">
                     {navItems.slice(0, 6).map((item) => {
                         const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -137,9 +146,10 @@ export default function Sidebar() {
                             <li key={item.name}>
                                 <Link
                                     href={item.href}
-                                    className={`flex items-center gap-3 px-4 py-3 border rounded-lg transition-all duration-200 ${isActive
-                                            ? 'bg-blue-600 text-white border-transparent'
-                                            : 'text-slate-300 hover:bg-slate-800 hover:text-white border-slate-700'
+                                    onClick={() => handleNavClick(item.href)}
+                                    className={`flex items-center gap-3 px-4 py-3 border rounded-xl transition-all duration-200 ${isActive
+                                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white border-transparent shadow-lg shadow-blue-500/20'
+                                            : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border-slate-700 hover:border-slate-600'
                                         }`}
                                 >
                                     {item.icon}
@@ -153,16 +163,16 @@ export default function Sidebar() {
                     <li>
                         <button
                             onClick={() => setPaperSettersOpen(!paperSettersOpen)}
-                            className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isPaperSettersActive
-                                    ? 'bg-blue-600 text-white'
-                                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                            className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isPaperSettersActive
+                                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20'
+                                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-slate-700 hover:border-slate-600'
                                 }`}
                         >
-                            <div className="flex items-center gap-3">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                                <span className="font-medium">Paper Setters / Chec...</span>
+                                <span className="font-medium truncate">Paper Setters / Checkers</span>
                             </div>
                             <svg 
                                 className={`w-4 h-4 transition-transform ${paperSettersOpen ? 'rotate-180' : ''}`} 
@@ -175,43 +185,57 @@ export default function Sidebar() {
                         </button>
                         
                         {/* Submenu */}
-                        {paperSettersOpen && (
-                            <ul className="mt-1 ml-4 space-y-1">
-                                {paperSettersSubItems.map((subItem) => {
-                                    const isSubActive = pathname === subItem.href;
-                                    return (
-                                        <li key={subItem.name}>
-                                            <Link
-                                                href={subItem.href}
-                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all duration-200 ${isSubActive
-                                                        ? 'bg-blue-600 text-white'
-                                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                                                    }`}
+                        <AnimatePresence>
+                            {paperSettersOpen && (
+                                <motion.ul 
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="mt-2 ml-4 space-y-1 border-l-2 border-slate-700/50 pl-3 overflow-hidden"
+                                >
+                                    {paperSettersSubItems.map((subItem, index) => {
+                                        const isSubActive = pathname === subItem.href;
+                                        return (
+                                            <motion.li 
+                                                key={subItem.name}
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: index * 0.05 }}
                                             >
-                                                <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                                                <span>{subItem.name}</span>
-                                            </Link>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
+                                                <Link
+                                                    href={subItem.href}
+                                                    onClick={() => handleNavClick(subItem.href)}
+                                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${isSubActive
+                                                            ? 'bg-blue-600/20 text-blue-400 font-medium'
+                                                            : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                                                        }`}
+                                                >
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${isSubActive ? 'bg-blue-400' : 'bg-current'}`}></span>
+                                                    <span>{subItem.name}</span>
+                                                </Link>
+                                            </motion.li>
+                                        );
+                                    })}
+                                </motion.ul>
+                            )}
+                        </AnimatePresence>
                     </li>
 
                     {/* Question Paper Tracking with submenu */}
                     <li>
                         <button
                             onClick={() => setQuestionPaperOpen(!questionPaperOpen)}
-                            className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isQuestionPaperActive
-                                    ? 'bg-blue-600 text-white'
-                                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                            className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isQuestionPaperActive
+                                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20'
+                                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-slate-700 hover:border-slate-600'
                                 }`}
                         >
-                            <div className="flex items-center gap-3">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                                 </svg>
-                                <span className="font-medium">Question Paper Track...</span>
+                                <span className="font-medium truncate">Question Paper Tracking</span>
                             </div>
                             <svg 
                                 className={`w-4 h-4 transition-transform ${questionPaperOpen ? 'rotate-180' : ''}`} 
@@ -224,27 +248,41 @@ export default function Sidebar() {
                         </button>
                         
                         {/* Submenu */}
-                        {questionPaperOpen && (
-                            <ul className="mt-1 ml-4 space-y-1">
-                                {questionPaperSubItems.map((subItem) => {
-                                    const isSubActive = pathname === subItem.href;
-                                    return (
-                                        <li key={subItem.name}>
-                                            <Link
-                                                href={subItem.href}
-                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all duration-200 ${isSubActive
-                                                        ? 'bg-blue-600 text-white'
-                                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                                                    }`}
+                        <AnimatePresence>
+                            {questionPaperOpen && (
+                                <motion.ul 
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="mt-2 ml-4 space-y-1 border-l-2 border-slate-700/50 pl-3 overflow-hidden"
+                                >
+                                    {questionPaperSubItems.map((subItem, index) => {
+                                        const isSubActive = pathname === subItem.href;
+                                        return (
+                                            <motion.li 
+                                                key={subItem.name}
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: index * 0.05 }}
                                             >
-                                                <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                                                <span>{subItem.name}</span>
-                                            </Link>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
+                                                <Link
+                                                    href={subItem.href}
+                                                    onClick={() => handleNavClick(subItem.href)}
+                                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${isSubActive
+                                                            ? 'bg-blue-600/20 text-blue-400 font-medium'
+                                                            : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                                                        }`}
+                                                >
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${isSubActive ? 'bg-blue-400' : 'bg-current'}`}></span>
+                                                    <span>{subItem.name}</span>
+                                                </Link>
+                                            </motion.li>
+                                        );
+                                    })}
+                                </motion.ul>
+                            )}
+                        </AnimatePresence>
                     </li>
 
                     {navItems.slice(6).map((item) => {
@@ -253,9 +291,10 @@ export default function Sidebar() {
                             <li key={item.name}>
                                 <Link
                                     href={item.href}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive
-                                            ? 'bg-blue-600 text-white'
-                                            : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                                    onClick={() => handleNavClick(item.href)}
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
+                                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20'
+                                            : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-slate-700 hover:border-slate-600'
                                         }`}
                                 >
                                     {item.icon}
@@ -265,17 +304,6 @@ export default function Sidebar() {
                         );
                     })}
                 </ul>
-
-                {/* Logout Button */}
-                <button
-                    onClick={logout}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-red-600/20 hover:text-red-400 transition-all duration-200"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    <span className="font-medium">Logout</span>
-                </button>
             </nav>
         </aside>
     );

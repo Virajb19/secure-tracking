@@ -237,19 +237,19 @@ export const analyticsApi = {
 export const userStarsApi = {
   // Toggle star for a user
   toggleStar: async (userId: string): Promise<{ starred: boolean }> => {
-    const response = await api.post(`/user-stars/toggle/${userId}`);
+    const response = await api.post(`/admin/user-stars/toggle/${userId}`);
     return response.data;
   },
 
   // Get starred user IDs
   getStarredIds: async (): Promise<string[]> => {
-    const response = await api.get('/user-stars/ids');
-    return response.data;
+    const response = await api.get('/admin/user-stars/ids');
+    return response.data?.starred_user_ids || [];
   },
 
   // Get starred users with details
   getStarredUsers: async (): Promise<any[]> => {
-    const response = await api.get('/user-stars');
+    const response = await api.get('/admin/user-stars');
     return response.data;
   },
 };

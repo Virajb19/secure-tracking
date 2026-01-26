@@ -99,4 +99,22 @@ export class HelpdeskService {
             data: { is_resolved: true },
         });
     }
+
+    /**
+     * Toggle ticket status between resolved and pending (Admin only).
+     */
+    async toggleStatus(ticketId: string) {
+        const ticket = await this.db.helpdesk.findUnique({
+            where: { id: ticketId },
+        });
+
+        if (!ticket) {
+            throw new NotFoundException('Ticket not found');
+        }
+
+        return this.db.helpdesk.update({
+            where: { id: ticketId },
+            data: { is_resolved: !ticket.is_resolved },
+        });
+    }
 }

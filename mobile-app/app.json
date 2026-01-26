@@ -27,12 +27,13 @@
       },
       "package": "gov.securedelivery.app",
       "permissions": [
-        "CAMERA",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "INTERNET",
-        "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO"
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.INTERNET",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -75,9 +76,11 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "your-eas-project-id"
+        "projectId": "f7082c84-1bd6-4a9c-afbb-852bd9567ed6"
       }
-    }
+    },
+    "owner": "virajb"
   }
 }

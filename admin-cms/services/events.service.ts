@@ -12,6 +12,7 @@ export const useGetEvents = () => {
   return useQuery<EventWithStats[]>({
     queryKey: ['events'],
     queryFn: eventsApi.getAll,
+    refetchOnMount: 'always',
   });
 };
 

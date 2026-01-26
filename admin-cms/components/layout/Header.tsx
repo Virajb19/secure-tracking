@@ -1,37 +1,52 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/lib/store';
+import Image from 'next/image';
+import { LogoutButton } from '@/components/LogoutButton';
 
-interface HeaderProps {
-    title: string;
-    subtitle?: string;
-}
-
-export default function Header({ title, subtitle }: HeaderProps) {
-    const { role } = useAuth();
+export default function Header() {
+    const role = useAuthStore((state) => state.role);
+    const userName = useAuthStore((state) => state.userName);
+    const userProfilePic = useAuthStore((state) => state.userProfilePic);
 
     return (
-        <header className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-sm border-b border-slate-800">
+        <header className="sticky top-0 z-30 bg-slate-900/60 backdrop-blur-lg border-b border-slate-800">
             <div className="flex h-16 items-center justify-between px-6">
-                {/* Page Title */}
-                <div>
-                    <h1 className="text-xl font-semibold text-white">{title}</h1>
-                    {subtitle && <p className="text-sm text-slate-400">{subtitle}</p>}
-                </div>
+                {/* Left side - can be used for breadcrumbs or page title */}
+                <div />
 
-                {/* User Info */}
+                {/* User Info & Logout */}
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-white">Administrator</p>
-                            <p className="text-xs text-slate-400">{role}</p>
+                        {/* Profile Picture or Default Icon */}
+                        {userProfilePic ? (
+                            <Image
+                                src={userProfilePic}
+                                alt={userName || 'User'}
+                                width={40}
+                                height={40}
+                                className="rounded-full object-cover border-2 border-slate-700"
+                            />
+                        ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 border-2 border-slate-700">
+                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                            </div>
+                        )}
+                        
+                        {/* User Name & Role */}
+                        <div className="hidden sm:block">
+                            <p className="text-sm font-medium text-white">{userName || 'Administrator'}</p>
+                            <p className="text-xs text-slate-400">{role?.replace('_', ' ')}</p>
                         </div>
                     </div>
+
+                    {/* Divider */}
+                    <div className="h-8 w-px bg-slate-700" />
+
+                    {/* Logout Button */}
+                    <LogoutButton />
                 </div>
             </div>
         </header>

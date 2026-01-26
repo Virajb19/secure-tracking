@@ -9,6 +9,7 @@ interface CustomToastProps {
   type: 'success' | 'error';
   duration?: number;
   onClose: () => void;
+  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top-center' | 'bottom-center';
 }
 
 const CustomToast = ({ message, type, duration = 3000, onClose }: CustomToastProps) => {
@@ -16,14 +17,14 @@ const CustomToast = ({ message, type, duration = 3000, onClose }: CustomToastPro
   
   return (
     <motion.div
-      initial={{ opacity: 0, y: 50, scale: 0.9 }}
+      initial={{ opacity: 0, y: -20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 20, scale: 0.9 }}
+      exit={{ opacity: 0, y: -20, scale: 0.95 }}
       className={`relative overflow-hidden rounded-lg shadow-2xl ${
         isSuccess 
-          ? 'bg-gradient-to-r from-emerald-600 to-green-600' 
-          : 'bg-gradient-to-r from-red-600 to-rose-600'
-      } min-w-[320px] max-w-[420px]`}
+          ? 'bg-linear-to-r from-emerald-600 to-green-600' 
+          : 'bg-linear-to-r from-red-600 to-rose-600'
+      } min-w-[320px] max-w-105`}
     >
       <div className="flex items-center gap-3 p-4">
         <motion.div
@@ -64,8 +65,7 @@ const CustomToast = ({ message, type, duration = 3000, onClose }: CustomToastPro
 };
 
 // Custom toast functions
-export const showSuccessToast = (message: string) => {
-  const duration = 7000;
+export const showSuccessToast = (message: string, duration: number = 7000, position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top-center' | 'bottom-center' = 'bottom-right') => {
   toast.custom(
     (t) => (
       <CustomToast
@@ -75,12 +75,11 @@ export const showSuccessToast = (message: string) => {
         onClose={() => toast.dismiss(t)}
       />
     ),
-    { duration }
+    { duration, position }
   );
 };
 
-export const showErrorToast = (message: string) => {
-  const duration = 10000; // Longer duration for errors
+export const showErrorToast = (message: string, duration: number = 10000, position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top-center' | 'bottom-center' = 'bottom-right') => {
   toast.custom(
     (t) => (
       <CustomToast
@@ -90,7 +89,7 @@ export const showErrorToast = (message: string) => {
         onClose={() => toast.dismiss(t)}
       />
     ),
-    { duration }
+    { duration, position }
   );
 };
 

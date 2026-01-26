@@ -1,32 +1,19 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { ReactNode } from 'react';
+import { getServerAuth } from '@/lib/server-auth';
+import ProtectedShell from '@/components/layout/ProtectedShell';
+import { sleep } from '@/lib/utils';
 
-import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
-import { useRouter } from "nextjs-toploader/app";
-import { ReactNode } from "react";
-import Sidebar from "@/components/layout/Sidebar";
+export default async function ProtectedLayout({ children }: { children: ReactNode }) {
+  // Server-side authentication check
+  const { isAuthenticated } = await getServerAuth();
 
-export default function ProtectedLayout({children}: {children: ReactNode}) {
+  await sleep(0.5);
 
-  // Make this layout server side
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    redirect('/login?reason=auth');
+  }
 
-  const { isAuthenticated, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push("/login?reason=auth");
-    }
-  }, [loading, isAuthenticated, router]);
-
-  if (loading) return null;
-
-  return (
-    <div className="min-h-screen bg-slate-950">
-      <Sidebar />
-      <main className="ml-64 p-6">
-        {children}
-      </main>
-    </div>
-  );
+  return <ProtectedShell>{children}</ProtectedShell>;
 }

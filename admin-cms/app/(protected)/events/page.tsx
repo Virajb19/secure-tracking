@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,10 +20,62 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Calendar, MapPin, Users, Eye, Trash2, Loader2, Check, X, Clock } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Calendar, MapPin, Users, Eye, Trash2, Loader2, Check, X, Clock, CalendarDays, Search } from 'lucide-react';
 import { useGetEvents, useDeleteEvent, useGetEventById, useGetInvitableUsers, useInviteUsersToEvent } from '@/services/events.service';
 import { useGetDistricts } from '@/services/user.service';
-import { toast } from 'sonner';
+import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
+
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
+
+const tableRowVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: {
+      delay: i * 0.03,
+      duration: 0.3
+    }
+  }),
+  hover: {
+    backgroundColor: 'rgba(51, 65, 85, 0.5)',
+    transition: { duration: 0.2 }
+  }
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, scale: 0.95 },
+  visible: { 
+    opacity: 1, 
+    scale: 1,
+    transition: { duration: 0.3 }
+  }
+};
 
 type EventType = 'MEETING' | 'EXAM' | 'HOLIDAY' | 'OTHER';
 
@@ -92,19 +145,17 @@ export default function EventsPage() {
   }, [events, searchQuery, typeFilter, statusFilter]);
 
   const handleDeleteEvent = async (eventId: string) => {
-    if (!confirm('Are you sure you want to delete this event?')) return;
-    
     try {
       await deleteEventMutation.mutateAsync(eventId);
-      toast.success('Event deleted successfully');
+      showSuccessToast('Event deleted successfully');
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to delete event');
+      showErrorToast(error?.response?.data?.message || 'Failed to delete event');
     }
   };
 
   const handleInviteUsers = async () => {
     if (!selectedEventId || inviteSelectedUsers.length === 0) {
-      toast.error('Please select at least one user to invite');
+      showErrorToast('Please select at least one user to invite');
       return;
     }
 
@@ -113,11 +164,11 @@ export default function EventsPage() {
         eventId: selectedEventId,
         userIds: inviteSelectedUsers,
       });
-      toast.success(`Invited ${result.invited_count} user(s)`);
+      showSuccessToast(`Invited ${result.invited_count} user(s)`);
       setInviteModalOpen(false);
       setInviteSelectedUsers([]);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to invite users');
+      showErrorToast(error?.response?.data?.message || 'Failed to invite users');
     }
   };
 
@@ -131,197 +182,333 @@ export default function EventsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-slate-400">Loading events...</span>
-      </div>
+      <motion.div 
+        className="space-y-8 p-2"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div variants={itemVariants}>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+              <CalendarDays className="h-6 w-6 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-white">Events</h1>
+          </div>
+        </motion.div>
+        <div className="flex flex-col items-center justify-center h-96 gap-4">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          >
+            <Loader2 className="h-10 w-10 text-blue-500" />
+          </motion.div>
+          <span className="text-slate-400">Loading events...</span>
+        </div>
+      </motion.div>
     );
   }
 
   if (isError) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
+      <motion.div 
+        className="space-y-8 p-2"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div variants={itemVariants}>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+              <CalendarDays className="h-6 w-6 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-white">Events</h1>
+          </div>
+        </motion.div>
+        <motion.div 
+          className="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 text-center"
+          variants={cardVariants}
+        >
           <p className="text-red-400 text-lg">Failed to load events</p>
-        </div>
-      </div>
+          <p className="text-slate-500 text-sm mt-2">Please try again later</p>
+        </motion.div>
+      </motion.div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Events</h1>
-      </div>
+  const upcomingCount = events.filter(e => new Date(e.event_date) >= new Date()).length;
+  const pastCount = events.filter(e => new Date(e.event_date) < new Date()).length;
 
-      {/* Filters Card */}
-      <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
-        {/* Filter Row */}
-        <div className="flex flex-wrap gap-4 items-end mb-6">
+  return (
+    <motion.div 
+      className="space-y-8 p-2"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <motion.div
+              className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg"
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <CalendarDays className="h-6 w-6 text-white" />
+            </motion.div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Events</h1>
+              <p className="text-slate-400 text-sm">Manage meetings, exams, and other events</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Badge className="bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 px-3 py-1">
+              {upcomingCount} Upcoming
+            </Badge>
+            <Badge className="bg-slate-700/50 text-slate-300 hover:bg-slate-700/50 px-3 py-1">
+              {pastCount} Past
+            </Badge>
+            <Badge className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/20 px-3 py-1">
+              {events.length} Total
+            </Badge>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Filters */}
+      <motion.div 
+        className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 p-6 shadow-xl"
+        variants={cardVariants}
+      >
+        <div className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[200px]">
+            <label className="text-slate-400 text-sm mb-2 flex items-center gap-2">
+              <Search className="h-4 w-4" />
+              Search Events
+            </label>
             <Input
-              placeholder="Search events..."
+              placeholder="Search by title, location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+              className="bg-slate-800/50 border-blue-500/50 text-white placeholder:text-slate-500 focus:border-blue-500"
             />
           </div>
 
-          <div className="min-w-[140px]">
+          <div className="min-w-[160px]">
+            <label className="text-slate-400 text-sm mb-2 block">Type</label>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+              <SelectTrigger className="bg-slate-800/50 border-blue-500/50 text-white">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="all" className="text-white hover:bg-slate-700">All Types</SelectItem>
                 {Object.entries(eventTypeLabels).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                  <SelectItem key={key} value={key} className="text-white hover:bg-slate-700">{label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="min-w-[140px]">
+          <div className="min-w-[160px]">
+            <label className="text-slate-400 text-sm mb-2 block">Status</label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+              <SelectTrigger className="bg-slate-800/50 border-blue-500/50 text-white">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="upcoming">Upcoming</SelectItem>
-                <SelectItem value="past">Past</SelectItem>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="all" className="text-white hover:bg-slate-700">All</SelectItem>
+                <SelectItem value="upcoming" className="text-white hover:bg-slate-700">Upcoming</SelectItem>
+                <SelectItem value="past" className="text-white hover:bg-slate-700">Past</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
+      </motion.div>
 
-        {/* Events Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-700 bg-slate-800/50">
-                <th className="text-left py-3 px-4 text-slate-400 font-medium">Event</th>
-                <th className="text-left py-3 px-4 text-slate-400 font-medium">Type</th>
-                <th className="text-left py-3 px-4 text-slate-400 font-medium">Date & Time</th>
-                <th className="text-left py-3 px-4 text-slate-400 font-medium">Location</th>
-                <th className="text-left py-3 px-4 text-slate-400 font-medium">Invitations</th>
-                <th className="text-left py-3 px-4 text-slate-400 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredEvents.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500">
-                    No events found
-                  </td>
+      {/* Events Table */}
+      <motion.div 
+        className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 overflow-hidden shadow-xl"
+        variants={cardVariants}
+      >
+        {filteredEvents.length === 0 ? (
+          <motion.div 
+            className="text-center py-16"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <CalendarDays className="h-16 w-16 text-slate-700 mx-auto mb-4" />
+            <div className="text-slate-400 text-lg">No events found</div>
+            <p className="text-slate-500 text-sm mt-2">Create an event to get started</p>
+          </motion.div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-800/50 border-b border-slate-700">
+                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                    <Calendar className="h-4 w-4 inline mr-1" />
+                    Event
+                  </th>
+                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Type</th>
+                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                    <Clock className="h-4 w-4 inline mr-1" />
+                    Date & Time
+                  </th>
+                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                    <MapPin className="h-4 w-4 inline mr-1" />
+                    Location
+                  </th>
+                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                    <Users className="h-4 w-4 inline mr-1" />
+                    Invitations
+                  </th>
+                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Actions</th>
                 </tr>
-              ) : (
-                filteredEvents.map((event) => (
-                  <tr key={event.id} className="border-b border-slate-800 hover:bg-slate-800/50">
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-3">
-                        {event.flyer_url ? (
-                          <img 
-                            src={event.flyer_url} 
-                            alt={event.title}
-                            className="w-12 h-12 rounded-lg object-cover"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center">
-                            <Calendar className="h-6 w-6 text-slate-400" />
+              </thead>
+              <tbody>
+                <AnimatePresence>
+                  {filteredEvents.map((event, index) => (
+                    <motion.tr 
+                      key={event.id}
+                      custom={index}
+                      variants={tableRowVariants}
+                      initial="hidden"
+                      animate="visible"
+                      whileHover="hover"
+                      className="border-b border-slate-800/50"
+                    >
+                      <td className="py-4 px-5">
+                        <div className="flex items-center gap-3">
+                          {event.flyer_url ? (
+                            <img 
+                              src={event.flyer_url} 
+                              alt={event.title}
+                              className="w-12 h-12 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center">
+                              <Calendar className="h-6 w-6 text-slate-400" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-white font-medium">{event.title}</p>
+                            <p className="text-slate-400 text-sm">
+                              by {event.creator?.name || 'Admin'}
+                            </p>
                           </div>
-                        )}
-                        <div>
-                          <p className="text-blue-400 font-medium">{event.title}</p>
-                          <p className="text-slate-500 text-sm">
-                            by {event.creator?.name || 'Admin'}
-                          </p>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <Badge className={eventTypeColors[event.event_type as EventType] || eventTypeColors.OTHER}>
-                        {eventTypeLabels[event.event_type as EventType] || event.event_type}
-                      </Badge>
-                    </td>
-                    <td className="py-4 px-4 text-slate-300">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-slate-500" />
-                        {formatDate(event.event_date)}
-                        {event.event_time && (
-                          <>
-                            <Clock className="h-4 w-4 text-slate-500 ml-2" />
-                            {event.event_time}
-                          </>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-slate-300">
-                      {event.location ? (
+                      </td>
+                      <td className="py-4 px-5">
+                        <Badge className={eventTypeColors[event.event_type as EventType] || eventTypeColors.OTHER}>
+                          {eventTypeLabels[event.event_type as EventType] || event.event_type}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-5 text-slate-300">
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-slate-500" />
-                          {event.location}
+                          <Calendar className="h-4 w-4 text-slate-500" />
+                          {formatDate(event.event_date)}
+                          {event.event_time && (
+                            <>
+                              <Clock className="h-4 w-4 text-slate-500 ml-2" />
+                              {event.event_time}
+                            </>
+                          )}
                         </div>
-                      ) : '-'}
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-green-400 border-green-400">
-                          <Check className="h-3 w-3 mr-1" />
-                          {event.invitation_stats.accepted}
-                        </Badge>
-                        <Badge variant="outline" className="text-red-400 border-red-400">
-                          <X className="h-3 w-3 mr-1" />
-                          {event.invitation_stats.rejected}
-                        </Badge>
-                        <Badge variant="outline" className="text-yellow-400 border-yellow-400">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {event.invitation_stats.pending}
-                        </Badge>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-blue-400 border-blue-400 hover:bg-blue-400/10"
-                          onClick={() => {
-                            setSelectedEventId(event.id);
-                            setViewModalOpen(true);
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-green-400 border-green-400 hover:bg-green-400/10"
-                          onClick={() => {
-                            setSelectedEventId(event.id);
-                            setInviteModalOpen(true);
-                          }}
-                        >
-                          <Users className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-400 border-red-400 hover:bg-red-400/10"
-                          onClick={() => handleDeleteEvent(event.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                      </td>
+                      <td className="py-4 px-5 text-slate-300">
+                        {event.location ? (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-slate-500" />
+                            {event.location}
+                          </div>
+                        ) : <span className="text-slate-500">-</span>}
+                      </td>
+                      <td className="py-4 px-5">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
+                            <Check className="h-3 w-3" />
+                            {event.invitation_stats.accepted}
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
+                            <X className="h-3 w-3" />
+                            {event.invitation_stats.rejected}
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400">
+                            <Clock className="h-3 w-3" />
+                            {event.invitation_stats.pending}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-5">
+                        <div className="flex items-center gap-2">
+                          <motion.button
+                            onClick={() => {
+                              setSelectedEventId(event.id);
+                              setViewModalOpen(true);
+                            }}
+                            className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all"
+                            title="View Details"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <Eye className="h-5 w-5" />
+                          </motion.button>
+                          <motion.button
+                            onClick={() => {
+                              setSelectedEventId(event.id);
+                              setInviteModalOpen(true);
+                            }}
+                            className="p-2 text-slate-400 hover:text-green-400 hover:bg-green-400/10 rounded-lg transition-all"
+                            title="Invite Users"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <Users className="h-5 w-5" />
+                          </motion.button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <motion.button
+                                className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                                title="Delete"
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                              >
+                                <Trash2 className="h-5 w-5" />
+                              </motion.button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-slate-900 border-slate-700/50 rounded-2xl">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-white text-lg font-semibold">Delete Event</AlertDialogTitle>
+                                <AlertDialogDescription className="text-slate-400">
+                                  Are you sure you want to delete "{event.title}"? 
+                                  <br />
+                                  <span className="text-red-400 font-medium">This action cannot be undone.</span>
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter className="gap-3 mt-4">
+                                <AlertDialogCancel className="bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white transition-all duration-200">
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteEvent(event.id)}
+                                  className="bg-red-600 text-white hover:bg-red-700 transition-all duration-200"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </motion.div>
 
       {/* View Event Modal */}
       <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
@@ -534,6 +721,6 @@ export default function EventsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }

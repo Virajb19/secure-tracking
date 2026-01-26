@@ -2,11 +2,46 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { MainLayout } from '@/components/layout';
 import { tasksApi } from '@/services/api';
 import { analyticsApi } from '@/services/paper-setter.service';
 import { Task, TaskStatus } from '@/types';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { 
+    LayoutDashboard, 
+    Clock, 
+    Zap, 
+    CheckCircle2, 
+    AlertTriangle,
+    Users,
+    GraduationCap,
+    Package,
+    ArrowRight,
+    Loader2
+} from 'lucide-react';
+
+// Animation variants
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: { staggerChildren: 0.1 }
+    }
+};
+
+const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+};
+
+const cardVariants = {
+    hidden: { opacity: 0, scale: 0.95 },
+    visible: { 
+        opacity: 1, 
+        scale: 1,
+        transition: { duration: 0.3 }
+    }
+};
 
 // Status badge colors
 const statusColors: Record<TaskStatus, string> = {
@@ -16,37 +51,13 @@ const statusColors: Record<TaskStatus, string> = {
     [TaskStatus.SUSPICIOUS]: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
-// Status icons
-const statusIcons: Record<TaskStatus, React.ReactNode> = {
-    [TaskStatus.PENDING]: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-    ),
-    [TaskStatus.IN_PROGRESS]: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
-    ),
-    [TaskStatus.COMPLETED]: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-    ),
-    [TaskStatus.SUSPICIOUS]: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-    ),
-};
-
 export default function DashboardPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     // Fetch analytics data
-    const { data: analyticsData } = useQuery({
+    const { data: analyticsData, isLoading: analyticsLoading } = useQuery({
         queryKey: ['dashboard-analytics'],
         queryFn: analyticsApi.getTeacherStudentRatio,
     });
@@ -81,96 +92,179 @@ export default function DashboardPage() {
         .slice(0, 5);
 
     return (
-        <MainLayout title="Dashboard" subtitle="Overview of delivery operations">
+        <motion.div 
+            className="space-y-6 p-2"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+        >
+            {/* Header */}
+            <motion.div variants={itemVariants}>
+                <div className="flex items-center gap-3">
+                    <motion.div
+                        className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg"
+                        whileHover={{ scale: 1.05, rotate: 5 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <LayoutDashboard className="h-6 w-6 text-white" />
+                    </motion.div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+                        <p className="text-slate-400 text-sm">Overview of delivery operations</p>
+                    </div>
+                </div>
+            </motion.div>
+
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <motion.div 
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4"
+                variants={itemVariants}
+            >
+                {/* Total Tasks */}
+                <motion.div 
+                    className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border border-slate-700/50 rounded-xl p-5 shadow-xl"
+                    variants={cardVariants}
+                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                >
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-slate-400">Total Tasks</p>
-                            <p className="text-2xl font-bold text-white">{loading ? '-' : stats.total}</p>
+                            <p className="text-3xl font-bold text-white mt-1">
+                                {loading ? '-' : stats.total}
+                            </p>
                         </div>
-                        <div className="h-12 w-12 rounded-xl bg-slate-800 flex items-center justify-center">
-                            <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
+                        <div className="h-12 w-12 rounded-xl bg-slate-800/80 flex items-center justify-center">
+                            <Package className="w-6 h-6 text-slate-400" />
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                {/* Pending */}
+                <motion.div 
+                    className="bg-gradient-to-br from-yellow-900/20 via-slate-900 to-slate-800 border border-yellow-500/30 rounded-xl p-5 shadow-xl"
+                    variants={cardVariants}
+                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                >
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-yellow-400">Pending</p>
-                            <p className="text-2xl font-bold text-white">{loading ? '-' : stats.pending}</p>
+                            <p className="text-3xl font-bold text-white mt-1">
+                                {loading ? '-' : stats.pending}
+                            </p>
                         </div>
-                        <div className="h-12 w-12 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-400">
-                            {statusIcons[TaskStatus.PENDING]}
+                        <div className="h-12 w-12 rounded-xl bg-yellow-500/20 flex items-center justify-center">
+                            <Clock className="w-6 h-6 text-yellow-400" />
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                {/* In Progress */}
+                <motion.div 
+                    className="bg-gradient-to-br from-blue-900/20 via-slate-900 to-slate-800 border border-blue-500/30 rounded-xl p-5 shadow-xl"
+                    variants={cardVariants}
+                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                >
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-blue-400">In Progress</p>
-                            <p className="text-2xl font-bold text-white">{loading ? '-' : stats.inProgress}</p>
+                            <p className="text-3xl font-bold text-white mt-1">
+                                {loading ? '-' : stats.inProgress}
+                            </p>
                         </div>
-                        <div className="h-12 w-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
-                            {statusIcons[TaskStatus.IN_PROGRESS]}
+                        <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                            <Zap className="w-6 h-6 text-blue-400" />
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                {/* Completed */}
+                <motion.div 
+                    className="bg-gradient-to-br from-green-900/20 via-slate-900 to-slate-800 border border-green-500/30 rounded-xl p-5 shadow-xl"
+                    variants={cardVariants}
+                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                >
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-green-400">Completed</p>
-                            <p className="text-2xl font-bold text-white">{loading ? '-' : stats.completed}</p>
+                            <p className="text-3xl font-bold text-white mt-1">
+                                {loading ? '-' : stats.completed}
+                            </p>
                         </div>
-                        <div className="h-12 w-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-400">
-                            {statusIcons[TaskStatus.COMPLETED]}
+                        <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                            <CheckCircle2 className="w-6 h-6 text-green-400" />
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
-                <div className="bg-slate-900 border border-red-500/30 rounded-xl p-5">
+                {/* Suspicious */}
+                <motion.div 
+                    className="bg-gradient-to-br from-red-900/20 via-slate-900 to-slate-800 border border-red-500/30 rounded-xl p-5 shadow-xl"
+                    variants={cardVariants}
+                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                >
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-red-400">Suspicious</p>
-                            <p className="text-2xl font-bold text-white">{loading ? '-' : stats.suspicious}</p>
+                            <p className="text-3xl font-bold text-white mt-1">
+                                {loading ? '-' : stats.suspicious}
+                            </p>
                         </div>
-                        <div className="h-12 w-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-400">
-                            {statusIcons[TaskStatus.SUSPICIOUS]}
+                        <div className="h-12 w-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+                            <AlertTriangle className="w-6 h-6 text-red-400" />
                         </div>
                     </div>
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
 
             {/* Analytics Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="bg-gradient-to-br from-purple-900/50 to-slate-900 border border-purple-500/30 rounded-xl p-5">
+            <motion.div 
+                className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                variants={itemVariants}
+            >
+                {/* Teacher-Student Ratio */}
+                <motion.div 
+                    className="bg-gradient-to-br from-purple-900/30 via-slate-900 to-slate-800 border border-purple-500/30 rounded-xl p-6 shadow-xl"
+                    variants={cardVariants}
+                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-purple-400">Teacher-Student Ratio</p>
-                            <p className="text-3xl font-bold text-white">{analyticsData?.ratio || '-'}</p>
-                            <p className="text-xs text-slate-400 mt-1">
-                                {analyticsData ? `${analyticsData.totalTeachers} teachers : ${analyticsData.totalStudents} students` : 'Loading...'}
+                            <p className="text-sm text-purple-400 font-medium">Teacher-Student Ratio</p>
+                            <p className="text-4xl font-bold text-white mt-2">
+                                {analyticsLoading ? (
+                                    <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
+                                ) : (
+                                    analyticsData?.ratio || '-'
+                                )}
+                            </p>
+                            <p className="text-xs text-slate-400 mt-2">
+                                {analyticsData 
+                                    ? `${analyticsData.totalTeachers?.toLocaleString()} teachers : ${analyticsData.totalStudents?.toLocaleString()} students` 
+                                    : 'Loading...'}
                             </p>
                         </div>
                         <div className="h-14 w-14 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                            <svg className="w-7 h-7 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
+                            <Users className="w-7 h-7 text-purple-400" />
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
-                <div className="bg-gradient-to-br from-cyan-900/50 to-slate-900 border border-cyan-500/30 rounded-xl p-5">
+                {/* Total Teachers */}
+                <motion.div 
+                    className="bg-gradient-to-br from-cyan-900/30 via-slate-900 to-slate-800 border border-cyan-500/30 rounded-xl p-6 shadow-xl"
+                    variants={cardVariants}
+                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-cyan-400">Total Teachers</p>
-                            <p className="text-3xl font-bold text-white">{analyticsData?.totalTeachers?.toLocaleString() || '-'}</p>
+                            <p className="text-sm text-cyan-400 font-medium">Total Teachers</p>
+                            <p className="text-4xl font-bold text-white mt-2">
+                                {analyticsLoading ? (
+                                    <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+                                ) : (
+                                    analyticsData?.totalTeachers?.toLocaleString() || '-'
+                                )}
+                            </p>
                         </div>
                         <div className="h-14 w-14 rounded-xl bg-cyan-500/20 flex items-center justify-center">
                             <svg className="w-7 h-7 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,77 +272,111 @@ export default function DashboardPage() {
                             </svg>
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
-                <div className="bg-gradient-to-br from-amber-900/50 to-slate-900 border border-amber-500/30 rounded-xl p-5">
+                {/* Total Students */}
+                <motion.div 
+                    className="bg-gradient-to-br from-amber-900/30 via-slate-900 to-slate-800 border border-amber-500/30 rounded-xl p-6 shadow-xl"
+                    variants={cardVariants}
+                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-amber-400">Total Students</p>
-                            <p className="text-3xl font-bold text-white">{analyticsData?.totalStudents?.toLocaleString() || '-'}</p>
+                            <p className="text-sm text-amber-400 font-medium">Total Students</p>
+                            <p className="text-4xl font-bold text-white mt-2">
+                                {analyticsLoading ? (
+                                    <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+                                ) : (
+                                    analyticsData?.totalStudents?.toLocaleString() || '-'
+                                )}
+                            </p>
                         </div>
                         <div className="h-14 w-14 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                            <svg className="w-7 h-7 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                            </svg>
+                            <GraduationCap className="w-7 h-7 text-amber-400" />
                         </div>
                     </div>
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
 
             {/* Recent Tasks */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl">
-                <div className="flex items-center justify-between p-5 border-b border-slate-800">
-                    <h2 className="text-lg font-semibold text-white">Recent Tasks</h2>
-                    <Link
-                        href="/tasks"
-                        className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                        View All →
-                    </Link>
+            <motion.div 
+                className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 overflow-hidden shadow-xl"
+                variants={cardVariants}
+            >
+                <div className="flex items-center justify-between p-5 border-b border-slate-700/50">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-slate-800 rounded-lg">
+                            <Package className="h-5 w-5 text-blue-400" />
+                        </div>
+                        <h2 className="text-lg font-semibold text-white">Recent Tasks</h2>
+                    </div>
+                    <motion.div whileHover={{ x: 5 }}>
+                        <Link
+                            href="/tasks"
+                            className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                            View All
+                            <ArrowRight className="h-4 w-4" />
+                        </Link>
+                    </motion.div>
                 </div>
 
                 {loading ? (
-                    <div className="p-8 text-center">
-                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-blue-500 mx-auto mb-3"></div>
-                        <p className="text-slate-400">Loading tasks...</p>
+                    <div className="p-12 text-center">
+                        <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                            className="inline-block"
+                        >
+                            <Loader2 className="h-8 w-8 text-blue-500" />
+                        </motion.div>
+                        <p className="text-slate-400 mt-3">Loading tasks...</p>
                     </div>
                 ) : error ? (
-                    <div className="p-8 text-center">
+                    <div className="p-12 text-center">
+                        <AlertTriangle className="h-10 w-10 text-red-400 mx-auto mb-3" />
                         <p className="text-red-400">{error}</p>
                     </div>
                 ) : recentTasks.length === 0 ? (
-                    <div className="p-8 text-center">
+                    <div className="p-12 text-center">
+                        <Package className="h-12 w-12 text-slate-600 mx-auto mb-3" />
                         <p className="text-slate-400">No tasks found</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-slate-800">
-                        {recentTasks.map((task) => (
-                            <Link
+                    <div className="divide-y divide-slate-800/50">
+                        {recentTasks.map((task, index) => (
+                            <motion.div
                                 key={task.id}
-                                href={`/tasks/${task.id}`}
-                                className="flex items-center justify-between p-4 hover:bg-slate-800/50 transition-colors"
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.1 }}
                             >
-                                <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 rounded-lg bg-slate-800 flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                        </svg>
+                                <Link
+                                    href={`/tasks/${task.id}`}
+                                    className="flex items-center justify-between p-4 hover:bg-slate-800/30 transition-colors group"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-10 w-10 rounded-lg bg-slate-800/80 flex items-center justify-center group-hover:bg-slate-700/80 transition-colors">
+                                            <Package className="w-5 h-5 text-slate-400" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-white group-hover:text-blue-400 transition-colors">
+                                                {task.sealed_pack_code}
+                                            </p>
+                                            <p className="text-sm text-slate-400">
+                                                {task.source_location} → {task.destination_location}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-medium text-white">{task.sealed_pack_code}</p>
-                                        <p className="text-sm text-slate-400">
-                                            {task.source_location} → {task.destination_location}
-                                        </p>
-                                    </div>
-                                </div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[task.status]}`}>
-                                    {task.status}
-                                </span>
-                            </Link>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[task.status]}`}>
+                                        {task.status.replace('_', ' ')}
+                                    </span>
+                                </Link>
+                            </motion.div>
                         ))}
                     </div>
                 )}
-            </div>
-        </MainLayout>
+            </motion.div>
+        </motion.div>
     );
 }

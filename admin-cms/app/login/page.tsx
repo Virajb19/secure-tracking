@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthStore } from "@/lib/store";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from 'nextjs-toploader/app';
@@ -13,9 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
+import { showSuccessToast } from "@/components/ui/custom-toast";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const login = useAuthStore((state) => state.login);
   const [serverError, setServerError] = useState("");
 
   const router = useRouter()
@@ -29,25 +30,27 @@ export default function LoginPage() {
 
   const searchParams = useSearchParams()
 
-  // useEffect(() => {
-  //     const reason = searchParams.get("reason")
-  //     if(reason == "auth") {
-  //         toast.error('You need to signin first')
-  //         router.replace('/login')
-  //     }
-  // }, [searchParams])
+  useEffect(() => {
+      const reason = searchParams.get("reason")
+      if(reason == "auth") {
+          toast.error('You need to signin first', { duration: 4000, closeButton: true, position: 'top-center' });
+          router.replace('/login')
+      }
+  }, [searchParams])
 
   const onSubmit = async (data: LoginSchema) => {
     setServerError("");
 
     try {
       await login(data.email, data.password, data.phone);
-      toast.success("Login successful! Welcome Back.");
-      router.push('/dashboard');
+      showSuccessToast("Login successful! Welcome Back.", 4000, 'top-center');
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 100);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Login failed. Please check your phone number.";
+      const message = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
       setServerError(message);
-      toast.error(message);
+      toast.error(message, { position: 'top-center', duration: 6000, closeButton: false });
     }
   }
 

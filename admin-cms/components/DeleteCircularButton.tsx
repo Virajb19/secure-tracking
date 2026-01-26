@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader, Loader2, Trash2 } from 'lucide-react';
+import { Loader, Loader2, Trash, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -41,7 +41,7 @@ export function DeleteCircularButton({
      },
      onError: (error) => {
        console.error('Failed to delete circular', error);
-       toast.error('Failed to delete circular. Please try again.');
+       toast.error('Failed to delete circular. Please try again.', { duration: 5000 * 2});
      },
      onSettled: () => {
        queryClient.refetchQueries({ queryKey: ['circulars'] });
@@ -50,34 +50,35 @@ export function DeleteCircularButton({
 
   return (
     <>
-      <Button
-        variant="destructive"
-        size="icon"
+      <button
         disabled={disabled || deleteMutation.isPending}
         onClick={() => setOpen(true)}
         title="Delete Circular"
+        className='p-2 rounded-lg text-red-500 hover:bg-red-500/30 transition disabled:opacity-50 disabled:pointer-events-none cursor-pointer'
       >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+        <Trash className="h-5 w-5" />
+      </button>
 
       <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent className='bg-slate-950 border border-slate-800 text-slate-200 shadow-2xl'>
+        <AlertDialogContent className='bg-slate-900 border border-slate-700/50 text-slate-200 shadow-2xl rounded-2xl'>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Circular?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-white text-lg font-semibold">Delete Circular?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
               This action will remove the circular from all users.
               <br />
-              <span className="text-red-600 font-medium">
+              <span className="text-red-400 font-medium">
                 This action cannot be undone.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <AlertDialogFooter>
-            <AlertDialogCancel className='bg-green-500 hover:bg-green-600 border-transparent'>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="gap-3 mt-4">
+            <AlertDialogCancel className='bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white cursor-pointer transition-all duration-200'>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteMutation.mutateAsync()}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 cursor-pointer transition-all duration-200"
             >
               {deleteMutation.isPending ? (
                   <>

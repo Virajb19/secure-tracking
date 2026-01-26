@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { useToggleUserStatus } from '@/services/user.service';
-import { toast } from 'sonner';
+import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
 
 interface UserStatusToggleProps {
   userId: string;
@@ -17,14 +17,21 @@ export function UserStatusToggle({
   const toggleStatusMutation = useToggleUserStatus();
 
   const handleToggleStatus = async () => {
+    const newStatus = !isActive;
     try {
       await toggleStatusMutation.mutateAsync({
         userId,
-        isActive: !isActive,
+        isActive: newStatus,
       });
+      showSuccessToast(
+        newStatus 
+          ? 'User activated successfully!' 
+          : 'User deactivated successfully!',
+        3000
+      );
     } catch (err) {
       console.error('Failed to toggle user status', err);
-      toast.error('Failed to toggle user status. Please try again.');
+      showErrorToast('Failed to update user status. Please try again.');
     }
   };
 

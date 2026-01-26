@@ -72,7 +72,6 @@ const tableRowVariants = {
     }
   }),
   hover: {
-    scale: 1.01,
     backgroundColor: 'rgba(51, 65, 85, 0.5)',
     transition: { duration: 0.2 }
   }
@@ -237,7 +236,7 @@ export default function CircularsPage() {
                         <Input
                           placeholder="Enter a descriptive title for the circular"
                           {...field}
-                          className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-all"
+                          className="bg-slate-800/50 border-blue-500/50 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-all"
                         />
                       </FormControl>
                       <FormMessage />
@@ -258,7 +257,7 @@ export default function CircularsPage() {
                         <Textarea
                           placeholder="Enter detailed description..."
                           {...field}
-                          className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 min-h-[100px] focus:border-blue-500 focus:ring-blue-500/20 transition-all resize-none"
+                          className="bg-slate-800/50 border-blue-500/50 text-white placeholder:text-slate-500 min-h-[100px] focus:border-blue-500 focus:ring-blue-500/20 transition-all resize-none"
                         />
                       </FormControl>
                       <FormMessage />
@@ -285,7 +284,7 @@ export default function CircularsPage() {
                         <Input
                           placeholder="e.g., SEBA, Directorate"
                           {...field}
-                          className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500 transition-all"
+                          className="bg-slate-800/50 border-blue-500/50 text-white placeholder:text-slate-500 focus:border-blue-500 transition-all"
                         />
                       </FormControl>
                       <FormMessage />
@@ -306,7 +305,7 @@ export default function CircularsPage() {
                         <Input
                           type="date"
                           {...field}
-                          className="bg-slate-800/50 border-slate-600 text-white focus:border-blue-500 transition-all"
+                          className="bg-slate-800/50 border-blue-500/50 text-white focus:border-blue-500 transition-all"
                         />
                       </FormControl>
                       <FormMessage />
@@ -327,7 +326,7 @@ export default function CircularsPage() {
                         <Input
                           type="date"
                           {...field}
-                          className="bg-slate-800/50 border-slate-600 text-white focus:border-blue-500 transition-all"
+                          className="bg-slate-800/50 border-blue-500/50 text-white focus:border-blue-500 transition-all"
                         />
                       </FormControl>
                       <FormMessage />
@@ -356,7 +355,7 @@ export default function CircularsPage() {
                         setSelectedSchools([]);
                       }} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white focus:border-blue-500 transition-all">
+                          <SelectTrigger className="bg-slate-800/50 border-blue-500/50 text-white focus:border-blue-500 transition-all">
                             <SelectValue placeholder="All Districts" />
                           </SelectTrigger>
                         </FormControl>
@@ -477,7 +476,7 @@ export default function CircularsPage() {
                           {schools.map((school, index) => (
                             <motion.label
                               key={school.id}
-                              className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all ${
+                              className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors ${
                                 selectedSchools.includes(school.id)
                                   ? 'bg-blue-500/10 border border-blue-500/30'
                                   : 'hover:bg-slate-700/50 border border-transparent'
@@ -485,7 +484,6 @@ export default function CircularsPage() {
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: index * 0.02 }}
-                              whileHover={{ x: 4 }}
                             >
                               <Checkbox
                                 checked={selectedSchools.includes(school.id)}
@@ -524,7 +522,7 @@ export default function CircularsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                   >
-                    <Sparkles className="h-4 w-4" />
+                    <Sparkles className="h-4 w-4 fill-blue-400" />
                     No district selected. This circular will be visible to all faculty members across all schools.
                   </motion.p>
                 )}

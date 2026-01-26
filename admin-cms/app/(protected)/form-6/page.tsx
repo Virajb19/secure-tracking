@@ -19,9 +19,10 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Download, FileText, Check, X, Loader2, AlertTriangle, Eye } from 'lucide-react';
+import { Search, Download, FileText, Check, X, Loader2, AlertTriangle, Eye, RefreshCw } from 'lucide-react';
 import { formSubmissionsApi, FormSubmission } from '@/services/paper-setter.service';
 import { toast } from 'sonner';
+import { twMerge } from 'tailwind-merge';
 
 const formTypes = [
   { value: '6A', label: 'Form 6A (Class VIII)' },
@@ -37,6 +38,7 @@ export default function Form6Page() {
   const [page, setPage] = useState(1);
   const [rejectDialog, setRejectDialog] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [rejectReason, setRejectReason] = useState('');
+  const [downloadingXlsx, setDownloadingXlsx] = useState(false);
 
   // Fetch pending submissions
   const { data, isLoading, error } = useQuery({
@@ -74,6 +76,18 @@ export default function Form6Page() {
       toast.error('Failed to reject form');
     },
   });
+
+  const handleDownloadXlsx = async () => {
+    if (downloadingXlsx) return;
+    setDownloadingXlsx(true);
+    
+    // Small delay for nicer animation
+    await new Promise((r) => setTimeout(r, 1000));
+    
+    // TODO: Implement actual download logic - file will download directly
+    // For now just simulate the download process
+    setDownloadingXlsx(false);
+  };
 
   const handleApprove = (id: string) => {
     if (confirm('Are you sure you want to approve this form?')) {
@@ -119,14 +133,56 @@ export default function Form6Page() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">Form 6 Approvals</h1>
         <div className="flex gap-3">
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Download XLSX
-          </Button>
-          <Button className="gap-2 bg-slate-800 hover:bg-slate-700">
-            <FileText className="h-4 w-4" />
-            Download PDF
-          </Button>
+          <button
+            type="button"
+            onClick={handleDownloadXlsx}
+            aria-busy={downloadingXlsx}
+            disabled={downloadingXlsx || submissions.length === 0}
+            className={twMerge(
+              "group gap-3 hover:-translate-y-1 cursor-pointer relative overflow-hidden border-slate-600 bg-blue-600 text-white flex items-center justify-center px-7 py-2 rounded-lg hover:opacity-90 duration-200 font-semibold text-lg",
+              (downloadingXlsx || submissions.length === 0) ? "pointer-events-none opacity-50 cursor-not-allowed hover:translate-y-0" : ""
+            )}
+          >
+            {!downloadingXlsx && (
+              <span
+                className="pointer-events-none absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-[200%] transition-transform duration-700"
+                style={{ width: "50%" }}
+              /> 
+            )}
+            <span
+              className={
+                "relative z-10 inline-flex items-center gap-2 " +
+                "motion-reduce:transform-none " +
+                (downloadingXlsx ? "opacity-80" : "")
+              }
+            >
+              <span
+                className={
+                  "grid place-items-center rounded-md bg-[#A9C8FB] p-2 border " +
+                  "transition-transform duration-200 group-hover:scale-105 group-active:scale-100 " +
+                  "motion-reduce:transition-none"
+                }
+              >
+                {downloadingXlsx ? (<RefreshCw className="animate-spin size-5" />) : (<Download className="size-5" />)}
+              </span>
+              <span className="tracking-tight">{downloadingXlsx ? "Downloading…" : "Download XLSX"}</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            disabled={submissions.length === 0}
+            className={twMerge(
+              "group gap-3 hover:-translate-y-1 cursor-pointer relative overflow-hidden border-slate-600 bg-slate-800 text-white flex items-center justify-center px-6 py-2 rounded-lg hover:bg-slate-700 duration-200 font-semibold",
+              submissions.length === 0 ? "pointer-events-none opacity-50 cursor-not-allowed hover:translate-y-0" : ""
+            )}
+          >
+            <span className="relative z-10 inline-flex items-center gap-2">
+              <span className="grid place-items-center rounded-md bg-slate-700 p-2">
+                <FileText className="size-4" />
+              </span>
+              <span className="tracking-tight">Download PDF</span>
+            </span>
+          </button>
         </div>
       </div>
 

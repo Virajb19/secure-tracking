@@ -27,4 +27,12 @@ export const helpdeskApi = {
     const response = await api.patch<HelpdeskTicket>(`/helpdesk/${ticketId}/resolve`);
     return response.data;
   },
+
+  /**
+   * Toggle ticket status between resolved and pending
+   */
+  toggleStatus: async (ticketId: string): Promise<HelpdeskTicket> => {
+    const response = await api.patch<HelpdeskTicket>(`/helpdesk/${ticketId}/toggle-status`);
+    return response.data;
+  },
 };

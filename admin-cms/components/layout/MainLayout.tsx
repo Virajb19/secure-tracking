@@ -1,24 +1,61 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useRouter, usePathname } from 'next/navigation';
+import { useNavigationStore, useAuthStore } from '@/lib/store';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import Image from 'next/image';
 
 interface MainLayoutProps {
     children: React.ReactNode;
-    title: string;
+    title?: string;
     subtitle?: string;
 }
 
-export default function MainLayout({ children, title, subtitle }: MainLayoutProps) {
+function NavigationLoader() {
+    const isNavigating = useNavigationStore((state) => state.isNavigating);
+
+    if (!isNavigating) return null;
+
+    return (
+        <div className="fixed inset-0 ml-64 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-md" />
+            <div className="relative z-10">
+                <Image
+                    src="/Spinner@1x-1.0s-200px-200px.png"
+                    alt="Loading..."
+                    width={100}
+                    height={100}
+                    className="animate-spin"
+                    priority
+                />
+            </div>
+        </div>
+    );
+}
+
+export default function MainLayout({ children }: MainLayoutProps) {
     const router = useRouter();
-    const { isAuthenticated, loading } = useAuth();
+    const pathname = usePathname();
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const loading = useAuthStore((state) => state.loading);
+    const hydrate = useAuthStore((state) => state.hydrate);
+    const stopNavigation = useNavigationStore((state) => state.stopNavigation);
+
+    // Hydrate auth on mount
+    useEffect(() => {
+        hydrate();
+    }, [hydrate]);
+
+    // Stop navigation when pathname changes
+    useEffect(() => {
+        stopNavigation();
+    }, [pathname, stopNavigation]);
 
     // Redirect to login if not authenticated
     useEffect(() => {
-        if (!loading && !isAuthenticated) {
+        if (!loading && !isAuthenticated()) {
             router.push('/login');
         }
     }, [isAuthenticated, loading, router]);
@@ -28,15 +65,21 @@ export default function MainLayout({ children, title, subtitle }: MainLayoutProp
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500"></div>
-                    <p className="text-slate-400">Loading...</p>
+                    <Image
+                        src="/Spinner@1x-1.0s-200px-200px.png"
+                        alt="Loading..."
+                        width={100}
+                        height={100}
+                        className="animate-spin"
+                        priority
+                    />
                 </div>
             </div>
         );
     }
 
     // Don't render if not authenticated (will redirect)
-    if (!isAuthenticated) {
+    if (!isAuthenticated()) {
         return null;
     }
 
@@ -46,12 +89,13 @@ export default function MainLayout({ children, title, subtitle }: MainLayoutProp
             <Sidebar />
 
             {/* Main Content */}
-            <div className="ml-64">
-                <Header title={title} subtitle={subtitle} />
-                <main className="p-6">
+            <div className="ml-64 flex flex-col min-h-screen">
+                <Header />
+                <main className="flex-1 p-6">
                     {children}
                 </main>
             </div>
+            <NavigationLoader />
         </div>
     );
 }
