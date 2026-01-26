@@ -1,0 +1,467 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  SEBA_OFFICER
+  HEADMASTER
+  TEACHER
+  CENTER_SUPERINTENDENT
+  SUBJECT_COORDINATOR
+  DEALING_ASSISTANT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SUSPICIOUS
+}
+
+// Event Types - includes both old (legacy) and new 5-step tracking
+enum EventType {
+  // Legacy values (for existing data - DO NOT REMOVE)
+  PICKUP
+  TRANSIT
+  FINAL
+  // New 5-Step Tracking for Exam Papers
+  PICKUP_POLICE_STATION    // Step 1: Pickup from Police Station
+  ARRIVAL_EXAM_CENTER      // Step 2: Arrival at Exam Center
+  OPENING_SEAL             // Step 3: Opening Seal
+  SEALING_ANSWER_SHEETS    // Step 4: Sealing Answer Sheets
+  SUBMISSION_POST_OFFICE   // Step 5: Submission at Post Office
+}
+
+// Paper Setter Selection Status
+enum SelectionStatus {
+  INVITED
+  ACCEPTED
+}
+
+// Form Submission Status
+enum FormSubmissionStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum FacultyType {
+  TEACHING
+  NON_TEACHING
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+model User {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @db.VarChar(255)
+  email      String?  @unique @db.VarChar(255)
+  password   String   @db.VarChar(255)
+  phone      String   @unique @db.VarChar(50)
+  role       UserRole @default(SEBA_OFFICER)
+  gender     Gender?   
+  profile_image_url String? @db.Text
+  device_id  String?  @db.VarChar(255)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamp()
+
+  // for notifications
+  push_token        String?  @db.Text
+  notifications     NotificationLog[]
+
+  tasks   Task[]  // ONLY for SEBA_OFFICER
+  faculty Faculty?  // ONLY for HEADMASTER / TEACHER
+  created_events    Event[]    @relation("EventCreator")
+  event_invitations EventInvitation[]
+  created_notices   Notice[]   @relation("NoticeCreator")
+  created_circulars Circular[] @relation("CircularCreator")
+  helpdesk_tickets  Helpdesk[]
+  
+  // Paper Setter Relations
+  paper_setter_selections PaperSetterSelection[] @relation("SelectedTeacher")
+  coordinator_selections  PaperSetterSelection[] @relation("Coordinator")
+  bank_details            BankDetails?
+  starred_by              UserStar[]             @relation("StarredUser")
+  starred_users           UserStar[]             @relation("StarringAdmin")
+  
+  // Subject Coordinator: which subject/class they coordinate
+  coordinator_subject     String?    @db.VarChar(100)
+  coordinator_class       Int?
+
+  @@map("users")
+}
+
+// Task entity for secure question paper delivery tracking.
+// Represents a delivery task assigned to a DELIVERY user.
+// SECURITY: Only assigned DELIVERY user can view/update events
+model Task {
+  id                   String     @id @default(uuid()) @db.Uuid
+  sealed_pack_code     String     @unique @db.VarChar(100)
+  source_location      String     @db.Text
+  destination_location String     @db.Text
+  assigned_user_id     String     @db.Uuid
+  start_time           DateTime   @db.Timestamp()
+  end_time             DateTime   @db.Timestamp()
+  status               TaskStatus @default(PENDING)
+  is_double_shift      Boolean    @default(false)  // Afternoon shift - skip PICKUP and ARRIVAL steps
+  shift_type           String?    @db.VarChar(20)  // MORNING or AFTERNOON
+  expected_travel_time Int?       // Expected travel time in minutes (for red flag detection)
+  created_at           DateTime   @default(now()) @db.Timestamp()
+
+  assigned_user User        @relation(fields: [assigned_user_id], references: [id])
+  events        TaskEvent[]
+
+  @@index([assigned_user_id])
+  @@map("tasks")
+}
+
+// TaskEvent entity - IMMUTABLE EVIDENCE TABLE.
+// CRITICAL: Records MUST NEVER be updated or deleted.
+// This is a government-grade audit trail for legal evidence.
+model TaskEvent {
+  id               String    @id @default(uuid()) @db.Uuid
+  task_id          String    @db.Uuid
+  event_type       EventType
+  image_url        String    @db.Text
+  image_hash       String    @db.VarChar(64)
+  latitude         Decimal   @db.Decimal(10, 7)
+  longitude        Decimal   @db.Decimal(10, 7)
+  server_timestamp DateTime  @db.Timestamp()
+  created_at       DateTime  @default(now()) @db.Timestamp()
+
+  task Task @relation(fields: [task_id], references: [id])
+
+  @@unique([task_id, event_type])
+  @@index([task_id])
+  @@map("task_events")
+}
+
+// Audit Log entity for tracking all sensitive actions.
+// IMMUTABILITY RULE: No UPDATE or DELETE operations on this table.
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  user_id     String?  @db.Uuid
+  action      String   @db.Text
+  entity_type String   @db.VarChar(100)
+  entity_id   String?  @db.Uuid
+  ip_address  String?  @db.VarChar(45)
+  created_at  DateTime @default(now()) @db.Timestamp()
+
+  @@index([user_id])
+  @@map("audit_logs")
+}
+
+model District {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @unique @db.VarChar(150)
+  state      String   @db.VarChar(100)
+  created_at DateTime @default(now())
+
+  schools   School[]
+  circulars Circular[]
+  events    Event[]
+}
+
+model School {
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String   @db.VarChar(255)
+  registration_code String   @unique @db.VarChar(50)
+  district_id       String   @db.Uuid
+  created_at        DateTime @default(now())
+
+  district          District           @relation(fields: [district_id], references: [id])
+  faculties         Faculty[]
+  nonTeachingStaffs NonTeachingStaff[]
+  studentStrengths  StudentStrength[]
+  events            Event[]
+  notices           Notice[]
+  circulars         Circular[]
+
+  @@index([district_id])
+}
+
+model Faculty {
+  id                    String         @id @default(uuid()) @db.Uuid
+  user_id               String         @unique @db.Uuid
+  school_id             String         @db.Uuid
+  faculty_type          FacultyType
+  designation           String         @db.VarChar(150)
+  highest_qualification String         @db.VarChar(150)
+  years_of_experience   Int
+  approval_status       ApprovalStatus @default(PENDING)
+  approved_by           String?        @db.Uuid
+  is_profile_locked     Boolean        @default(false)
+  created_at            DateTime       @default(now())
+  updated_at            DateTime       @updatedAt
+
+  user   User   @relation(fields: [user_id], references: [id])
+  school School @relation(fields: [school_id], references: [id])
+
+  teaching_assignments TeachingAssignment[]
+
+  @@index([school_id])
+}
+
+model TeachingAssignment {
+  id          String @id @default(uuid()) @db.Uuid
+  faculty_id  String @db.Uuid
+  class_level Int // e.g. 8, 9, 10, 11, 12
+  subject     String @db.VarChar(100)
+
+  faculty Faculty @relation(fields: [faculty_id], references: [id])
+
+  @@unique([faculty_id, class_level, subject])
+}
+
+model NonTeachingStaff {
+  id               String   @id @default(uuid()) @db.Uuid
+  school_id        String   @db.Uuid
+  full_name        String   @db.VarChar(255)
+  qualification    String   @db.VarChar(150)
+  nature_of_work   String   @db.VarChar(150)
+  years_of_service Int
+  phone            String   @db.VarChar(50)
+  created_at       DateTime @default(now())
+
+  school School @relation(fields: [school_id], references: [id])
+
+  @@index([school_id])
+}
+
+model StudentStrength {
+  id          String   @id @default(uuid()) @db.Uuid
+  school_id   String   @db.Uuid
+  class_level Int
+  boys        Int
+  girls       Int
+  sections    Int
+  created_at  DateTime @default(now())
+
+  school School @relation(fields: [school_id], references: [id])
+
+  @@unique([school_id, class_level])
+}
+
+// School/District Events (exam dates, holidays, etc.)
+model Event {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String    @db.VarChar(255)
+  description String?   @db.Text
+  event_date  DateTime  @db.Date
+  event_time  String?   @db.VarChar(20)  // e.g. "10:00 AM"
+  location    String?   @db.VarChar(255)
+  event_type  String    @db.VarChar(50)  // EXAM, MEETING, HOLIDAY, OTHER
+  flyer_url   String?   @db.Text         // Event flyer/poster image URL
+  is_active   Boolean   @default(true)
+  school_id   String?   @db.Uuid
+  district_id String?   @db.Uuid         // For district-wide events
+  created_by  String?   @db.Uuid
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @default(now()) @updatedAt
+
+  school      School?   @relation(fields: [school_id], references: [id])
+  district    District? @relation(fields: [district_id], references: [id])
+  creator     User?     @relation("EventCreator", fields: [created_by], references: [id])
+  invitations EventInvitation[]
+
+  @@index([school_id])
+  @@index([district_id])
+  @@map("events")
+}
+
+// Event Invitations - tracks who is invited and their response
+model EventInvitation {
+  id               String           @id @default(uuid()) @db.Uuid
+  event_id         String           @db.Uuid
+  user_id          String           @db.Uuid
+  status           InvitationStatus @default(PENDING)
+  rejection_reason String?          @db.Text
+  responded_at     DateTime?        @db.Timestamp
+  created_at       DateTime         @default(now()) @db.Timestamp
+
+  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([event_id, user_id])
+  @@index([event_id])
+  @@index([user_id])
+  @@map("event_invitations")
+}
+
+// Official Notices from SEBA/Administration
+model Notice {
+  id           String    @id @default(uuid()) @db.Uuid
+  title        String    @db.VarChar(255)
+  content      String    @db.Text
+  priority     String    @db.VarChar(20) @default("NORMAL")  // HIGH, NORMAL, LOW
+  published_at DateTime  @default(now())
+  expires_at   DateTime?
+  is_active    Boolean   @default(true)
+  school_id    String?   @db.Uuid
+  created_by   String?   @db.Uuid
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @default(now()) @updatedAt
+
+  school       School?   @relation(fields: [school_id], references: [id])
+  creator      User?     @relation("NoticeCreator", fields: [created_by], references: [id])
+
+  @@index([school_id])
+  @@map("notices")
+}
+
+// Official Circulars/Documents
+model Circular {
+  id             String    @id @default(uuid()) @db.Uuid
+  circular_no    String    @unique @db.VarChar(50)
+  title          String    @db.VarChar(255)
+  description    String?   @db.Text
+  file_url       String?   @db.Text
+  issued_by      String    @db.VarChar(150)
+  issued_date    DateTime  @db.Date
+  effective_date DateTime? @db.Date
+  is_active      Boolean   @default(true)
+  district_id    String?   @db.Uuid  // For district-level circulars
+  school_id      String?   @db.Uuid  // For school-level circulars
+  created_by     String?   @db.Uuid
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @default(now()) @updatedAt
+
+  district       District? @relation(fields: [district_id], references: [id])
+  school         School?   @relation(fields: [school_id], references: [id])
+  creator        User?     @relation("CircularCreator", fields: [created_by], references: [id])
+
+  @@index([district_id])
+  @@index([school_id])
+  @@map("circulars")
+}
+
+// Helpdesk Tickets - User submitted issues/requests
+model Helpdesk {
+  id          String   @id @default(uuid()) @db.Uuid
+  user_id     String   @db.Uuid
+  full_name   String   @db.VarChar(255)
+  phone       String   @db.VarChar(50)
+  message     String   @db.Text
+  is_resolved Boolean  @default(false)
+  created_at  DateTime @default(now()) @db.Timestamp
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("helpdesk_tickets")
+}
+// Notification History (App ke andar dikhane ke liye)
+model NotificationLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  user_id     String   @db.Uuid
+  title       String   @db.VarChar(255)
+  body        String   @db.Text
+  type        String?  @db.VarChar(50) // e.g. TASK, PROFILE, NOTICE
+  is_read     Boolean  @default(false)
+  created_at  DateTime @default(now()) @db.Timestamp()
+
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("notification_logs")
+}
+
+// Paper Setter Selection - Confidential teacher selection for exam papers
+model PaperSetterSelection {
+  id                  String          @id @default(uuid()) @db.Uuid
+  teacher_id          String          @db.Uuid
+  coordinator_id      String          @db.Uuid
+  subject             String          @db.VarChar(100)
+  class_level         Int             // e.g., 10, 12
+  selection_type      String          @db.VarChar(50)  // PAPER_SETTER or EXAMINER
+  status              SelectionStatus @default(INVITED)
+  official_order_url  String?         @db.Text  // PDF upload by coordinator
+  invitation_message  String?         @db.Text
+  accepted_at         DateTime?       @db.Timestamp
+  created_at          DateTime        @default(now()) @db.Timestamp
+
+  teacher     User @relation("SelectedTeacher", fields: [teacher_id], references: [id], onDelete: Cascade)
+  coordinator User @relation("Coordinator", fields: [coordinator_id], references: [id], onDelete: Cascade)
+
+  @@unique([teacher_id, subject, class_level])  // One teacher per subject per class
+  @@index([teacher_id])
+  @@index([coordinator_id])
+  @@index([subject, class_level])
+  @@map("paper_setter_selections")
+}
+
+// Bank Details for Paper Setters (submitted after acceptance)
+model BankDetails {
+  id              String   @id @default(uuid()) @db.Uuid
+  user_id         String   @unique @db.Uuid
+  account_number  String   @db.VarChar(30)
+  account_name    String   @db.VarChar(255)
+  ifsc_code       String   @db.VarChar(15)
+  bank_name       String   @db.VarChar(150)
+  branch_name     String?  @db.VarChar(150)
+  upi_id          String?  @db.VarChar(100)
+  created_at      DateTime @default(now()) @db.Timestamp
+  updated_at      DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("bank_details")
+}
+
+// User Stars - Admin bookmarks important users
+model UserStar {
+  id            String   @id @default(uuid()) @db.Uuid
+  admin_id      String   @db.Uuid
+  starred_user_id String @db.Uuid
+  created_at    DateTime @default(now()) @db.Timestamp
+
+  admin       User @relation("StarringAdmin", fields: [admin_id], references: [id], onDelete: Cascade)
+  starred_user User @relation("StarredUser", fields: [starred_user_id], references: [id], onDelete: Cascade)
+
+  @@unique([admin_id, starred_user_id])
+  @@index([admin_id])
+  @@map("user_stars")
+}
+
+// Form Submissions - Track form 6A/6B/6C/6D submissions with approval
+model FormSubmission {
+  id              String               @id @default(uuid()) @db.Uuid
+  school_id       String               @db.Uuid
+  submitted_by    String               @db.Uuid
+  form_type       String               @db.VarChar(10)  // 6A, 6B, 6C_LOWER, 6C_HIGHER, 6D
+  status          FormSubmissionStatus @default(DRAFT)
+  rejection_reason String?             @db.Text
+  approved_by     String?              @db.Uuid
+  submitted_at    DateTime?            @db.Timestamp
+  approved_at     DateTime?            @db.Timestamp
+  created_at      DateTime             @default(now()) @db.Timestamp
+
+  @@unique([school_id, form_type])  // One submission per form per school
+  @@index([school_id])
+  @@index([submitted_by])
+  @@map("form_submissions")
+  
+}

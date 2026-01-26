@@ -14,12 +14,11 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DeliveryTasksController = exports.AdminTasksController = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
 const tasks_service_1 = require("./tasks.service");
 const create_task_dto_1 = require("./dto/create-task.dto");
 const guards_1 = require("../shared/guards");
 const decorators_1 = require("../shared/decorators");
-const enums_1 = require("../shared/enums");
-const user_entity_1 = require("../users/entities/user.entity");
 const task_events_service_1 = require("../task-events/task-events.service");
 let AdminTasksController = class AdminTasksController {
     constructor(tasksService, taskEventsService) {
@@ -60,8 +59,7 @@ __decorate([
     __param(1, (0, decorators_1.CurrentUser)()),
     __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_task_dto_1.CreateTaskDto,
-        user_entity_1.User, Object]),
+    __metadata("design:paramtypes", [create_task_dto_1.CreateTaskDto, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AdminTasksController.prototype, "create", null);
 __decorate([
@@ -91,13 +89,13 @@ __decorate([
     __param(1, (0, decorators_1.CurrentUser)()),
     __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, user_entity_1.User, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AdminTasksController.prototype, "resetForTesting", null);
 exports.AdminTasksController = AdminTasksController = __decorate([
-    (0, common_1.Controller)('api/admin/tasks'),
+    (0, common_1.Controller)('admin/tasks'),
     (0, common_1.UseGuards)(guards_1.JwtAuthGuard, guards_1.RolesGuard),
-    (0, decorators_1.Roles)(enums_1.UserRole.ADMIN),
+    (0, decorators_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN),
     __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => task_events_service_1.TaskEventsService))),
     __metadata("design:paramtypes", [tasks_service_1.TasksService,
         task_events_service_1.TaskEventsService])
@@ -118,7 +116,7 @@ __decorate([
     (0, common_1.Get)('my'),
     __param(0, (0, decorators_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [user_entity_1.User]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], DeliveryTasksController.prototype, "findMyTasks", null);
 __decorate([
@@ -126,13 +124,13 @@ __decorate([
     __param(0, (0, common_1.Param)('taskId', new common_1.ParseUUIDPipe({ version: '4' }))),
     __param(1, (0, decorators_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, user_entity_1.User]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], DeliveryTasksController.prototype, "findOne", null);
 exports.DeliveryTasksController = DeliveryTasksController = __decorate([
-    (0, common_1.Controller)('api/tasks'),
+    (0, common_1.Controller)('tasks'),
     (0, common_1.UseGuards)(guards_1.JwtAuthGuard, guards_1.RolesGuard),
-    (0, decorators_1.Roles)(enums_1.UserRole.DELIVERY),
+    (0, decorators_1.Roles)(client_1.UserRole.SEBA_OFFICER),
     __metadata("design:paramtypes", [tasks_service_1.TasksService])
 ], DeliveryTasksController);
 //# sourceMappingURL=tasks.controller.js.map

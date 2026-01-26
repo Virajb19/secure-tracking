@@ -16,12 +16,11 @@ exports.TaskEventsController = void 0;
 const common_1 = require("@nestjs/common");
 const platform_express_1 = require("@nestjs/platform-express");
 const multer_1 = require("multer");
+const client_1 = require("@prisma/client");
 const task_events_service_1 = require("./task-events.service");
 const create_task_event_dto_1 = require("./dto/create-task-event.dto");
 const guards_1 = require("../shared/guards");
 const decorators_1 = require("../shared/decorators");
-const enums_1 = require("../shared/enums");
-const user_entity_1 = require("../users/entities/user.entity");
 const multerOptions = {
     storage: (0, multer_1.memoryStorage)(),
     limits: {
@@ -51,6 +50,10 @@ let TaskEventsController = class TaskEventsController {
     async findByTaskId(taskId, currentUser) {
         return this.taskEventsService.findByTaskId(taskId);
     }
+    async getAllowedEventTypes(taskId, currentUser) {
+        const types = await this.taskEventsService.getAllowedEventTypes(taskId);
+        return { allowedTypes: types };
+    }
     extractIpAddress(request) {
         const forwarded = request.headers['x-forwarded-for'];
         if (forwarded) {
@@ -71,7 +74,7 @@ __decorate([
     __param(3, (0, decorators_1.CurrentUser)()),
     __param(4, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, create_task_event_dto_1.CreateTaskEventDto, Object, user_entity_1.User, Object]),
+    __metadata("design:paramtypes", [String, create_task_event_dto_1.CreateTaskEventDto, Object, Object, Object]),
     __metadata("design:returntype", Promise)
 ], TaskEventsController.prototype, "create", null);
 __decorate([
@@ -79,13 +82,21 @@ __decorate([
     __param(0, (0, common_1.Param)('taskId', new common_1.ParseUUIDPipe({ version: '4' }))),
     __param(1, (0, decorators_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, user_entity_1.User]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], TaskEventsController.prototype, "findByTaskId", null);
+__decorate([
+    (0, common_1.Get)(':taskId/events/allowed-types'),
+    __param(0, (0, common_1.Param)('taskId', new common_1.ParseUUIDPipe({ version: '4' }))),
+    __param(1, (0, decorators_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], TaskEventsController.prototype, "getAllowedEventTypes", null);
 exports.TaskEventsController = TaskEventsController = __decorate([
-    (0, common_1.Controller)('api/tasks'),
+    (0, common_1.Controller)('tasks'),
     (0, common_1.UseGuards)(guards_1.JwtAuthGuard, guards_1.RolesGuard),
-    (0, decorators_1.Roles)(enums_1.UserRole.DELIVERY),
+    (0, decorators_1.Roles)(client_1.UserRole.SEBA_OFFICER),
     __metadata("design:paramtypes", [task_events_service_1.TaskEventsService])
 ], TaskEventsController);
 //# sourceMappingURL=task-events.controller.js.map

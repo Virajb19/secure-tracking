@@ -16,13 +16,11 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { memoryStorage } from 'multer';
+import { User, TaskEvent, UserRole } from '@prisma/client';
 import { TaskEventsService } from './task-events.service';
 import { CreateTaskEventDto } from './dto/create-task-event.dto';
 import { JwtAuthGuard, RolesGuard } from '../shared/guards';
 import { Roles, CurrentUser } from '../shared/decorators';
-import { UserRole } from '../shared/enums';
-import { User } from '../users/entities/user.entity';
-import { TaskEvent } from './entities/task-event.entity';
 
 /**
  * Multer configuration for secure image upload.
@@ -65,9 +63,9 @@ const multerOptions = {
  * ║  - All validations happen in service layer                        ║
  * ╚═══════════════════════════════════════════════════════════════════╝
  */
-@Controller('api/tasks')
+@Controller('tasks')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.DELIVERY)
+@Roles(UserRole.SEBA_OFFICER)
 export class TaskEventsController {
     constructor(private readonly taskEventsService: TaskEventsService) { }
 
@@ -126,6 +124,23 @@ export class TaskEventsController {
         // Note: Service will return events - access control is via the JWT guard
         // which ensures only authenticated DELIVERY users can access
         return this.taskEventsService.findByTaskId(taskId);
+    }
+
+    /**
+     * Get allowed event types for a task.
+     * 
+     * Returns the list of event types that can still be recorded for this task.
+     * Takes into account:
+     * - Already recorded events (excluded)
+     * - Double shift logic (afternoon shift skips first 2 steps)
+     */
+    @Get(':taskId/events/allowed-types')
+    async getAllowedEventTypes(
+        @Param('taskId', new ParseUUIDPipe({ version: '4' })) taskId: string,
+        @CurrentUser() currentUser: User,
+    ): Promise<{ allowedTypes: string[] }> {
+        const types = await this.taskEventsService.getAllowedEventTypes(taskId);
+        return { allowedTypes: types };
     }
 
     /**

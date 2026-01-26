@@ -17,7 +17,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { User } from '../types';
-import { login as authLogin } from '../services/auth.service';
+import { login as authLogin, LoginCredentials } from '../services/auth.service';
 import { getDeviceId } from '../utils/device';
 import {
     getAccessToken,
@@ -26,6 +26,28 @@ import {
     storeUserData,
     clearAuthData,
 } from '../utils/storage';
+import {
+    initializePushNotifications,
+    removePushToken,
+} from '../services/notification.service';
+
+/**
+ * Login credentials for AuthContext.
+ */
+interface LoginParams {
+    email: string;
+    password: string;
+    phone: string;
+}
+
+/**
+ * Login result with isInactive flag for toast handling.
+ */
+interface LoginResult {
+    success: boolean;
+    error?: string;
+    isInactive?: boolean;
+}
 
 /**
  * Auth context interface.
@@ -40,7 +62,7 @@ interface AuthContextType {
     /** Device ID (for display/debug) */
     deviceId: string | null;
     /** Login function */
-    login: (phone: string) => Promise<{ success: boolean; error?: string }>;
+    login: (params: LoginParams) => Promise<LoginResult>;
     /** Logout function */
     logout: () => Promise<void>;
 }
@@ -53,7 +75,7 @@ const AuthContext = createContext<AuthContextType>({
     isAuthenticated: false,
     isLoading: true,
     deviceId: null,
-    login: async () => ({ success: false, error: 'Context not initialized' }),
+    login: async () => ({ success: false, error: 'Context not initialized', isInactive: false }),
     logout: async () => { },
 });
 
@@ -118,10 +140,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     /**
-     * Login with phone number.
+     * Login with email, password, and phone number.
      * Device ID is automatically included.
      */
-    const login = useCallback(async (phone: string): Promise<{ success: boolean; error?: string }> => {
+    const login = useCallback(async (params: LoginParams): Promise<LoginResult> => {
         if (!deviceId) {
             return { success: false, error: 'Device not initialized. Please restart the app.' };
         }
@@ -129,7 +151,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
             setIsLoading(true);
 
-            const result = await authLogin(phone, deviceId);
+            const credentials: LoginCredentials = {
+                email: params.email,
+                password: params.password,
+                phone: params.phone,
+                deviceId: deviceId,
+            };
+
+            const result = await authLogin(credentials);
 
             if (result.success && result.token && result.user) {
                 // Store token and user data
@@ -139,10 +168,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 // Update state
                 setUser(result.user);
 
+                // Initialize push notifications after successful login
+                initializePushNotifications().catch(err => {
+                    console.error('[Auth] Failed to initialize push notifications:', err);
+                });
+
                 return { success: true };
             }
 
-            return { success: false, error: result.error };
+            return { success: false, error: result.error, isInactive: result.isInactive };
 
         } catch (error) {
             console.error('[Auth] Login error:', error);
@@ -158,6 +192,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const logout = useCallback(async () => {
         try {
             console.log('[Auth] Logging out...');
+
+            // Remove push token from server before logout
+            await removePushToken().catch(err => {
+                console.error('[Auth] Failed to remove push token:', err);
+            });
 
             // Clear all auth data (but NOT device_id)
             await clearAuthData();

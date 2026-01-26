@@ -1,45 +1,52 @@
-import {
-    IsEnum,
-    IsNotEmpty,
-    IsNumber,
-    Min,
-    Max,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { EventType } from '../../shared/enums';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
+import { EventType } from '@prisma/client';
 
 /**
- * DTO for creating a task event.
+ * Zod schema for creating a task event.
+ *
+ * CRITICAL:
+ * - No timestamp field (server-generated)
+ * - Image handled separately via multipart upload
  * 
- * CRITICAL: No timestamp field - server generates it.
- * Image is handled separately via multipart upload.
+ * 5-STEP TRACKING:
+ * 1. PICKUP_POLICE_STATION - Picking up papers from police station
+ * 2. ARRIVAL_EXAM_CENTER - Arrived at examination center
+ * 3. OPENING_SEAL - Opening the sealed papers
+ * 4. SEALING_ANSWER_SHEETS - Sealing answer sheets after exam
+ * 5. SUBMISSION_POST_OFFICE - Submitting to post office
  */
-export class CreateTaskEventDto {
-    /**
-     * Type of event being recorded.
-     * Each type can only occur ONCE per task.
-     */
-    @IsEnum(EventType, { message: 'Event type must be PICKUP, TRANSIT, or FINAL' })
-    @IsNotEmpty({ message: 'Event type is required' })
-    event_type: EventType;
+export const CreateTaskEventSchema = z.object({
+  /**
+   * Type of event being recorded.
+   * Each type can only occur ONCE per task.
+   */
+  event_type: z.enum(
+    ['PICKUP_POLICE_STATION', 'ARRIVAL_EXAM_CENTER', 'OPENING_SEAL', 'SEALING_ANSWER_SHEETS', 'SUBMISSION_POST_OFFICE'] as const,
+    {
+      message: 'Event type must be one of: PICKUP_POLICE_STATION, ARRIVAL_EXAM_CENTER, OPENING_SEAL, SEALING_ANSWER_SHEETS, SUBMISSION_POST_OFFICE',
+    },
+  ),
 
-    /**
-     * GPS latitude at time of event.
-     * Valid range: -90 to 90
-     */
-    @Type(() => Number)
-    @IsNumber({}, { message: 'Latitude must be a number' })
-    @Min(-90, { message: 'Latitude must be >= -90' })
-    @Max(90, { message: 'Latitude must be <= 90' })
-    latitude: number;
+  /**
+   * GPS latitude at time of event.
+   * Valid range: -90 to 90
+   */
+  latitude: z.coerce
+    .number()
+    .min(-90, 'Latitude must be >= -90')
+    .max(90, 'Latitude must be <= 90'),
 
-    /**
-     * GPS longitude at time of event.
-     * Valid range: -180 to 180
-     */
-    @Type(() => Number)
-    @IsNumber({}, { message: 'Longitude must be a number' })
-    @Min(-180, { message: 'Longitude must be >= -180' })
-    @Max(180, { message: 'Longitude must be <= 180' })
-    longitude: number;
-}
+  /**
+   * GPS longitude at time of event.
+   * Valid range: -180 to 180
+   */
+  longitude: z.coerce
+    .number()
+    .min(-180, 'Longitude must be >= -180')
+    .max(180, 'Longitude must be <= 180'),
+});
+
+export type CreateTaskEventInput = z.infer<typeof CreateTaskEventSchema>;
+
+export class CreateTaskEventDto extends createZodDto(CreateTaskEventSchema) {}

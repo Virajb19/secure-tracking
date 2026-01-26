@@ -62,7 +62,9 @@ apiClient.interceptors.response.use(
     async (error: AxiosError<ApiError>) => {
         // Debug logging
         if (__DEV__) {
-            console.log(`[API] Error: ${error.response?.status}`, error.response?.data);
+            console.log(`[API] Error: ${error.response?.status || 'Network Error'}`);
+            console.log(`[API] Error message:`, error.message);
+            console.log(`[API] Error data:`, JSON.stringify(error.response?.data));
         }
 
         // Handle 401 - token expired or invalid

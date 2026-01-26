@@ -167,11 +167,17 @@ export default function TaskDetailScreen() {
                 setCompletedEvents([]);
                 break;
             case 'IN_PROGRESS':
-                // At least PICKUP is done
-                setCompletedEvents(['PICKUP']);
+                // At least first step is done
+                setCompletedEvents(['PICKUP_POLICE_STATION']);
                 break;
             case 'COMPLETED':
-                setCompletedEvents(['PICKUP', 'TRANSIT', 'FINAL']);
+                setCompletedEvents([
+                    'PICKUP_POLICE_STATION',
+                    'ARRIVAL_EXAM_CENTER',
+                    'OPENING_SEAL',
+                    'SEALING_ANSWER_SHEETS',
+                    'SUBMISSION_POST_OFFICE'
+                ]);
                 break;
             case 'SUSPICIOUS':
                 // Keep current state
@@ -188,11 +194,11 @@ export default function TaskDetailScreen() {
 
     /**
      * Start event capture.
-     * PHASE 4: Show confirmation for FINAL event
+     * PHASE 4: Show confirmation for SUBMISSION_POST_OFFICE (final) event
      */
     const startEventCapture = (eventType: EventType) => {
-        // PHASE 4: Special confirmation for FINAL event
-        if (eventType === 'FINAL') {
+        // PHASE 4: Special confirmation for SUBMISSION_POST_OFFICE event (final step)
+        if (eventType === 'SUBMISSION_POST_OFFICE') {
             Alert.alert(
                 '⚠️ Complete Delivery',
                 'This is the FINAL step. Once submitted, the task will be PERMANENTLY LOCKED and cannot be modified.\n\nAre you sure you want to complete this delivery?',
@@ -351,9 +357,21 @@ export default function TaskDetailScreen() {
     };
 
     /**
+     * Check if this is an afternoon double shift (skips first 2 steps)
+     */
+    const isAfternoonShift = task?.is_double_shift && task?.shift_type === 'AFTERNOON';
+
+    /**
      * Get the next event type that can be submitted.
      */
-    const nextEvent = getNextEventType(completedEvents);
+    const nextEvent = getNextEventType(completedEvents, isAfternoonShift);
+
+    /**
+     * Get filtered event steps (skip first 2 for afternoon shifts)
+     */
+    const filteredEventSteps = isAfternoonShift 
+        ? EVENT_STEPS.filter(step => !step.skipForAfternoon)
+        : EVENT_STEPS;
 
     /**
      * Render loading state
@@ -432,24 +450,38 @@ export default function TaskDetailScreen() {
                 <View style={styles.card}>
                     <Text style={styles.cardLabel}>SEALED PACK CODE</Text>
                     <Text style={styles.packCode}>{task.sealed_pack_code}</Text>
+                    {/* Double shift indicator */}
+                    {task.is_double_shift && (
+                        <View style={styles.shiftBadge}>
+                            <Text style={styles.shiftText}>
+                                {task.shift_type === 'MORNING' ? '🌅 Morning Shift' : '🌆 Afternoon Shift'}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* Event Steps */}
                 <View style={styles.card}>
                     <Text style={styles.cardLabel}>DELIVERY STEPS</Text>
+                    {isAfternoonShift && (
+                        <Text style={styles.shiftNote}>
+                            ℹ️ Afternoon shift - Steps 1-2 already completed in morning
+                        </Text>
+                    )}
 
-                    {EVENT_STEPS.map((step, index) => {
+                    {filteredEventSteps.map((step, index) => {
                         const isComplete = completedEvents.includes(step.type);
                         const isActive = nextEvent === step.type && canSubmitEvents();
                         const isLocked = !isComplete && nextEvent !== step.type;
+                        const prevStep = index > 0 ? filteredEventSteps[index - 1] : null;
 
                         return (
                             <View key={step.type} style={styles.stepContainer}>
                                 {/* Connector line */}
-                                {index > 0 && (
+                                {index > 0 && prevStep && (
                                     <View style={[
                                         styles.stepConnector,
-                                        isComplete || (completedEvents.includes(EVENT_STEPS[index - 1].type))
+                                        isComplete || (completedEvents.includes(prevStep.type))
                                             ? styles.stepConnectorComplete
                                             : styles.stepConnectorPending
                                     ]} />
@@ -850,5 +882,24 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontFamily: 'monospace',
         marginBottom: 4,
+    },
+    shiftBadge: {
+        marginTop: 12,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        backgroundColor: 'rgba(79, 140, 255, 0.15)',
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+    },
+    shiftText: {
+        color: '#4f8cff',
+        fontSize: 13,
+        fontWeight: '500',
+    },
+    shiftNote: {
+        color: '#9ca3af',
+        fontSize: 12,
+        marginBottom: 12,
+        fontStyle: 'italic',
     },
 });

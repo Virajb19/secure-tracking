@@ -172,20 +172,43 @@ export async function submitEvent(
 /**
  * Get the next required event type based on task status and events.
  * 
- * Enforces strict sequence: PICKUP → TRANSIT → FINAL
+ * Enforces strict sequence: 
+ * Full day: PICKUP_POLICE_STATION → ARRIVAL_EXAM_CENTER → OPENING_SEAL → SEALING_ANSWER_SHEETS → SUBMISSION_POST_OFFICE
+ * Double shift (Afternoon): OPENING_SEAL → SEALING_ANSWER_SHEETS → SUBMISSION_POST_OFFICE
  * 
  * @param completedEvents - Array of already completed event types
+ * @param isDoubleShiftAfternoon - Whether this is an afternoon session of a double shift
  * @returns The next event type or null if all complete
  */
-export function getNextEventType(completedEvents: EventType[]): EventType | null {
-    if (!completedEvents.includes('PICKUP')) {
-        return 'PICKUP';
-    }
-    if (!completedEvents.includes('TRANSIT')) {
-        return 'TRANSIT';
-    }
-    if (!completedEvents.includes('FINAL')) {
-        return 'FINAL';
+export function getNextEventType(completedEvents: EventType[], isDoubleShiftAfternoon: boolean = false): EventType | null {
+    if (isDoubleShiftAfternoon) {
+        // Afternoon shift skips first 2 steps (pickup and arrival - already done in morning)
+        if (!completedEvents.includes('OPENING_SEAL')) {
+            return 'OPENING_SEAL';
+        }
+        if (!completedEvents.includes('SEALING_ANSWER_SHEETS')) {
+            return 'SEALING_ANSWER_SHEETS';
+        }
+        if (!completedEvents.includes('SUBMISSION_POST_OFFICE')) {
+            return 'SUBMISSION_POST_OFFICE';
+        }
+    } else {
+        // Full 5-step sequence for morning or single shift
+        if (!completedEvents.includes('PICKUP_POLICE_STATION')) {
+            return 'PICKUP_POLICE_STATION';
+        }
+        if (!completedEvents.includes('ARRIVAL_EXAM_CENTER')) {
+            return 'ARRIVAL_EXAM_CENTER';
+        }
+        if (!completedEvents.includes('OPENING_SEAL')) {
+            return 'OPENING_SEAL';
+        }
+        if (!completedEvents.includes('SEALING_ANSWER_SHEETS')) {
+            return 'SEALING_ANSWER_SHEETS';
+        }
+        if (!completedEvents.includes('SUBMISSION_POST_OFFICE')) {
+            return 'SUBMISSION_POST_OFFICE';
+        }
     }
     return null; // All events completed
 }
@@ -195,36 +218,52 @@ export function getNextEventType(completedEvents: EventType[]): EventType | null
  * 
  * Prevents skipping or reordering events.
  */
-export function isEventAllowed(eventType: EventType, completedEvents: EventType[]): boolean {
-    const nextEvent = getNextEventType(completedEvents);
+export function isEventAllowed(eventType: EventType, completedEvents: EventType[], isDoubleShiftAfternoon: boolean = false): boolean {
+    const nextEvent = getNextEventType(completedEvents, isDoubleShiftAfternoon);
     return nextEvent === eventType;
 }
 
 /**
  * Get event step information for UI display.
+ * 5-Step Tracking Steps for Exam Paper Delivery
  */
 export const EVENT_STEPS: Array<{
     type: EventType;
     label: string;
     icon: string;
     description: string;
+    skipForAfternoon?: boolean;
 }> = [
         {
-            type: 'PICKUP',
-            label: 'Pickup',
+            type: 'PICKUP_POLICE_STATION',
+            label: 'Police Station Pickup',
+            icon: '🚔',
+            description: 'Collect sealed pack from Police Station',
+            skipForAfternoon: true,
+        },
+        {
+            type: 'ARRIVAL_EXAM_CENTER',
+            label: 'Exam Center Arrival',
+            icon: '🏫',
+            description: 'Arrive at the examination center',
+            skipForAfternoon: true,
+        },
+        {
+            type: 'OPENING_SEAL',
+            label: 'Opening Seal',
             icon: '📦',
-            description: 'Collect the sealed pack from source location',
+            description: 'Open the sealed question paper pack',
         },
         {
-            type: 'TRANSIT',
-            label: 'Transit',
-            icon: '🚚',
-            description: 'Confirm pack is in transit',
+            type: 'SEALING_ANSWER_SHEETS',
+            label: 'Seal Answer Sheets',
+            icon: '✍️',
+            description: 'Seal collected answer sheets',
         },
         {
-            type: 'FINAL',
-            label: 'Delivery',
-            icon: '✅',
-            description: 'Complete delivery at destination',
+            type: 'SUBMISSION_POST_OFFICE',
+            label: 'Post Office Submission',
+            icon: '📮',
+            description: 'Submit sealed pack at Post Office',
         },
     ];

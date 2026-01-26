@@ -5,13 +5,18 @@ import {
     BadRequestException,
     ForbiddenException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Task } from './entities/task.entity';
+import { Task, TaskStatus, UserRole } from '@prisma/client';
+import { PrismaService } from '../prisma';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UsersService } from '../users/users.service';
 import { AuditLogsService, AuditAction } from '../audit-logs/audit-logs.service';
-import { TaskStatus, UserRole } from '../shared/enums';
+import { NotificationsService } from '../notifications/notifications.service';
+
+// Re-export TaskStatus for use in other modules
+export { TaskStatus } from '@prisma/client';
+
+// Type alias for Task with assigned_user relation
+type TaskWithUser = Task & { assigned_user?: { id: string; name: string; phone: string; role: UserRole } };
 
 /**
  * Tasks Service.
@@ -26,10 +31,10 @@ import { TaskStatus, UserRole } from '../shared/enums';
 @Injectable()
 export class TasksService {
     constructor(
-        @InjectRepository(Task)
-        private readonly taskRepository: Repository<Task>,
+        private readonly db: PrismaService,
         private readonly usersService: UsersService,
         private readonly auditLogsService: AuditLogsService,
+        private readonly notificationsService: NotificationsService,
     ) { }
 
     /**
@@ -47,7 +52,7 @@ export class TasksService {
         ipAddress: string | null,
     ): Promise<Task> {
         // Validate sealed_pack_code is unique
-        const existingTask = await this.taskRepository.findOne({
+        const existingTask = await this.db.task.findUnique({
             where: { sealed_pack_code: createTaskDto.sealed_pack_code },
         });
 
@@ -60,8 +65,8 @@ export class TasksService {
         // Validate assigned user exists and is a DELIVERY user
         const assignedUser = await this.usersService.findById(createTaskDto.assigned_user_id);
 
-        if (assignedUser.role !== UserRole.DELIVERY) {
-            throw new BadRequestException('Tasks can only be assigned to DELIVERY users');
+        if (assignedUser.role !== UserRole.SEBA_OFFICER) {
+            throw new BadRequestException('Tasks can only be assigned to SEBA_OFFICER users');
         }
 
         if (!assignedUser.is_active) {
@@ -77,18 +82,18 @@ export class TasksService {
         }
 
         // Create task with default status PENDING
-        const task = this.taskRepository.create({
-            sealed_pack_code: createTaskDto.sealed_pack_code,
-            source_location: createTaskDto.source_location,
-            destination_location: createTaskDto.destination_location,
-            assigned_user_id: createTaskDto.assigned_user_id,
-            start_time: startTime,
-            end_time: endTime,
-            status: TaskStatus.PENDING,
-            // created_at is auto-generated
+        const savedTask = await this.db.task.create({
+            data: {
+                sealed_pack_code: createTaskDto.sealed_pack_code,
+                source_location: createTaskDto.source_location,
+                destination_location: createTaskDto.destination_location,
+                assigned_user_id: createTaskDto.assigned_user_id,
+                start_time: startTime,
+                end_time: endTime,
+                status: TaskStatus.PENDING,
+                // created_at is auto-generated
+            },
         });
-
-        const savedTask = await this.taskRepository.save(task);
 
         // Log task creation to audit trail
         await this.auditLogsService.log(
@@ -108,6 +113,12 @@ export class TasksService {
             ipAddress,
         );
 
+        // Send notification to assigned user
+        await this.notificationsService.notifyTaskAssigned(
+            createTaskDto.assigned_user_id,
+            createTaskDto.sealed_pack_code,
+        );
+
         return savedTask;
     }
 
@@ -115,10 +126,10 @@ export class TasksService {
      * Get all tasks (Admin view).
      * Returns all tasks ordered by creation date.
      */
-    async findAll(): Promise<Task[]> {
-        return this.taskRepository.find({
-            order: { created_at: 'DESC' },
-            relations: ['assigned_user'],
+    async findAll(): Promise<TaskWithUser[]> {
+        return this.db.task.findMany({
+            orderBy: { created_at: 'desc' },
+            include: { assigned_user: true },
         });
     }
 
@@ -129,9 +140,9 @@ export class TasksService {
      * @returns Array of tasks assigned to the user
      */
     async findMyTasks(userId: string): Promise<Task[]> {
-        return this.taskRepository.find({
+        return this.db.task.findMany({
             where: { assigned_user_id: userId },
-            order: { created_at: 'DESC' },
+            orderBy: { created_at: 'desc' },
         });
     }
 
@@ -142,10 +153,10 @@ export class TasksService {
      * @returns Task entity
      * @throws NotFoundException if task not found
      */
-    async findById(taskId: string): Promise<Task> {
-        const task = await this.taskRepository.findOne({
+    async findById(taskId: string): Promise<TaskWithUser> {
+        const task = await this.db.task.findUnique({
             where: { id: taskId },
-            relations: ['assigned_user'],
+            include: { assigned_user: true },
         });
 
         if (!task) {
@@ -164,7 +175,7 @@ export class TasksService {
      * @returns Task entity
      * @throws ForbiddenException if task not assigned to user
      */
-    async findByIdForUser(taskId: string, userId: string): Promise<Task> {
+    async findByIdForUser(taskId: string, userId: string): Promise<TaskWithUser> {
         const task = await this.findById(taskId);
 
         if (task.assigned_user_id !== userId) {
@@ -189,12 +200,10 @@ export class TasksService {
         userId: string,
         ipAddress: string | null,
     ): Promise<Task> {
-        const task = await this.findById(taskId);
-
-        const oldStatus = task.status;
-        task.status = status;
-
-        const updatedTask = await this.taskRepository.save(task);
+        const updatedTask = await this.db.task.update({
+            where: { id: taskId },
+            data: { status },
+        });
 
         // Log status change
         await this.auditLogsService.log(
@@ -227,17 +236,18 @@ export class TasksService {
         adminId: string,
         ipAddress: string | null,
     ): Promise<Task> {
-        const task = await this.findById(taskId);
-
         // Extend time window: start from now, end in 4 hours
         const now = new Date();
         const endTime = new Date(now.getTime() + 4 * 60 * 60 * 1000); // 4 hours
 
-        task.start_time = now;
-        task.end_time = endTime;
-        task.status = TaskStatus.IN_PROGRESS;
-
-        const updatedTask = await this.taskRepository.save(task);
+        const updatedTask = await this.db.task.update({
+            where: { id: taskId },
+            data: {
+                start_time: now,
+                end_time: endTime,
+                status: TaskStatus.IN_PROGRESS,
+            },
+        });
 
         // Log the reset action
         await this.auditLogsService.log(

@@ -1,8 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { join } from 'path';
+import { ZodValidationPipe } from 'nestjs-zod';
 import { AppModule } from './app.module';
 
 /**
@@ -17,18 +17,11 @@ async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
     const configService = app.get(ConfigService);
 
-    // Enable global validation pipe
-    // This automatically validates all DTOs using class-validator decorators
-    app.useGlobalPipes(
-        new ValidationPipe({
-            whitelist: true, // Strip properties not in DTO
-            forbidNonWhitelisted: true, // Throw error if extra properties sent
-            transform: true, // Auto-transform payloads to DTO instances
-            transformOptions: {
-                enableImplicitConversion: true,
-            },
-        }),
-    );
+    app.setGlobalPrefix('api');
+
+    // Enable global Zod validation pipe
+    // This automatically validates all DTOs using nestjs-zod
+    app.useGlobalPipes(new ZodValidationPipe());
 
     // Enable CORS for mobile app and CMS
     app.enableCors({

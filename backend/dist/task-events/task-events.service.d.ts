@@ -1,17 +1,20 @@
-import { Repository } from 'typeorm';
-import { TaskEvent } from './entities/task-event.entity';
+import { TaskEvent, EventType } from '@prisma/client';
+import { PrismaService } from '../prisma';
 import { CreateTaskEventDto } from './dto/create-task-event.dto';
 import { TasksService } from '../tasks/tasks.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+export { EventType } from '@prisma/client';
 export declare class TaskEventsService {
-    private readonly taskEventRepository;
+    private readonly db;
     private readonly tasksService;
     private readonly auditLogsService;
-    constructor(taskEventRepository: Repository<TaskEvent>, tasksService: TasksService, auditLogsService: AuditLogsService);
+    constructor(db: PrismaService, tasksService: TasksService, auditLogsService: AuditLogsService);
     create(taskId: string, createDto: CreateTaskEventDto, imageFile: Express.Multer.File, userId: string, ipAddress: string | null): Promise<TaskEvent>;
     private calculateSHA256;
     private isWithinTimeWindow;
     private saveImage;
     private updateTaskStatus;
+    private checkRedFlag;
+    getAllowedEventTypes(taskId: string): Promise<EventType[]>;
     findByTaskId(taskId: string): Promise<TaskEvent[]>;
 }

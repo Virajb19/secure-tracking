@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import { UserRole } from '../enums';
+import { UserRole } from '@prisma/client';
 
 /**
  * Metadata key for storing required roles.

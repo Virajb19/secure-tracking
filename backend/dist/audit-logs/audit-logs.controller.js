@@ -14,10 +14,10 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuditLogsController = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
 const audit_logs_service_1 = require("./audit-logs.service");
 const guards_1 = require("../shared/guards");
 const decorators_1 = require("../shared/decorators");
-const enums_1 = require("../shared/enums");
 let AuditLogsController = class AuditLogsController {
     constructor(auditLogsService) {
         this.auditLogsService = auditLogsService;
@@ -37,9 +37,9 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuditLogsController.prototype, "findAll", null);
 exports.AuditLogsController = AuditLogsController = __decorate([
-    (0, common_1.Controller)('api/admin/audit-logs'),
+    (0, common_1.Controller)('admin/audit-logs'),
     (0, common_1.UseGuards)(guards_1.JwtAuthGuard, guards_1.RolesGuard),
-    (0, decorators_1.Roles)(enums_1.UserRole.ADMIN),
+    (0, decorators_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN),
     __metadata("design:paramtypes", [audit_logs_service_1.AuditLogsService])
 ], AuditLogsController);
 //# sourceMappingURL=audit-logs.controller.js.map

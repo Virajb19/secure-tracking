@@ -26,14 +26,22 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
         this.usersService = usersService;
     }
     async validate(payload) {
-        const user = await this.usersService.findById(payload.sub);
-        if (!user) {
-            throw new common_1.UnauthorizedException('User not found');
+        try {
+            const user = await this.usersService.findById(payload.sub);
+            if (!user) {
+                throw new common_1.UnauthorizedException('User not found. Please login again.');
+            }
+            if (!user.is_active) {
+                throw new common_1.UnauthorizedException('User account is deactivated');
+            }
+            return user;
         }
-        if (!user.is_active) {
-            throw new common_1.UnauthorizedException('User account is deactivated');
+        catch (error) {
+            if (error instanceof common_1.NotFoundException) {
+                throw new common_1.UnauthorizedException('Session expired. Please login again.');
+            }
+            throw error;
         }
-        return user;
     }
 };
 exports.JwtStrategy = JwtStrategy;

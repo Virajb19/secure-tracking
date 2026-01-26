@@ -1,9 +1,8 @@
 import { Controller, Get, Query, UseGuards, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
+import { AuditLog, UserRole } from '@prisma/client';
 import { AuditLogsService } from './audit-logs.service';
 import { JwtAuthGuard, RolesGuard } from '../shared/guards';
 import { Roles } from '../shared/decorators';
-import { UserRole } from '../shared/enums';
-import { AuditLog } from './entities/audit-log.entity';
 
 /**
  * Audit Logs Controller.
@@ -12,9 +11,9 @@ import { AuditLog } from './entities/audit-log.entity';
  * Endpoints:
  * - GET /api/admin/audit-logs
  */
-@Controller('api/admin/audit-logs')
+@Controller('admin/audit-logs')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class AuditLogsController {
     constructor(private readonly auditLogsService: AuditLogsService) { }
 

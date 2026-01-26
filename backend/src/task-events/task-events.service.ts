@@ -6,16 +6,18 @@ import {
     Inject,
     forwardRef,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { TaskEvent, TaskStatus, EventType } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { TaskEvent } from './entities/task-event.entity';
+import { PrismaService } from '../prisma';
 import { CreateTaskEventDto } from './dto/create-task-event.dto';
 import { TasksService } from '../tasks/tasks.service';
 import { AuditLogsService, AuditAction } from '../audit-logs/audit-logs.service';
-import { TaskStatus, EventType } from '../shared/enums';
+
+// Re-export EventType for use in other modules
+export { EventType } from '@prisma/client';
 
 /**
  * Task Events Service.
@@ -36,8 +38,7 @@ import { TaskStatus, EventType } from '../shared/enums';
 @Injectable()
 export class TaskEventsService {
     constructor(
-        @InjectRepository(TaskEvent)
-        private readonly taskEventRepository: Repository<TaskEvent>,
+        private readonly db: PrismaService,
         @Inject(forwardRef(() => TasksService))
         private readonly tasksService: TasksService,
         private readonly auditLogsService: AuditLogsService,
@@ -98,10 +99,12 @@ export class TaskEventsService {
         // ================================================================
         // STEP 3: Check event_type hasn't been recorded already
         // ================================================================
-        const existingEvent = await this.taskEventRepository.findOne({
+        const existingEvent = await this.db.taskEvent.findUnique({
             where: {
-                task_id: taskId,
-                event_type: createDto.event_type,
+                task_id_event_type: {
+                    task_id: taskId,
+                    event_type: createDto.event_type as EventType,
+                },
             },
         });
 
@@ -147,30 +150,30 @@ export class TaskEventsService {
         // ================================================================
         // STEP 8: Save image and get URL
         // ================================================================
-        const imageUrl = await this.saveImage(imageFile, taskId, createDto.event_type);
+        const imageUrl = await this.saveImage(imageFile, taskId, createDto.event_type as EventType);
 
         // ================================================================
         // STEP 9: Create event record (IMMUTABLE - no update method exists)
         // ================================================================
-        const taskEvent = this.taskEventRepository.create({
-            task_id: taskId,
-            event_type: createDto.event_type,
-            image_url: imageUrl,
-            image_hash: imageHash,
-            latitude: createDto.latitude,
-            longitude: createDto.longitude,
-            server_timestamp: serverTimestamp,
-            // created_at is auto-generated
+        const savedEvent = await this.db.taskEvent.create({
+            data: {
+                task_id: taskId,
+                event_type: createDto.event_type as EventType,
+                image_url: imageUrl,
+                image_hash: imageHash,
+                latitude: new Decimal(createDto.latitude),
+                longitude: new Decimal(createDto.longitude),
+                server_timestamp: serverTimestamp,
+                // created_at is auto-generated
+            },
         });
-
-        const savedEvent = await this.taskEventRepository.save(taskEvent);
 
         // ================================================================
         // STEP 10: Update task status based on event type and time window
         // ================================================================
         await this.updateTaskStatus(
             task,
-            createDto.event_type,
+            createDto.event_type as EventType,
             isWithinWindow,
             userId,
             ipAddress,
@@ -242,10 +245,11 @@ export class TaskEventsService {
     /**
      * Update task status based on event type and time window.
      * 
-     * RULES:
-     * - PICKUP event: Set status to IN_PROGRESS (if PENDING)
-     * - FINAL event: Set status to COMPLETED (task is locked)
+     * RULES (5-STEP TRACKING):
+     * - PICKUP_POLICE_STATION: Set status to IN_PROGRESS
+     * - SUBMISSION_POST_OFFICE: Set status to COMPLETED (task is locked)
      * - Outside time window: Set status to SUSPICIOUS
+     * - Red Flag: Detect drastic travel time changes
      */
     private async updateTaskStatus(
         task: any,
@@ -265,9 +269,12 @@ export class TaskEventsService {
             return;
         }
 
+        // Check for red flag (drastic travel time change)
+        await this.checkRedFlag(task, eventType, userId, ipAddress);
+
         // Handle status transitions based on event type
         switch (eventType) {
-            case EventType.PICKUP:
+            case EventType.PICKUP_POLICE_STATION:
                 // Move from PENDING to IN_PROGRESS
                 if (task.status === TaskStatus.PENDING) {
                     await this.tasksService.updateStatus(
@@ -279,7 +286,7 @@ export class TaskEventsService {
                 }
                 break;
 
-            case EventType.FINAL:
+            case EventType.SUBMISSION_POST_OFFICE:
                 // Lock task permanently - set to COMPLETED
                 await this.tasksService.updateStatus(
                     task.id,
@@ -289,10 +296,103 @@ export class TaskEventsService {
                 );
                 break;
 
-            case EventType.TRANSIT:
-                // No status change for TRANSIT events
+            // Other events don't change status
+            case EventType.ARRIVAL_EXAM_CENTER:
+            case EventType.OPENING_SEAL:
+            case EventType.SEALING_ANSWER_SHEETS:
                 break;
         }
+    }
+
+    /**
+     * RED FLAG DETECTION
+     * Detects drastic changes in travel time compared to expected.
+     * If travel time exceeds expected by 50%, mark as suspicious.
+     */
+    private async checkRedFlag(
+        task: any,
+        eventType: EventType,
+        userId: string,
+        ipAddress: string | null,
+    ): Promise<void> {
+        // Only check for ARRIVAL_EXAM_CENTER (travel time from pickup to center)
+        if (eventType !== EventType.ARRIVAL_EXAM_CENTER) {
+            return;
+        }
+
+        // Get pickup event
+        const pickupEvent = await this.db.taskEvent.findFirst({
+            where: {
+                task_id: task.id,
+                event_type: EventType.PICKUP_POLICE_STATION,
+            },
+        });
+
+        if (!pickupEvent) return;
+
+        // Calculate actual travel time in minutes
+        const now = new Date();
+        const travelTimeMinutes = Math.round(
+            (now.getTime() - pickupEvent.server_timestamp.getTime()) / (1000 * 60)
+        );
+
+        // Compare with expected travel time
+        const expectedTime = task.expected_travel_time || 30; // Default 30 minutes
+        const threshold = expectedTime * 1.5; // 50% tolerance
+
+        if (travelTimeMinutes > threshold) {
+            // Mark as suspicious due to red flag
+            await this.tasksService.updateStatus(
+                task.id,
+                TaskStatus.SUSPICIOUS,
+                userId,
+                ipAddress,
+            );
+
+            await this.auditLogsService.log(
+                'RED_FLAG_TRAVEL_TIME',
+                'Task',
+                task.id,
+                userId,
+                ipAddress,
+            );
+        }
+    }
+
+    /**
+     * Get allowed event types for a task based on double shift logic
+     */
+    async getAllowedEventTypes(taskId: string): Promise<EventType[]> {
+        const task = await this.tasksService.findById(taskId);
+
+        // Get already recorded events
+        const recordedEvents = await this.db.taskEvent.findMany({
+            where: { task_id: taskId },
+            select: { event_type: true },
+        });
+        const recordedTypes = new Set(recordedEvents.map(e => e.event_type));
+
+        // All 5 steps
+        const allSteps: EventType[] = [
+            EventType.PICKUP_POLICE_STATION,
+            EventType.ARRIVAL_EXAM_CENTER,
+            EventType.OPENING_SEAL,
+            EventType.SEALING_ANSWER_SHEETS,
+            EventType.SUBMISSION_POST_OFFICE,
+        ];
+
+        // Double shift logic: Afternoon shift skips first 2 steps
+        let allowedSteps = allSteps;
+        if (task.is_double_shift && task.shift_type === 'AFTERNOON') {
+            allowedSteps = [
+                EventType.OPENING_SEAL,
+                EventType.SEALING_ANSWER_SHEETS,
+                EventType.SUBMISSION_POST_OFFICE,
+            ];
+        }
+
+        // Filter out already recorded events
+        return allowedSteps.filter(step => !recordedTypes.has(step));
     }
 
     /**
@@ -300,9 +400,9 @@ export class TaskEventsService {
      * Used for viewing event history.
      */
     async findByTaskId(taskId: string): Promise<TaskEvent[]> {
-        return this.taskEventRepository.find({
+        return this.db.taskEvent.findMany({
             where: { task_id: taskId },
-            order: { server_timestamp: 'ASC' },
+            orderBy: { server_timestamp: 'asc' },
         });
     }
 

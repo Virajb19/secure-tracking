@@ -2,6 +2,8 @@ import {
     Controller,
     Get,
     Post,
+    Patch,
+    Param,
     Body,
     UseGuards,
     Req,
@@ -9,12 +11,12 @@ import {
     HttpStatus,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { User, UserRole } from '@prisma/client';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { ToggleUserStatusDto } from './dto/toggle-user-status.dto';
 import { JwtAuthGuard, RolesGuard } from '../shared/guards';
 import { Roles, CurrentUser } from '../shared/decorators';
-import { UserRole } from '../shared/enums';
-import { User } from './entities/user.entity';
 
 /**
  * Users Controller.
@@ -24,9 +26,9 @@ import { User } from './entities/user.entity';
  * - POST /api/admin/users - Create a new user
  * - GET /api/admin/users - List all users
  */
-@Controller('api/admin/users')
+@Controller('admin/users')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class UsersController {
     constructor(private readonly usersService: UsersService) { }
 
@@ -59,6 +61,33 @@ export class UsersController {
     @Get()
     async findAll(): Promise<User[]> {
         return this.usersService.findAll();
+    }
+
+    /**
+     * Toggle user active status.
+     * Admin only endpoint.
+     * 
+     * @param userId - User ID to toggle
+     * @param toggleStatusDto - New status data
+     * @param currentUser - Authenticated admin user
+     * @param request - HTTP request for IP extraction
+     * @returns Updated user
+     */
+    @Patch(':userId/status')
+    @HttpCode(HttpStatus.OK)
+    async toggleStatus(
+        @Param('userId') userId: string,
+        @Body() toggleStatusDto: ToggleUserStatusDto,
+        @CurrentUser() currentUser: User,
+        @Req() request: Request,
+    ): Promise<User> {
+        const ipAddress = this.extractIpAddress(request);
+        return this.usersService.toggleActiveStatus(
+            userId,
+            toggleStatusDto.is_active,
+            currentUser.id,
+            ipAddress,
+        );
     }
 
     /**

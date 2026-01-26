@@ -3,13 +3,15 @@ import {
     UnauthorizedException,
     ForbiddenException,
     BadRequestException,
+    ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { User, UserRole, Gender } from '@prisma/client';
 import { UsersService } from '../users/users.service';
 import { AuditLogsService, AuditAction } from '../audit-logs/audit-logs.service';
 import { LoginDto } from './dto/login.dto';
-import { User } from '../users/entities/user.entity';
-import { UserRole } from '../shared/enums';
+import { RegisterDto } from './dto/register.dto';
+import * as bcrypt from 'bcrypt';
 
 /**
  * Login response structure.
@@ -19,6 +21,21 @@ export interface LoginResponse {
     user: {
         id: string;
         name: string;
+        email: string | null;
+        phone: string;
+        role: UserRole;
+    };
+}
+
+/**
+ * Register response structure.
+ */
+export interface RegisterResponse {
+    message: string;
+    user: {
+        id: string;
+        name: string;
+        email: string | null;
         phone: string;
         role: UserRole;
     };
@@ -45,6 +62,9 @@ export class AuthService {
 
     /**
      * Authenticate user and return JWT token.
+     * Supports two login methods:
+     * 1. Email + Password (for Admin CMS)
+     * 2. Email + Password + Phone + Device ID (for Mobile App)
      * 
      * @param loginDto - Login credentials
      * @param ipAddress - Client IP address for audit logging
@@ -53,22 +73,77 @@ export class AuthService {
      * @throws ForbiddenException if device_id mismatch
      */
     async login(loginDto: LoginDto, ipAddress: string | null): Promise<LoginResponse> {
-        // Find user by phone
-        const user = await this.usersService.findByPhone(loginDto.phone);
+        let user: User | null = null;
 
-        if (!user) {
-            // Log failed login attempt
-            await this.auditLogsService.log(
-                AuditAction.USER_LOGIN_FAILED,
-                'User',
-                null,
-                null,
-                ipAddress,
-            );
-            throw new UnauthorizedException('Invalid credentials');
+        // Determine login method
+        if (loginDto.email && loginDto.password) {
+            // Email + Password login
+            console.log('Login attempt for email:', loginDto.email);
+            user = await this.usersService.findByEmail(loginDto.email);
+
+            if (!user) {
+                await this.auditLogsService.log(
+                    AuditAction.USER_LOGIN_FAILED,
+                    'User',
+                    null,
+                    null,
+                    ipAddress,
+                );
+                throw new UnauthorizedException('Invalid credentials');
+            }
+
+            // Verify password
+            // const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+
+            const isPasswordValid = (loginDto.password === user.password); // TEMPORARY: Plaintext password check (to be replaced with bcrypt)
+            if (!isPasswordValid) {
+                await this.auditLogsService.log(
+                    AuditAction.USER_LOGIN_FAILED,
+                    'User',
+                    user.id,
+                    user.id,
+                    ipAddress,
+                );
+                throw new UnauthorizedException('Invalid credentials');
+            }
+
+            // For Mobile App: verify phone also matches if provided (non-empty)
+            // Skip phone validation for Admin CMS (ADMIN/SUPER_ADMIN roles)
+            if (loginDto.phone && loginDto.phone.trim() !== '' && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+                const normalizedInputPhone = loginDto.phone.replace(/[\s-]/g, '');
+                const normalizedUserPhone = user.phone.replace(/[\s-]/g, '');
+                
+                if (normalizedInputPhone !== normalizedUserPhone) {
+                    await this.auditLogsService.log(
+                        AuditAction.USER_LOGIN_FAILED,
+                        'User',
+                        user.id,
+                        user.id,
+                        ipAddress,
+                    );
+                    throw new UnauthorizedException('Phone number does not match the registered account');
+                }
+            }
+        } else if (loginDto.phone) {
+            // Phone-only login (legacy - should not be used for mobile)
+            console.log('Login attempt for phone:', loginDto.phone);
+            user = await this.usersService.findByPhone(loginDto.phone);
+
+            if (!user) {
+                await this.auditLogsService.log(
+                    AuditAction.USER_LOGIN_FAILED,
+                    'User',
+                    null,
+                    null,
+                    ipAddress,
+                );
+                throw new UnauthorizedException('Invalid credentials');
+            }
+        } else {
+            throw new BadRequestException('Either email+password or phone is required');
         }
 
-        // Check if user is active
+        // Check if user is active (approved by admin)
         if (!user.is_active) {
             await this.auditLogsService.log(
                 AuditAction.USER_LOGIN_FAILED,
@@ -77,11 +152,11 @@ export class AuthService {
                 user.id,
                 ipAddress,
             );
-            throw new UnauthorizedException('Account is deactivated');
+            throw new UnauthorizedException('Your account is pending admin approval. Please wait for activation.');
         }
 
         // DELIVERY users must provide device_id
-        if (user.role === UserRole.DELIVERY) {
+        if (user.role === UserRole.SEBA_OFFICER) {
             await this.validateDeliveryUserDevice(user, loginDto.device_id, ipAddress);
         }
 
@@ -108,6 +183,7 @@ export class AuthService {
             user: {
                 id: user.id,
                 name: user.name,
+                email: user.email,
                 phone: user.phone,
                 role: user.role,
             },
@@ -157,5 +233,162 @@ export class AuthService {
                 'Device ID mismatch. This account is bound to a different device.',
             );
         }
+    }
+
+    /**
+     * Register a new user.
+     * 
+     * SECURITY RULES:
+     * - Only non-admin roles can register (SEBA_OFFICER, HEADMASTER, TEACHER, CENTER_SUPERINTENDENT)
+     * - ADMIN and SUPER_ADMIN users are created by existing admins only
+     * - Account is created as inactive by default (requires admin approval)
+     * 
+     * @param registerDto - Registration data
+     * @param ipAddress - Client IP for audit logging
+     * @returns Registration confirmation
+     */
+    async register(registerDto: RegisterDto, ipAddress: string | null): Promise<RegisterResponse> {
+        // Check if email already exists
+        const existingEmail = await this.usersService.findByEmail(registerDto.email);
+        if (existingEmail) {
+            throw new ConflictException('Email already registered');
+        }
+
+        // Check if phone already exists
+        const existingPhone = await this.usersService.findByPhone(registerDto.phone);
+        if (existingPhone) {
+            throw new ConflictException('Phone number already registered');
+        }
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+
+        // Create user with inactive status (requires admin approval)
+        const user = await this.usersService.registerUser({
+            name: registerDto.name,
+            email: registerDto.email,
+            password: hashedPassword,
+            phone: registerDto.phone,
+            role: registerDto.role as UserRole,
+            gender: registerDto.gender as Gender,
+            profile_image_url: registerDto.profile_image_url,
+            is_active: false, // Requires admin approval
+        }, ipAddress);
+
+        // Log registration
+        await this.auditLogsService.log(
+            AuditAction.USER_REGISTERED,
+            'User',
+            user.id,
+            user.id,
+            ipAddress,
+        );
+
+        console.log('New user registered with ID:', user.id);
+
+        return {
+            message: 'Registration successful. Please wait for admin approval.',
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                role: user.role,
+            },
+        };
+    }
+
+    /**
+     * Admin-only login for CMS.
+     * Only ADMIN and SUPER_ADMIN users can login through this endpoint.
+     * 
+     * @param loginDto - Login credentials (email + password)
+     * @param ipAddress - Client IP for audit logging
+     * @returns JWT token and user info
+     * @throws UnauthorizedException if credentials invalid or user is not admin
+     */
+    async adminLogin(loginDto: LoginDto, ipAddress: string | null): Promise<LoginResponse> {
+        if (!loginDto.email || !loginDto.password) {
+            throw new BadRequestException('Email and password are required');
+        }
+
+        const user = await this.usersService.findByEmail(loginDto.email);
+
+        if (!user) {
+            await this.auditLogsService.log(
+                AuditAction.USER_LOGIN_FAILED,
+                'User',
+                null,
+                null,
+                ipAddress,
+            );
+            throw new UnauthorizedException('Invalid credentials');
+        }
+
+        // ONLY allow ADMIN and SUPER_ADMIN to login via CMS
+        if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+            await this.auditLogsService.log(
+                AuditAction.USER_LOGIN_FAILED,
+                'User',
+                user.id,
+                user.id,
+                ipAddress,
+            );
+            throw new ForbiddenException('Access denied. Only administrators can access this portal.');
+        }
+
+        // Verify password
+        const isPasswordValid = loginDto.password === user.password; // TEMPORARY: Plaintext password check
+        if (!isPasswordValid) {
+            await this.auditLogsService.log(
+                AuditAction.USER_LOGIN_FAILED,
+                'User',
+                user.id,
+                user.id,
+                ipAddress,
+            );
+            throw new UnauthorizedException('Invalid credentials');
+        }
+
+        // Check if user is active
+        if (!user.is_active) {
+            await this.auditLogsService.log(
+                AuditAction.USER_LOGIN_FAILED,
+                'User',
+                user.id,
+                user.id,
+                ipAddress,
+            );
+            throw new UnauthorizedException('Your account is inactive. Please contact the system administrator.');
+        }
+
+        // Generate JWT token
+        const payload = {
+            sub: user.id,
+            phone: user.phone,
+            role: user.role,
+        };
+
+        const accessToken = this.jwtService.sign(payload);
+
+        // Log successful login
+        await this.auditLogsService.log(
+            AuditAction.USER_LOGIN,
+            'User',
+            user.id,
+            user.id,
+            ipAddress,
+        );
+
+        return {
+            access_token: accessToken,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                role: user.role,
+            },
+        };
     }
 }

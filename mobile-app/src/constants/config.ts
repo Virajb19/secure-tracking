@@ -24,7 +24,7 @@ export const API_CONFIG = {
      * Change this to your computer's IP for physical device testing.
      * Example: 'http://192.168.1.100:3001/api'
      */
-    BASE_URL: 'http://10.1.6.37:3001/api',
+    BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:3001/api',
 
     /**
      * Request timeout in milliseconds.
@@ -32,6 +32,8 @@ export const API_CONFIG = {
      */
     TIMEOUT: 30000,
 } as const;
+
+console.log('[Config] API Base URL:', API_CONFIG.BASE_URL);
 
 /**
  * Storage Keys

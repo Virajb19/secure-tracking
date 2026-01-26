@@ -1,12 +1,14 @@
 /**
  * Login Screen
  * 
- * Phone-only passwordless login.
+ * Email + Password + Phone login with device binding.
  * Device ID is automatically included in request.
  * 
  * SECURITY:
- * - Only DELIVERY role users can login
+ * - All non-admin users can login
+ * - Admin users are blocked (must use admin portal)
  * - Device binding enforced by backend
+ * - Inactive users (not approved by admin) are blocked
  * - Clear error messages for all failure cases
  */
 
@@ -21,15 +23,27 @@ import {
     Platform,
     ActivityIndicator,
     Alert,
+    ScrollView,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { router } from 'expo-router';
 import { useAuth } from '../src/contexts/AuthContext';
 
 export default function LoginScreen() {
     const { login, isLoading, deviceId } = useAuth();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [phone, setPhone] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    /**
+     * Validate email format.
+     */
+    const validateEmail = (value: string): boolean => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(value.trim());
+    };
 
     /**
      * Validate phone number format.
@@ -43,11 +57,40 @@ export default function LoginScreen() {
     };
 
     /**
+     * Validate password.
+     */
+    const validatePassword = (value: string): boolean => {
+        return value.length >= 8 && value.length <= 15;
+    };
+
+    /**
      * Handle login submission.
      */
     const handleLogin = async () => {
         // Clear previous error
         setError(null);
+
+        // Validate email
+        if (!email.trim()) {
+            setError('Please enter your email address.');
+            return;
+        }
+
+        if (!validateEmail(email)) {
+            setError('Please enter a valid email address.');
+            return;
+        }
+
+        // Validate password
+        if (!password) {
+            setError('Please enter your password.');
+            return;
+        }
+
+        if (!validatePassword(password)) {
+            setError('Password must be 8-15 characters long.');
+            return;
+        }
 
         // Validate phone
         if (!phone.trim()) {
@@ -69,12 +112,22 @@ export default function LoginScreen() {
         setIsSubmitting(true);
 
         try {
-            const result = await login(phone);
+            const result = await login({ email, password, phone });
 
             if (result.success) {
                 // Navigate to protected area
                 router.replace('/(protected)/tasks');
             } else {
+                // Check if user is inactive/not approved
+                if (result.isInactive) {
+                    Toast.show({
+                        type: 'info',
+                        text1: 'Account Pending Approval',
+                        text2: 'Your account is awaiting admin approval. Please try again later.',
+                        visibilityTime: 5000,
+                        position: 'top',
+                    });
+                }
                 // Show error
                 setError(result.error || 'Login failed. Please try again.');
             }
@@ -101,65 +154,114 @@ export default function LoginScreen() {
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-            <View style={styles.content}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.logo}>🔒</Text>
-                    <Text style={styles.title}>Secure Delivery</Text>
-                    <Text style={styles.subtitle}>Government Tracking System</Text>
-                </View>
+            <ScrollView 
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+            >
+                <View style={styles.content}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <Text style={styles.logo}>🔒</Text>
+                        <Text style={styles.title}>Secure Delivery</Text>
+                        <Text style={styles.subtitle}>Government Tracking System</Text>
+                    </View>
 
-                {/* Login Form */}
-                <View style={styles.form}>
-                    <Text style={styles.label}>Phone Number</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter your registered phone"
-                        placeholderTextColor="#6b7280"
-                        keyboardType="phone-pad"
-                        autoComplete="tel"
-                        value={phone}
-                        onChangeText={(text) => {
-                            setPhone(text);
-                            setError(null);
-                        }}
-                        editable={!isSubmitting}
-                    />
+                    {/* Login Form */}
+                    <View style={styles.form}>
+                        {/* Email Field */}
+                        <Text style={styles.label}>Email Address</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter your registered email"
+                            placeholderTextColor="#6b7280"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoComplete="email"
+                            value={email}
+                            onChangeText={(text) => {
+                                setEmail(text);
+                                setError(null);
+                            }}
+                            editable={!isSubmitting}
+                        />
 
-                    {/* Error Message */}
-                    {error && (
-                        <View style={styles.errorContainer}>
-                            <Text style={styles.errorText}>{error}</Text>
-                        </View>
-                    )}
+                        {/* Password Field */}
+                        <Text style={styles.label}>Password</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter your password"
+                            placeholderTextColor="#6b7280"
+                            secureTextEntry
+                            autoCapitalize="none"
+                            autoComplete="password"
+                            value={password}
+                            onChangeText={(text) => {
+                                setPassword(text);
+                                setError(null);
+                            }}
+                            editable={!isSubmitting}
+                        />
 
-                    {/* Login Button */}
-                    <TouchableOpacity
-                        style={[
-                            styles.button,
-                            (isSubmitting || isLoading) && styles.buttonDisabled,
-                        ]}
-                        onPress={handleLogin}
-                        disabled={isSubmitting || isLoading}
-                    >
-                        {isSubmitting || isLoading ? (
-                            <ActivityIndicator color="#ffffff" />
-                        ) : (
-                            <Text style={styles.buttonText}>Login</Text>
+                        {/* Phone Field */}
+                        <Text style={styles.label}>Phone Number</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter your registered phone"
+                            placeholderTextColor="#6b7280"
+                            keyboardType="phone-pad"
+                            autoComplete="tel"
+                            value={phone}
+                            onChangeText={(text) => {
+                                setPhone(text);
+                                setError(null);
+                            }}
+                            editable={!isSubmitting}
+                        />
+
+                        {/* Error Message */}
+                        {error && (
+                            <View style={styles.errorContainer}>
+                                <Text style={styles.errorText}>{error}</Text>
+                            </View>
                         )}
-                    </TouchableOpacity>
-                </View>
 
-                {/* Footer */}
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>
-                        This app is for authorized delivery personnel only.
-                    </Text>
-                    <TouchableOpacity onPress={showDeviceInfo}>
-                        <Text style={styles.deviceInfoLink}>Device Info</Text>
-                    </TouchableOpacity>
+                        {/* Login Button */}
+                        <TouchableOpacity
+                            style={[
+                                styles.button,
+                                (isSubmitting || isLoading) && styles.buttonDisabled,
+                            ]}
+                            onPress={handleLogin}
+                            disabled={isSubmitting || isLoading}
+                        >
+                            {isSubmitting || isLoading ? (
+                                <ActivityIndicator color="#ffffff" />
+                            ) : (
+                                <Text style={styles.buttonText}>Login</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Register Link */}
+                    <View style={styles.registerSection}>
+                        <Text style={styles.footerText}>Don't have an account?</Text>
+                        <TouchableOpacity onPress={() => router.push({ pathname: '/register' as any })}>
+                            <Text style={styles.registerLink}>Register</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Footer */}
+                    <View style={styles.footer}>
+                        <Text style={styles.footerText}>
+                            Secure Tracking Mobile Application
+                        </Text>
+                        <TouchableOpacity onPress={showDeviceInfo}>
+                            <Text style={styles.deviceInfoLink}>Device Info</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
+            </ScrollView>
+            <Toast />
         </KeyboardAvoidingView>
     );
 }
@@ -169,10 +271,14 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#0f0f1a',
     },
+    scrollContent: {
+        flexGrow: 1,
+    },
     content: {
         flex: 1,
         justifyContent: 'center',
         paddingHorizontal: 24,
+        paddingVertical: 32,
     },
     header: {
         alignItems: 'center',
@@ -244,6 +350,18 @@ const styles = StyleSheet.create({
     buttonText: {
         color: '#ffffff',
         fontSize: 18,
+        fontWeight: '600',
+    },
+    registerSection: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 24,
+        gap: 8,
+    },
+    registerLink: {
+        color: '#4f8cff',
+        fontSize: 14,
         fontWeight: '600',
     },
     footer: {

@@ -1,34 +1,22 @@
-import { IsString, IsNotEmpty, IsOptional, Matches, Length } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-/**
- * DTO for user login.
- * 
- * SECURITY RULES:
- * - phone is the unique identifier for authentication
- * - device_id is REQUIRED for DELIVERY users
- * - device_id is bound on first login and cannot change
- */
-export class LoginDto {
-    /**
-     * Phone number (unique identifier).
-     * Must match the format used during user creation.
-     */
-    @IsString()
-    @IsNotEmpty({ message: 'Phone is required' })
-    @Matches(/^[+]?[\d\s-]{10,15}$/, {
-        message: 'Phone must be a valid phone number',
-    })
-    phone: string;
+export const LoginSchema = z.object({
+  // Admin CMS login (email + password) OR Mobile app login (email + password + phone)
+  email: z.string().email({ message: 'Please enter a valid email' }).trim().optional(),
+  password: z.string().min(8, { message: 'Password must be at least 8 characters long' }).max(15, { message: 'Password cannot exceed 15 characters' }).optional(),
+  // Mobile app login requires phone + device_id along with email + password
+  phone: z.string().regex(/^[+]?[\d\s-]{10,15}$/, { message: 'Invalid phone number format' }).optional(),
+  device_id: z.string().min(10).optional(),
+}).refine(
+  (data) => {
+    // Either email+password OR phone must be provided
+    const hasEmailLogin = data.email && data.password;
+    const hasPhoneLogin = data.phone;
+    return hasEmailLogin || hasPhoneLogin;
+  },
+  { message: 'Either email+password or phone is required for login' }
+);
 
-    /**
-     * Device ID for DELIVERY users.
-     * Required for mobile app users.
-     * Will be bound on first login and verified on subsequent logins.
-     * 
-     * For ADMIN users, this field is optional and ignored.
-     */
-    @IsOptional()
-    @IsString()
-    @Length(10, 255, { message: 'Device ID must be between 10 and 255 characters' })
-    device_id?: string;
-}
+
+export class LoginDto extends createZodDto(LoginSchema) {}

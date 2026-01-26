@@ -1,11 +1,13 @@
 import { Request } from 'express';
+import { User } from '@prisma/client';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { User } from './entities/user.entity';
+import { ToggleUserStatusDto } from './dto/toggle-user-status.dto';
 export declare class UsersController {
     private readonly usersService;
     constructor(usersService: UsersService);
     create(createUserDto: CreateUserDto, currentUser: User, request: Request): Promise<User>;
     findAll(): Promise<User[]>;
+    toggleStatus(userId: string, toggleStatusDto: ToggleUserStatusDto, currentUser: User, request: Request): Promise<User>;
     private extractIpAddress;
 }

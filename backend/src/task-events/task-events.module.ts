@@ -1,6 +1,4 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { TaskEvent } from './entities/task-event.entity';
 import { TaskEventsService } from './task-events.service';
 import { TaskEventsController } from './task-events.controller';
 import { TasksModule } from '../tasks/tasks.module';
@@ -10,7 +8,7 @@ import { TasksModule } from '../tasks/tasks.module';
  * Handles immutable event recording for delivery tracking.
  * 
  * Dependencies:
- * - TypeORM for database access
+ * - PrismaModule (global) for database access
  * - TasksModule for task validation and status updates
  * - AuditLogsModule (global) for audit logging
  * 
@@ -20,7 +18,6 @@ import { TasksModule } from '../tasks/tasks.module';
  */
 @Module({
     imports: [
-        TypeOrmModule.forFeature([TaskEvent]),
         forwardRef(() => TasksModule), // For task validation and status updates
     ],
     controllers: [TaskEventsController],

@@ -1,21 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const core_1 = require("@nestjs/core");
-const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const path_1 = require("path");
+const nestjs_zod_1 = require("nestjs-zod");
 const app_module_1 = require("./app.module");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const configService = app.get(config_1.ConfigService);
-    app.useGlobalPipes(new common_1.ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-        transformOptions: {
-            enableImplicitConversion: true,
-        },
-    }));
+    app.setGlobalPrefix('api');
+    app.useGlobalPipes(new nestjs_zod_1.ZodValidationPipe());
     app.enableCors({
         origin: configService.get('CORS_ORIGIN', '*'),
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],

@@ -1,10 +1,8 @@
 import { Request } from 'express';
+import { User, Task, TaskEvent } from '@prisma/client';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
-import { User } from '../users/entities/user.entity';
-import { Task } from './entities/task.entity';
 import { TaskEventsService } from '../task-events/task-events.service';
-import { TaskEvent } from '../task-events/entities/task-event.entity';
 export declare class AdminTasksController {
     private readonly tasksService;
     private readonly taskEventsService;

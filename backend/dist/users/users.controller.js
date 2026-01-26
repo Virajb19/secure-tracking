@@ -14,12 +14,12 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersController = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
 const users_service_1 = require("./users.service");
 const create_user_dto_1 = require("./dto/create-user.dto");
+const toggle_user_status_dto_1 = require("./dto/toggle-user-status.dto");
 const guards_1 = require("../shared/guards");
 const decorators_1 = require("../shared/decorators");
-const enums_1 = require("../shared/enums");
-const user_entity_1 = require("./entities/user.entity");
 let UsersController = class UsersController {
     constructor(usersService) {
         this.usersService = usersService;
@@ -30,6 +30,10 @@ let UsersController = class UsersController {
     }
     async findAll() {
         return this.usersService.findAll();
+    }
+    async toggleStatus(userId, toggleStatusDto, currentUser, request) {
+        const ipAddress = this.extractIpAddress(request);
+        return this.usersService.toggleActiveStatus(userId, toggleStatusDto.is_active, currentUser.id, ipAddress);
     }
     extractIpAddress(request) {
         const forwarded = request.headers['x-forwarded-for'];
@@ -48,8 +52,7 @@ __decorate([
     __param(1, (0, decorators_1.CurrentUser)()),
     __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_user_dto_1.CreateUserDto,
-        user_entity_1.User, Object]),
+    __metadata("design:paramtypes", [create_user_dto_1.CreateUserDto, Object, Object]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "create", null);
 __decorate([
@@ -58,10 +61,21 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Patch)(':userId/status'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Param)('userId')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, decorators_1.CurrentUser)()),
+    __param(3, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, toggle_user_status_dto_1.ToggleUserStatusDto, Object, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "toggleStatus", null);
 exports.UsersController = UsersController = __decorate([
-    (0, common_1.Controller)('api/admin/users'),
+    (0, common_1.Controller)('admin/users'),
     (0, common_1.UseGuards)(guards_1.JwtAuthGuard, guards_1.RolesGuard),
-    (0, decorators_1.Roles)(enums_1.UserRole.ADMIN),
+    (0, decorators_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN),
     __metadata("design:paramtypes", [users_service_1.UsersService])
 ], UsersController);
 //# sourceMappingURL=users.controller.js.map

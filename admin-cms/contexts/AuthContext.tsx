@@ -20,7 +20,7 @@ interface AuthContextType {
     role: UserRole | null;
     isAuthenticated: boolean;
     loading: boolean;
-    login: (phone: string) => Promise<void>;
+    login: (email: string, password: string, phone?: string) => Promise<void>;
     logout: () => void;
 }
 
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const storedToken = localStorage.getItem('accessToken');
         const storedRole = localStorage.getItem('userRole') as UserRole | null;
 
-        if (storedToken && storedRole === 'ADMIN') {
+        if (storedToken && (storedRole === 'ADMIN' || storedRole === 'SUPER_ADMIN')) {
             setToken(storedToken);
             setRole(storedRole);
         }
@@ -55,8 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // ----------------------------------------
     // LOGIN
     // ----------------------------------------
-    const login = async (phone: string) => {
-        const res = await authApi.login(phone);
+    const login = async (email: string, password: string, phone?: string) => {
+        const res = await authApi.login(email, password, phone);
 
         // Map snake_case response to camelCase storage/state
         const accessToken = res.access_token;
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(accessToken);
         setRole(userRole);
 
-        router.push('/dashboard');
+        return
     };
 
     // ----------------------------------------
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             value={{
                 token,
                 role,
-                isAuthenticated: Boolean(token && role === 'ADMIN'),
+                isAuthenticated: Boolean(token && (role === 'ADMIN' || role === 'SUPER_ADMIN')),
                 loading,
                 login,
                 logout,

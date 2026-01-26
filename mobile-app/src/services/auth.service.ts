@@ -4,22 +4,32 @@
  * Handles login API call.
  * 
  * SECURITY NOTES:
- * - Phone + device_id are REQUIRED
+ * - Email + Password + device_id are REQUIRED for login
  * - Backend validates and binds device on first login
- * - Role check happens here - only DELIVERY role allowed
+ * - Admin users are blocked (must use admin portal)
+ * - Inactive users are blocked with appropriate message
  */
 
 import apiClient, { getErrorMessage } from '../api/client';
 import { LoginRequest, LoginResponse, User } from '../types';
-import { USER_ROLES } from '../constants/config';
 
 /**
  * Custom error for role-based access denial.
  */
 export class RoleNotAllowedError extends Error {
     constructor(role: string) {
-        super(`This app is for delivery personnel only. Your role: ${role}`);
+        super(`Admin users cannot access the mobile app. Please use the admin portal.`);
         this.name = 'RoleNotAllowedError';
+    }
+}
+
+/**
+ * Custom error for inactive/unapproved users.
+ */
+export class UserNotApprovedError extends Error {
+    constructor() {
+        super('Your account is pending admin approval. Please wait for activation.');
+        this.name = 'UserNotApprovedError';
     }
 }
 
@@ -31,26 +41,38 @@ export interface LoginResult {
     user?: User;
     token?: string;
     error?: string;
+    isInactive?: boolean;
 }
 
 /**
- * Authenticate with phone and device ID.
+ * Login credentials interface.
+ */
+export interface LoginCredentials {
+    email: string;
+    password: string;
+    phone: string;
+    deviceId: string;
+}
+
+/**
+ * Authenticate with email, password, phone, and device ID.
  * 
  * FLOW:
- * 1. Send POST /auth/login with phone + device_id
+ * 1. Send POST /auth/login with email + password + phone + device_id
  * 2. Receive access_token + user
  * 3. Validate user.role === DELIVERY
  * 4. Return token and user on success
  * 
- * @param phone - User's phone number
- * @param deviceId - Device's unique identifier
+ * @param credentials - User's login credentials
  * @returns Login result with token and user, or error
  */
-export async function login(phone: string, deviceId: string): Promise<LoginResult> {
+export async function login(credentials: LoginCredentials): Promise<LoginResult> {
     try {
         const payload: LoginRequest = {
-            phone: phone.trim(),
-            device_id: deviceId,
+            email: credentials.email.trim(),
+            password: credentials.password,
+            phone: credentials.phone.trim(),
+            device_id: credentials.deviceId,
         };
 
         console.log('[Auth] Attempting login...');
@@ -59,10 +81,9 @@ export async function login(phone: string, deviceId: string): Promise<LoginResul
 
         const { access_token, user } = response.data;
 
-        // CRITICAL: Block non-DELIVERY users
-        // This check is client-side but backend also enforces it
-        if (user.role !== USER_ROLES.DELIVERY) {
-            console.log(`[Auth] Role denied: ${user.role}`);
+        // Block admin users from mobile app - they should use admin portal
+        if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+            console.log(`[Auth] Admin role denied for mobile app: ${user.role}`);
             throw new RoleNotAllowedError(user.role);
         }
 
@@ -74,7 +95,7 @@ export async function login(phone: string, deviceId: string): Promise<LoginResul
             token: access_token,
         };
 
-    } catch (error) {
+    } catch (error: any) {
         console.log('[Auth] Login failed:', error);
 
         // Handle role error specifically
@@ -87,6 +108,17 @@ export async function login(phone: string, deviceId: string): Promise<LoginResul
 
         // Extract error message from API response
         const message = getErrorMessage(error);
+
+        // Check for inactive/deactivated account error
+        if (message.toLowerCase().includes('deactivated') || 
+            message.toLowerCase().includes('inactive') ||
+            message.toLowerCase().includes('not approved')) {
+            return {
+                success: false,
+                error: 'Your account is pending admin approval. Please wait for activation.',
+                isInactive: true,
+            };
+        }
 
         return {
             success: false,

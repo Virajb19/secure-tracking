@@ -8,8 +8,6 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TaskEventsModule = void 0;
 const common_1 = require("@nestjs/common");
-const typeorm_1 = require("@nestjs/typeorm");
-const task_event_entity_1 = require("./entities/task-event.entity");
 const task_events_service_1 = require("./task-events.service");
 const task_events_controller_1 = require("./task-events.controller");
 const tasks_module_1 = require("../tasks/tasks.module");
@@ -19,7 +17,6 @@ exports.TaskEventsModule = TaskEventsModule;
 exports.TaskEventsModule = TaskEventsModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([task_event_entity_1.TaskEvent]),
             (0, common_1.forwardRef)(() => tasks_module_1.TasksModule),
         ],
         controllers: [task_events_controller_1.TaskEventsController],

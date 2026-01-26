@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
@@ -46,17 +46,24 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
      * @throws UnauthorizedException if user not found or inactive
      */
     async validate(payload: JwtPayload) {
-        const user = await this.usersService.findById(payload.sub);
+        try {
+            const user = await this.usersService.findById(payload.sub);
 
-        if (!user) {
-            throw new UnauthorizedException('User not found');
+            if (!user) {
+                throw new UnauthorizedException('User not found. Please login again.');
+            }
+
+            if (!user.is_active) {
+                throw new UnauthorizedException('User account is deactivated');
+            }
+
+            // Return user object - will be attached to request.user
+            return user;
+        } catch (error) {
+            if (error instanceof NotFoundException) {
+                throw new UnauthorizedException('Session expired. Please login again.');
+            }
+            throw error;
         }
-
-        if (!user.is_active) {
-            throw new UnauthorizedException('User account is deactivated');
-        }
-
-        // Return user object - will be attached to request.user
-        return user;
     }
 }

@@ -14,15 +14,12 @@ import {
     forwardRef,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { User, Task, TaskEvent, UserRole } from '@prisma/client';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { JwtAuthGuard, RolesGuard } from '../shared/guards';
 import { Roles, CurrentUser } from '../shared/decorators';
-import { UserRole } from '../shared/enums';
-import { User } from '../users/entities/user.entity';
-import { Task } from './entities/task.entity';
 import { TaskEventsService } from '../task-events/task-events.service';
-import { TaskEvent } from '../task-events/entities/task-event.entity';
 
 /**
  * Tasks Controller.
@@ -42,9 +39,9 @@ import { TaskEvent } from '../task-events/entities/task-event.entity';
 // ========================================
 // ADMIN CONTROLLER
 // ========================================
-@Controller('api/admin/tasks')
+@Controller('admin/tasks')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class AdminTasksController {
     constructor(
         private readonly tasksService: TasksService,
@@ -128,9 +125,9 @@ export class AdminTasksController {
 // ========================================
 // DELIVERY CONTROLLER
 // ========================================
-@Controller('api/tasks')
+@Controller('tasks')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.DELIVERY)
+@Roles(UserRole.SEBA_OFFICER)
 export class DeliveryTasksController {
     constructor(private readonly tasksService: TasksService) { }
 

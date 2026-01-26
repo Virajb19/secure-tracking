@@ -1,42 +1,53 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional, IsBoolean, Length, Matches } from 'class-validator';
-import { UserRole } from '../../shared/enums';
+import { z } from 'zod';
+import { UserRole } from '@prisma/client';
+import { createZodDto } from 'nestjs-zod';
 
 /**
- * DTO for creating a new user.
+ * Zod schema for creating a new user.
  * Used by admin to create ADMIN or DELIVERY users.
  */
-export class CreateUserDto {
-    /**
-     * Full name of the user.
-     */
-    @IsString()
-    @IsNotEmpty({ message: 'Name is required' })
-    @Length(2, 255, { message: 'Name must be between 2 and 255 characters' })
-    name: string;
+export const CreateUserSchema = z.object({
+  /**
+   * Full name of the user.
+   */
+  name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(255, 'Name must be at most 255 characters'),
 
-    /**
-     * Phone number (unique identifier for login).
-     * Must be a valid phone number format.
-     */
-    @IsString()
-    @IsNotEmpty({ message: 'Phone is required' })
-    @Matches(/^[+]?[\d\s-]{10,15}$/, {
-        message: 'Phone must be a valid phone number (10-15 digits)',
-    })
-    phone: string;
+  /**
+   * Phone number (unique identifier for login).
+   * Must be a valid phone number format.
+   */
+  phone: z
+    .string()
+    .regex(
+      /^[+]?[\d\s-]{10,15}$/,
+      'Phone must be a valid phone number (10–15 digits)',
+    ),
 
-    /**
-     * User role - ADMIN or DELIVERY.
-     */
-    @IsEnum(UserRole, { message: 'Role must be either ADMIN or DELIVERY' })
-    @IsNotEmpty({ message: 'Role is required' })
-    role: UserRole;
+  /**
+   * Password for the user.
+   * Must be at least 6 characters.
+   */
+  password: z
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .max(100, 'Password must be at most 100 characters'),
 
-    /**
-     * Whether the user is active.
-     * Defaults to true if not provided.
-     */
-    @IsOptional()
-    @IsBoolean({ message: 'is_active must be a boolean' })
-    is_active?: boolean;
-}
+  /**
+   * User role - ADMIN or DELIVERY.
+   */
+  role: z.enum(UserRole, {
+    message: 'Role must be either ADMIN or DELIVERY',
+  }),
+
+  /**
+   * Whether the user is active.
+   * Defaults to true if not provided.
+   */
+  is_active: z.boolean().optional().default(true),
+});
+
+export type CreateUserInput = z.infer<typeof CreateUserSchema>;
+export class CreateUserDto extends createZodDto(CreateUserSchema) {}
