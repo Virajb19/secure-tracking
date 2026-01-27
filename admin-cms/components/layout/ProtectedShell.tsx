@@ -14,7 +14,7 @@ function NavigationLoader() {
   return (
     <div className="fixed inset-0 ml-72 z-50 flex items-center justify-center">
       {/* Blur backdrop */}
-      <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-md" />
+      <div className="absolute inset-0 bg-background/60 backdrop-blur-md" />
 
       {/* Infinity Spinner */}
       <div className="relative z-10 flex flex-col items-center gap-4">
@@ -25,7 +25,7 @@ function NavigationLoader() {
           height={120}
           className="drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]"
         />
-        <p className="text-blue-400 text-lg font-medium animate-pulse">
+        <p className="text-blue-500 dark:text-blue-400 text-lg font-medium animate-pulse">
           Loading...
         </p>
       </div>
@@ -53,7 +53,7 @@ export default function ProtectedShell({ children }: ProtectedShellProps) {
   }, [pathname, stopNavigation]);
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <Sidebar />
       <div className="ml-72 flex flex-col min-h-screen">
         <Header />

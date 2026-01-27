@@ -131,7 +131,15 @@ export default function Form6Page() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Form 6 Approvals</h1>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
+            <FileText className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Form 6 Approvals</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Review and approve form submissions</p>
+          </div>
+        </div>
         <div className="flex gap-3">
           <button
             type="button"
@@ -188,46 +196,42 @@ export default function Form6Page() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
-          <p className="text-slate-400 text-sm">Pending</p>
-          <p className="text-2xl font-bold text-orange-400">{total}</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm dark:shadow-none">
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Pending</p>
+          <p className="text-2xl font-bold text-orange-500 dark:text-orange-400">{total}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
-          <p className="text-slate-400 text-sm">Approved Today</p>
-          <p className="text-2xl font-bold text-emerald-400">-</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm dark:shadow-none">
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Approved Today</p>
+          <p className="text-2xl font-bold text-emerald-500 dark:text-emerald-400">-</p>
         </div>
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
-          <p className="text-slate-400 text-sm">Rejected Today</p>
-          <p className="text-2xl font-bold text-red-400">-</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm dark:shadow-none">
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Rejected Today</p>
+          <p className="text-2xl font-bold text-red-500 dark:text-red-400">-</p>
         </div>
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
-          <p className="text-slate-400 text-sm">Total Processed</p>
-          <p className="text-2xl font-bold text-blue-400">-</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm dark:shadow-none">
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Total Processed</p>
+          <p className="text-2xl font-bold text-blue-500 dark:text-blue-400">-</p>
         </div>
       </div>
 
       {/* Filters Card */}
-      <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm dark:shadow-none">
         {/* Filter Dropdowns */}
         <div className="flex flex-wrap gap-4 items-end mb-6">
           <div className="flex-1 min-w-[250px]">
-            <label className="text-sm text-slate-400 mb-1 block">Form Type</label>
+            <label className="text-sm text-slate-500 dark:text-slate-400 mb-1 block">Form Type</label>
             <Select value={formType} onValueChange={setFormType}>
-              <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+              <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white">
                 <SelectValue placeholder="All Form Types" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Form Types</SelectItem>
+              <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <SelectItem value="all" className="text-slate-900 dark:text-white">All Form Types</SelectItem>
                 {formTypes.map((f) => (
-                  <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                  <SelectItem key={f.value} value={f.value} className="text-slate-900 dark:text-white">{f.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
-          <Button className="bg-blue-600 hover:bg-blue-700 px-6">
-            <Search className="h-4 w-4" />
-          </Button>
         </div>
 
         {/* Loading State */}
@@ -240,13 +244,13 @@ export default function Form6Page() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-700">
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium">Sl No.</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium">School</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium">Form Type</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium">Submitted At</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium">Status</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium">Actions</th>
+                <tr className="border-b border-slate-200 dark:border-slate-700">
+                  <th className="text-left py-3 px-4 text-slate-500 dark:text-slate-400 font-medium">Sl No.</th>
+                  <th className="text-left py-3 px-4 text-slate-500 dark:text-slate-400 font-medium">School</th>
+                  <th className="text-left py-3 px-4 text-slate-500 dark:text-slate-400 font-medium">Form Type</th>
+                  <th className="text-left py-3 px-4 text-slate-500 dark:text-slate-400 font-medium">Submitted At</th>
+                  <th className="text-left py-3 px-4 text-slate-500 dark:text-slate-400 font-medium">Status</th>
+                  <th className="text-left py-3 px-4 text-slate-500 dark:text-slate-400 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -258,22 +262,22 @@ export default function Form6Page() {
                   </tr>
                 ) : (
                   submissions.map((submission, index) => (
-                    <tr key={submission.id} className="border-b border-slate-800 hover:bg-slate-800/50">
-                      <td className="py-4 px-4 text-slate-300">{(page - 1) * 20 + index + 1}</td>
+                    <tr key={submission.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <td className="py-4 px-4 text-slate-700 dark:text-slate-300">{(page - 1) * 20 + index + 1}</td>
                       <td className="py-4 px-4">
                         <div>
-                          <p className="text-blue-400 font-medium">
+                          <p className="text-blue-600 dark:text-blue-400 font-medium">
                             {submission.school?.name || 'School Name'}
                           </p>
-                          <p className="text-slate-500 text-sm">
+                          <p className="text-slate-400 dark:text-slate-500 text-sm">
                             {submission.school?.district?.name || 'District'}
                           </p>
                         </div>
                       </td>
-                      <td className="py-4 px-4 text-slate-300">
+                      <td className="py-4 px-4 text-slate-700 dark:text-slate-300">
                         {formTypes.find(f => f.value === submission.form_type)?.label || submission.form_type}
                       </td>
-                      <td className="py-4 px-4 text-slate-300">
+                      <td className="py-4 px-4 text-slate-700 dark:text-slate-300">
                         {submission.submitted_at 
                           ? new Date(submission.submitted_at).toLocaleDateString('en-IN', {
                               day: '2-digit',
@@ -329,7 +333,7 @@ export default function Form6Page() {
         {/* Pagination */}
         {total > 20 && (
           <div className="flex items-center justify-between mt-4">
-            <p className="text-slate-400 text-sm">
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
               Showing {(page - 1) * 20 + 1} to {Math.min(page * 20, total)} of {total}
             </p>
             <div className="flex gap-2">
@@ -356,19 +360,19 @@ export default function Form6Page() {
 
       {/* Reject Dialog */}
       <Dialog open={rejectDialog.open} onOpenChange={(open) => setRejectDialog({ open, id: open ? rejectDialog.id : null })}>
-        <DialogContent className="bg-slate-900 border-slate-700">
+        <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
           <DialogHeader>
-            <DialogTitle className="text-white">Reject Form Submission</DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-white">Reject Form Submission</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <label className="text-sm text-slate-400 mb-2 block">
+            <label className="text-sm text-slate-600 dark:text-slate-400 mb-2 block">
               Please provide a reason for rejection (required)
             </label>
             <Textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="Enter rejection reason..."
-              className="bg-slate-800 border-slate-700 text-white"
+              className="bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
               rows={4}
             />
           </div>

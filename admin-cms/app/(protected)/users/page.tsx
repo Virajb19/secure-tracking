@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -13,28 +12,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { 
   Search, 
   Mail, 
   Loader2, 
   Users, 
   Filter,
-  Upload,
   Hash,
   Building2,
   GraduationCap,
   Briefcase,
   BookOpen,
-  Send,
   Bell,
-  Sparkles
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -50,8 +39,7 @@ import { UserRole, User } from '@/types';
 import { UserStatusToggle } from '@/components/UserStatusToggle';
 import { DownloadXlsxButton } from '@/components/DownLoadXlxsButton';
 import { StarButton } from '@/components/StarButton';
-
-type NotificationType = 'General' | 'Paper Setter' | 'Paper Checker' | 'Invitation' | 'Push Notification';
+import { SendNotificationDialog } from '@/components/SendNotificationDialog';
 
 // Animation variants
 const containerVariants = {
@@ -134,9 +122,6 @@ export default function UsersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
   const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
-  const [notificationType, setNotificationType] = useState<NotificationType>('General');
-  const [notificationMessage, setNotificationMessage] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [currentUserForNotification, setCurrentUserForNotification] = useState<string | null>(null);
 
   // Filter out admin users and apply filters, sort inactive to end
@@ -233,25 +218,8 @@ export default function UsersPage() {
   };
 
   const openNotificationDialog = (userId?: string) => {
-    if (userId) {
-      setCurrentUserForNotification(userId);
-    } else {
-      setCurrentUserForNotification(null);
-    }
+    setCurrentUserForNotification(userId || null);
     setNotificationDialogOpen(true);
-  };
-
-  const handleSendNotification = () => {
-    console.log('Sending notification:', {
-      type: notificationType,
-      message: notificationMessage,
-      file: selectedFile,
-      recipients: currentUserForNotification ? [currentUserForNotification] : selectedUsers,
-    });
-    setNotificationDialogOpen(false);
-    setNotificationMessage('');
-    setSelectedFile(null);
-    setNotificationType('General');
   };
 
   // Export users as CSV and trigger download
@@ -360,35 +328,35 @@ export default function UsersPage() {
             initial="hidden"
             animate="visible"
             whileHover="hover"
-            className="border-b border-slate-800/50 cursor-pointer"
+            className="border-b border-slate-100 dark:border-slate-800/50 cursor-pointer"
           >
             <td className="py-4 px-5">
               <div className="flex items-center gap-3">
                 <Checkbox
                   checked={selectedUsers.includes(user.id)}
                   onCheckedChange={(checked) => handleSelectUser(user.id, checked as boolean)}
-                  className="border-slate-500 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                  className="border-slate-400 dark:border-slate-500 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                 />
-                <span className="bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full text-sm font-mono">
+                <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-full text-sm font-mono">
                   {(currentPage - 1) * itemsPerPage + index + 1}
                 </span>
               </div>
             </td>
             <td className="py-4 px-5">
-              <span className="text-blue-400 font-medium">{user.name}</span>
+              <span className="text-blue-600 dark:text-blue-400 font-medium">{user.name}</span>
             </td>
-            <td className="py-4 px-5 text-slate-300">
+            <td className="py-4 px-5 text-slate-700 dark:text-slate-300">
               {user.faculty?.highest_qualification || '-'}
             </td>
-            <td className="py-4 px-5 text-slate-300">
+            <td className="py-4 px-5 text-slate-700 dark:text-slate-300">
               {user.faculty?.years_of_experience 
                 ? `${user.faculty.years_of_experience} Years` 
                 : '-'}
             </td>
-            <td className="py-4 px-5 text-slate-300 max-w-xs">
+            <td className="py-4 px-5 text-slate-700 dark:text-slate-300 max-w-xs">
               <span className="line-clamp-2">{getSchoolAndDistrict(user)}</span>
             </td>
-            <td className="py-4 px-5 text-slate-300 max-w-xs">
+            <td className="py-4 px-5 text-slate-700 dark:text-slate-300 max-w-xs">
               <span className="line-clamp-2">{getClassesAndSubjects(user)}</span>
             </td>
             <td className="py-4 px-5">
@@ -396,7 +364,7 @@ export default function UsersPage() {
                 <UserStatusToggle userId={user.id} isActive={user.is_active} />
                 <motion.button
                   onClick={() => openNotificationDialog(user.id)}
-                  className="p-2 text-slate-400 hover:text-blue-400 hover:bg-slate-700/50 rounded-lg transition-all"
+                  className="p-2 text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-all"
                   title="Send Notification"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
@@ -434,8 +402,8 @@ export default function UsersPage() {
               <Users className="h-6 w-6 text-white" />
             </motion.div>
             <div>
-              <h1 className="text-2xl font-bold text-white">User Management</h1>
-              <p className="text-slate-400 text-sm">Manage all users and their permissions</p>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">User Management</h1>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">Manage all users and their permissions</p>
             </div>
             <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 px-3 py-1 text-sm font-medium">
               {filteredUsers.length} users
@@ -449,18 +417,18 @@ export default function UsersPage() {
 
       {/* Filters Card */}
       <motion.div 
-        className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 p-6 shadow-xl"
+        className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-xl"
         variants={cardVariants}
       >
         <div className="flex items-center gap-2 mb-4">
-          <Filter className="h-5 w-5 text-blue-400" />
-          <h3 className="text-lg font-semibold text-white">Filters</h3>
+          <Filter className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Filters</h3>
         </div>
 
         {/* Search */}
         <motion.div className="mb-4" variants={itemVariants}>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
             <Input
               placeholder="Search by Name / Email / Phone Number"
               value={searchQuery}
@@ -468,7 +436,7 @@ export default function UsersPage() {
                 setSearchQuery(e.target.value);
                 resetPage();
               }}
-              className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 pl-10 focus:border-blue-500 focus:ring-blue-500/20 transition-all"
+              className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 pl-10 focus:border-blue-500 focus:ring-blue-500/20 transition-all"
             />
           </div>
         </motion.div>
@@ -476,7 +444,7 @@ export default function UsersPage() {
         {/* Filter Dropdowns */}
         <motion.div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" variants={itemVariants}>
           <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); resetPage(); }}>
-            <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white focus:border-blue-500 transition-all">
+            <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="User Type" />
             </SelectTrigger>
             <SelectContent className="bg-slate-800 border-slate-700">
@@ -490,7 +458,7 @@ export default function UsersPage() {
           </Select>
 
           <Select value={districtFilter} onValueChange={(v) => { setDistrictFilter(v); resetPage(); }}>
-            <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white focus:border-blue-500 transition-all">
+            <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="District" />
             </SelectTrigger>
             <SelectContent className="bg-slate-800 border-slate-700">
@@ -504,7 +472,7 @@ export default function UsersPage() {
           </Select>
 
           <Select value={schoolFilter} onValueChange={(v) => { setSchoolFilter(v); resetPage(); }}>
-            <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white focus:border-blue-500 transition-all">
+            <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="School" />
             </SelectTrigger>
             <SelectContent className="bg-slate-800 border-slate-700">
@@ -518,7 +486,7 @@ export default function UsersPage() {
           </Select>
 
           <Select value={classFilter} onValueChange={(v) => { setClassFilter(v); resetPage(); }}>
-            <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white focus:border-blue-500 transition-all">
+            <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="Class" />
             </SelectTrigger>
             <SelectContent className="bg-slate-800 border-slate-700">
@@ -532,7 +500,7 @@ export default function UsersPage() {
           </Select>
 
           <Select value={subjectFilter} onValueChange={(v) => { setSubjectFilter(v); resetPage(); }}>
-            <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white focus:border-blue-500 transition-all">
+            <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="Subject" />
             </SelectTrigger>
             <SelectContent className="bg-slate-800 border-slate-700">
@@ -549,7 +517,7 @@ export default function UsersPage() {
             <button
               className={`w-full p-2 rounded-lg duration-300 ${showOnlyInactive 
                 ? "bg-linear-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white border border-transparent" 
-                : "bg-blue-500 hover:border-slate-600 hover:bg-slate-700/50 hover:text-white"
+                : "bg-slate-100 dark:bg-blue-500 border-slate-300 dark:border-transparent hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700/50  dark:hover:text-white"
               }`}
               onClick={() => {
                 setShowOnlyInactive(!showOnlyInactive);
@@ -592,14 +560,14 @@ export default function UsersPage() {
 
       {/* Users Table */}
       <motion.div 
-        className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 overflow-hidden shadow-xl"
+        className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
         variants={cardVariants}
       >
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-slate-800/50 border-b border-slate-700">
-                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                   <div className="flex items-center gap-2">
                     <Checkbox
                       checked={selectedUsers.length === paginatedUsers.length && paginatedUsers.length > 0}
@@ -610,24 +578,24 @@ export default function UsersPage() {
                     Sl No.
                   </div>
                 </th>
-                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Full Name</th>
-                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Full Name</th>
+                <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                   <GraduationCap className="h-4 w-4 inline mr-1" />
                   Qualification
                 </th>
-                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                   <Briefcase className="h-4 w-4 inline mr-1" />
                   Experience
                 </th>
-                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                   <Building2 className="h-4 w-4 inline mr-1" />
                   School & District
                 </th>
-                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                   <BookOpen className="h-4 w-4 inline mr-1" />
                   Classes & Subjects
                 </th>
-                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Actions</th>
+                <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -638,7 +606,7 @@ export default function UsersPage() {
 
         {/* Pagination Controls - Always show, centered */}
         <motion.div 
-          className="flex flex-col items-center gap-4 p-4 border-t border-slate-700/50 bg-slate-800/30"
+          className="flex flex-col items-center gap-4 p-4 border-t border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30"
           variants={itemVariants}
         >
           <div className="flex items-center gap-2">
@@ -647,7 +615,7 @@ export default function UsersPage() {
               size="sm"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1 || isLoading}
-              className="bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50 hover:text-white disabled:opacity-50"
+              className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white disabled:opacity-50"
             >
               ← Prev
             </Button>
@@ -673,7 +641,7 @@ export default function UsersPage() {
                       disabled={isLoading || pageNum > (totalPages || 1)}
                       className={currentPage === pageNum 
                         ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white border-0 min-w-[36px]" 
-                        : "bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50 hover:text-white min-w-[36px]"
+                        : "bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white min-w-[36px]"
                       }
                     >
                       {pageNum}
@@ -687,14 +655,14 @@ export default function UsersPage() {
               size="sm"
               onClick={() => setCurrentPage(p => Math.min(totalPages || 1, p + 1))}
               disabled={currentPage === (totalPages || 1) || isLoading}
-              className="bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50 hover:text-white disabled:opacity-50"
+              className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white disabled:opacity-50"
             >
               Next →
             </Button>
           </div>
-          <div className="text-sm text-slate-400">
-            Page <span className="text-white font-medium">{currentPage}</span> of{' '}
-            <span className="text-white font-medium">{totalPages || 1}</span>
+          <div className="text-sm text-slate-500 dark:text-slate-400">
+            Page <span className="text-slate-900 dark:text-white font-medium">{currentPage}</span> of{' '}
+            <span className="text-slate-900 dark:text-white font-medium">{totalPages || 1}</span>
             {' '}• Showing {filteredUsers.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to{' '}
             {Math.min(currentPage * itemsPerPage, filteredUsers.length)} of {filteredUsers.length} users
           </div>
@@ -702,116 +670,12 @@ export default function UsersPage() {
       </motion.div>
 
       {/* Send Notification Dialog */}
-      <Dialog open={notificationDialogOpen} onOpenChange={setNotificationDialogOpen}>
-        <DialogContent className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border-slate-700/50 text-white max-w-lg">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <motion.div
-                className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg"
-                whileHover={{ scale: 1.05, rotate: 5 }}
-              >
-                <Bell className="h-5 w-5 text-white" />
-              </motion.div>
-              <div>
-                <DialogTitle className="text-xl font-semibold text-white">Send Notification</DialogTitle>
-                <p className="text-slate-400 text-sm mt-1">
-                  Send a notification to{' '}
-                  <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full text-xs font-medium">
-                    {currentUserForNotification ? '1 user' : `${selectedUsers.length} users`}
-                  </span>
-                </p>
-              </div>
-            </div>
-          </DialogHeader>
-
-          {/* Notification Type Buttons */}
-          <div className="mt-6">
-            <label className="text-slate-300 text-sm mb-3 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-yellow-500" />
-              Notification Type
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {(['General', 'Paper Setter', 'Paper Checker', 'Invitation', 'Push Notification'] as NotificationType[]).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setNotificationType(type)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    notificationType === type 
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20' 
-                      : 'bg-slate-800/50 border border-slate-600 text-slate-400 hover:text-white hover:bg-slate-700/50 hover:scale-[1.02] active:scale-[0.98]'
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Message Textarea */}
-          <div className="mt-4">
-            <label className="text-slate-300 text-sm mb-2 block">Message</label>
-            <Textarea
-              placeholder="Type your notification message here..."
-              value={notificationMessage}
-              onChange={(e) => setNotificationMessage(e.target.value)}
-              className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 min-h-[120px] focus:border-blue-500 focus:ring-blue-500/20 transition-all resize-none"
-            />
-          </div>
-
-          {/* File Upload */}
-          <div className="mt-4">
-            <label className="text-slate-300 text-sm mb-2 block">Attachment (Optional)</label>
-            <motion.label 
-              className={`flex items-center gap-3 h-12 px-4 rounded-lg cursor-pointer transition-all border ${
-                selectedFile 
-                  ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' 
-                  : 'bg-slate-800/50 border-slate-600 text-slate-400 hover:bg-slate-700/50 hover:border-slate-500'
-              }`}
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-            >
-              <Upload className="h-5 w-5" />
-              <span className="text-sm truncate flex-1">
-                {selectedFile ? selectedFile.name : 'Select File (Only Image/PDF allowed)'}
-              </span>
-              {selectedFile && (
-                <span className="text-xs bg-emerald-500/20 px-2 py-0.5 rounded-full">
-                  Selected
-                </span>
-              )}
-              <input
-                type="file"
-                accept="image/*,.pdf"
-                className="hidden"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-              />
-            </motion.label>
-          </div>
-
-          <DialogFooter className="mt-6 gap-3">
-            <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                variant="outline"
-                onClick={() => setNotificationDialogOpen(false)}
-                className="w-full bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50 hover:text-white"
-              >
-                Cancel
-              </Button>
-            </motion.div>
-            <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                onClick={handleSendNotification}
-                disabled={!notificationMessage.trim()}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-blue-500/20 disabled:opacity-50"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Send Notification
-              </Button>
-            </motion.div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SendNotificationDialog
+        open={notificationDialogOpen}
+        onOpenChange={setNotificationDialogOpen}
+        recipientUserIds={currentUserForNotification ? [currentUserForNotification] : selectedUsers}
+        singleUser={!!currentUserForNotification}
+      />
     </motion.div>
   );
 }

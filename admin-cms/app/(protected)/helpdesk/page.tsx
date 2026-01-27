@@ -119,9 +119,9 @@ export default function HelpdeskPage() {
         <motion.div variants={itemVariants}>
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
-              <Headphones className="h-6 w-6 text-white" />
+              <HelpCircle className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white">Helpdesk</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Helpdesk</h1>
           </div>
         </motion.div>
         <div className="flex flex-col items-center justify-center h-96 gap-4">
@@ -148,9 +148,9 @@ export default function HelpdeskPage() {
         <motion.div variants={itemVariants}>
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
-              <Headphones className="h-6 w-6 text-white" />
+              <HelpCircle className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white">Helpdesk</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Helpdesk</h1>
           </div>
         </motion.div>
         <motion.div 
@@ -187,8 +187,8 @@ export default function HelpdeskPage() {
               <HelpCircle className="h-6 w-6 text-white" />
             </motion.div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Helpdesk</h1>
-              <p className="text-slate-400 text-sm">Manage support tickets from users</p>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Helpdesk</h1>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">Manage support tickets from users</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -207,36 +207,36 @@ export default function HelpdeskPage() {
 
       {/* Tickets Table */}
       <motion.div 
-        className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 overflow-hidden shadow-xl"
+        className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
         variants={cardVariants}
       >
         {tickets && tickets.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-slate-800/50 border-b border-slate-700">
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <Hash className="h-4 w-4 inline mr-1" />
                     Sl No.
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <User className="h-4 w-4 inline mr-1" />
                     Full Name
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <MessageSquare className="h-4 w-4 inline mr-1" />
                     Message
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <Phone className="h-4 w-4 inline mr-1" />
                     Phone
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <Calendar className="h-4 w-4 inline mr-1" />
                     Date
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Status</th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Actions</th>
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Status</th>
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -249,30 +249,30 @@ export default function HelpdeskPage() {
                       initial="hidden"
                       animate="visible"
                       whileHover="hover"
-                      className="border-b border-slate-800/50 cursor-pointer"
+                      className="border-b border-slate-100 dark:border-slate-800/50 cursor-pointer"
                     >
                       <td className="py-4 px-5">
-                        <span className="bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full text-sm font-mono">
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-full text-sm font-mono">
                           {index + 1}
                         </span>
                       </td>
                       <td className="py-4 px-5">
-                        <span className="text-blue-400 font-medium">{ticket.full_name}</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-medium">{ticket.full_name}</span>
                       </td>
                       <td className="py-4 px-5 max-w-xs">
                         <span 
-                          className="text-slate-300 line-clamp-2" 
+                          className="text-slate-700 dark:text-slate-300 line-clamp-2" 
                           title={ticket.message}
                         >
                           {ticket.message}
                         </span>
                       </td>
                       <td className="py-4 px-5">
-                        <span className="text-slate-300 font-mono text-sm bg-slate-800/50 px-2 py-1 rounded">
+                        <span className="text-slate-700 dark:text-slate-300 font-mono text-sm bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded">
                           {ticket.phone}
                         </span>
                       </td>
-                      <td className="py-4 px-5 text-slate-400 text-sm">
+                      <td className="py-4 px-5 text-slate-500 dark:text-slate-400 text-sm">
                         {formatDate(ticket.created_at)}
                       </td>
                       <td className="py-4 px-5">
@@ -334,9 +334,9 @@ export default function HelpdeskPage() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <Headphones className="h-16 w-16 text-slate-700 mx-auto mb-4" />
-            <div className="text-slate-400 text-lg">No helpdesk tickets found</div>
-            <p className="text-slate-500 text-sm mt-2">Tickets submitted by users will appear here</p>
+            <Headphones className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
+            <div className="text-slate-500 dark:text-slate-400 text-lg">No helpdesk tickets found</div>
+            <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Tickets submitted by users will appear here</p>
           </motion.div>
         )}
       </motion.div>

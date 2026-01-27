@@ -32,6 +32,14 @@ export class NoticesService {
                     schoolFilter,
                 ],
             },
+            include: {
+                creator: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+            },
             orderBy: [
                 { priority: 'asc' }, // HIGH comes before NORMAL, NORMAL before LOW
                 { published_at: 'desc' },

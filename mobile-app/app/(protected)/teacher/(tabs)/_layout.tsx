@@ -89,6 +89,16 @@ export default function TeacherTabsLayout() {
                 }}
             />
             <Tabs.Screen
+                name="notices"
+                options={{
+                    title: 'Notices',
+                    tabBarLabel: 'Notices',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="notifications-outline" size={24} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
                 name="settings"
                 options={{
                     title: 'Settings',

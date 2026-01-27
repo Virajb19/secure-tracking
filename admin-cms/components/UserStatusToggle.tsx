@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { useToggleUserStatus } from '@/services/user.service';
 import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
+import { twMerge } from 'tailwind-merge';
 
 interface UserStatusToggleProps {
   userId: string;
@@ -43,7 +44,7 @@ export function UserStatusToggle({
     >
       <Badge
         variant={isActive ? 'success' : 'destructive'}
-        className="cursor-pointer hover:opacity-80 transition-opacity min-w-18 flex justify-center"
+        className={twMerge("cursor-pointer hover:opacity-80 transition-opacity min-w-18 flex justify-center", !isActive && "bg-red-600 dark:bg-red-500/80")}
       >
         {toggleStatusMutation.isPending ? (
           <Loader2 className="h-3 w-3 animate-spin" />

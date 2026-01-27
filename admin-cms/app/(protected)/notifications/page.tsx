@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,8 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Bell, Eye, Loader2, FileText, Calendar, User, Building2 } from 'lucide-react';
-import { DeleteNotificationButton } from '@/components/DeleteNotificationButton';
+import { Search, Bell, Loader2, FileText, Calendar, User, Building2 } from 'lucide-react';
+import { DeleteNoticeButton } from '@/components/DeleteNoticeButton';
+import { ViewNoticeButton } from '@/components/ViewNoticeButton';
+import noticesService, { type Notice } from '@/services/notices.service';
 
 // Animation variants
 const containerVariants = {
@@ -41,10 +43,6 @@ const tableRowVariants = {
       duration: 0.3
     }
   }),
-  hover: {
-    backgroundColor: 'rgba(51, 65, 85, 0.5)',
-    transition: { duration: 0.2 }
-  }
 };
 
 const cardVariants = {
@@ -56,112 +54,62 @@ const cardVariants = {
   }
 };
 
-// Dummy data for notifications
-const dummyNotifications = [
-  {
-    id: '1',
-    fullName: 'kieca',
-    message: 'Training on NBSE Connect App',
-    school: 'Dummy School (For Testing Purposes) - Chumukedima',
-    date: '21st January, 2026',
-    fileUrl: '#',
-  },
-  {
-    id: '2',
-    fullName: 'Ruchu',
-    message: 'Training on NBSE Connect App',
-    school: 'Dummy School (For Testing Purposes) - Chumukedima',
-    date: '21st January, 2026',
-    fileUrl: '#',
-  },
-  {
-    id: '3',
-    fullName: 'akhrie',
-    message: 'Training on NBSE Connect App',
-    school: 'Dummy School (For Testing Purposes) - Chumukedima',
-    date: '21st January, 2026',
-    fileUrl: '#',
-  },
-  {
-    id: '4',
-    fullName: 'Araile',
-    message: 'Training on NBSE Connect App',
-    school: 'Dummy School (For Testing Purposes) - Chumukedima',
-    date: '21st January, 2026',
-    fileUrl: '#',
-  },
-  {
-    id: '5',
-    fullName: 'Siduniu Rentta',
-    message: 'Training on NBSE Connect App',
-    school: 'Dummy School (For Testing Purposes) - Chumukedima',
-    date: '21st January, 2026',
-    fileUrl: '#',
-  },
-  {
-    id: '6',
-    fullName: 'Dziesevolie Tsurho',
-    message: 'Training on NBSE Connect App',
-    school: 'Dummy School (For Testing Purposes) - Chumukedima',
-    date: '21st January, 2026',
-    fileUrl: '#',
-  },
-  {
-    id: '7',
-    fullName: 'thungdemo',
-    message: 'Training on NBSE Connect App',
-    school: 'Dummy School (For Testing Purposes) - Chumukedima',
-    date: '21st January, 2026',
-    fileUrl: '#',
-  },
-  {
-    id: '8',
-    fullName: 'Akumla Longchar',
-    message: 'System Update Notification',
-    school: 'Govt. High School - Mokokchung',
-    date: '20th January, 2026',
-    fileUrl: '#',
-  },
+const priorityOptions = [
+  { value: 'all', label: 'All Priorities' },
+  { value: 'HIGH', label: 'High Priority' },
+  { value: 'NORMAL', label: 'Normal Priority' },
+  { value: 'LOW', label: 'Low Priority' },
 ];
 
-const notificationTypes = [
-  { value: 'all', label: 'All Notifications' },
-  { value: 'Training on NBSE Connect App', label: 'Training on NBSE Connect App' },
-  { value: 'System Update Notification', label: 'System Update Notification' },
-  { value: 'Exam Schedule Alert', label: 'Exam Schedule Alert' },
-  { value: 'Holiday Announcement', label: 'Holiday Announcement' },
+const statusOptions = [
+  { value: 'all', label: 'All Status' },
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
 ];
 
 export default function NotificationsPage() {
-  const [selectedType, setSelectedType] = useState('all');
+  const [selectedPriority, setSelectedPriority] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [notifications, setNotifications] = useState(dummyNotifications);
-  const [isLoading] = useState(false);
 
-  const handleDelete = (id: string) => {
-    setNotifications(notifications.filter((n) => n.id !== id));
-  };
+  // Fetch notices from API
+  const { data: notices = [], isLoading, isError, error } = useQuery({
+    queryKey: ['notices'],
+    queryFn: () => noticesService.getAll(),
+  });
 
-  const handleViewFile = (fileUrl: string) => {
-    console.log('Viewing file:', fileUrl);
-    // Open file in new tab or modal
-  };
-
-  const filteredNotifications = useMemo(() => {
-    return notifications.filter(n => {
-      const matchesType = selectedType === 'all' || n.message === selectedType;
+  // Filter notices based on selections
+  const filteredNotices = useMemo(() => {
+    return notices.filter((notice: Notice) => {
+      const matchesPriority = selectedPriority === 'all' || notice.priority === selectedPriority;
+      const matchesStatus = selectedStatus === 'all' || 
+        (selectedStatus === 'active' ? notice.is_active : !notice.is_active);
       const matchesSearch = searchQuery === '' || 
-        n.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        n.school.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        n.message.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesType && matchesSearch;
+        notice.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        notice.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (notice.school?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+      return matchesPriority && matchesStatus && matchesSearch;
     });
-  }, [notifications, selectedType, searchQuery]);
+  }, [notices, selectedPriority, selectedStatus, searchQuery]);
 
   // Stats
-  const totalCount = notifications.length;
-  const trainingCount = notifications.filter(n => n.message.includes('Training')).length;
-  const systemCount = notifications.filter(n => n.message.includes('System')).length;
+  const totalCount = notices.length;
+  const highPriorityCount = notices.filter((n: Notice) => n.priority === 'HIGH').length;
+  const activeCount = notices.filter((n: Notice) => n.is_active).length;
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  const priorityStyles: Record<string, string> = {
+    HIGH: 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400',
+    NORMAL: 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400',
+    LOW: 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400',
+  };
 
   if (isLoading) {
     return (
@@ -176,7 +124,7 @@ export default function NotificationsPage() {
             <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg">
               <Bell className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white">Notifications</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Notices</h1>
           </div>
         </motion.div>
         <div className="flex flex-col items-center justify-center h-96 gap-4">
@@ -186,7 +134,31 @@ export default function NotificationsPage() {
           >
             <Loader2 className="h-10 w-10 text-blue-500" />
           </motion.div>
-          <span className="text-slate-400">Loading notifications...</span>
+          <span className="text-slate-500 dark:text-slate-400">Loading notices...</span>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <motion.div 
+        className="space-y-8 p-2"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div variants={itemVariants}>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg">
+              <Bell className="h-6 w-6 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Notices</h1>
+          </div>
+        </motion.div>
+        <div className="flex flex-col items-center justify-center h-96 gap-4">
+          <div className="text-red-500 text-lg">Failed to load notices</div>
+          <p className="text-slate-500 dark:text-slate-400">{(error as Error)?.message || 'Unknown error occurred'}</p>
         </div>
       </motion.div>
     );
@@ -211,18 +183,18 @@ export default function NotificationsPage() {
               <Bell className="h-6 w-6 text-white" />
             </motion.div>
             <div>
-              <h1 className="text-2xl font-bold text-white">General Notifications</h1>
-              <p className="text-slate-400 text-sm">View and manage all system notifications</p>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Notices</h1>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">View and manage all system notices</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Badge className="bg-amber-500/20 text-amber-400 hover:bg-amber-500/20 px-3 py-1">
-              {trainingCount} Training
+            <Badge className="bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 px-3 py-1">
+              {highPriorityCount} High Priority
             </Badge>
-            <Badge className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/20 px-3 py-1">
-              {systemCount} System
+            <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 px-3 py-1">
+              {activeCount} Active
             </Badge>
-            <Badge className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/20 px-3 py-1">
+            <Badge className="bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-500/20 px-3 py-1">
               {totalCount} Total
             </Badge>
           </div>
@@ -231,33 +203,49 @@ export default function NotificationsPage() {
 
       {/* Filters */}
       <motion.div 
-        className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 p-6 shadow-xl"
+        className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-lg dark:shadow-xl"
         variants={cardVariants}
       >
         <div className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[200px]">
-            <label className="text-slate-400 text-sm mb-2 flex items-center gap-2">
+            <label className="text-slate-500 dark:text-slate-400 text-sm mb-2 flex items-center gap-2">
               <Search className="h-4 w-4" />
-              Search Notifications
+              Search Notices
             </label>
             <Input
-              placeholder="Search by name, school..."
+              placeholder="Search by title, content, school..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500"
+              className="bg-slate-50 dark:bg-slate-800/50 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500"
             />
           </div>
 
-          <div className="min-w-[250px]">
-            <label className="text-slate-400 text-sm mb-2 block">Notification Type</label>
-            <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="bg-slate-800/50 border-slate-700 text-white">
-                <SelectValue placeholder="All Notifications" />
+          <div className="min-w-[180px]">
+            <label className="text-slate-500 dark:text-slate-400 text-sm mb-2 block">Priority</label>
+            <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+              <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white">
+                <SelectValue placeholder="All Priorities" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                {notificationTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value} className="text-white hover:bg-slate-700">
-                    {type.label}
+              <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                {priorityOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="min-w-[150px]">
+            <label className="text-slate-500 dark:text-slate-400 text-sm mb-2 block">Status</label>
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                {statusOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -266,102 +254,91 @@ export default function NotificationsPage() {
         </div>
       </motion.div>
 
-      {/* Notifications Table */}
+      {/* Notices Table */}
       <motion.div 
-        className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 overflow-hidden shadow-xl"
+        className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-lg dark:shadow-xl"
         variants={cardVariants}
       >
-        {filteredNotifications.length === 0 ? (
+        {filteredNotices.length === 0 ? (
           <motion.div 
             className="text-center py-16"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <Bell className="h-16 w-16 text-slate-700 mx-auto mb-4" />
-            <div className="text-slate-400 text-lg">No notifications found</div>
-            <p className="text-slate-500 text-sm mt-2">Try adjusting your filters</p>
+            <Bell className="h-16 w-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+            <div className="text-slate-500 dark:text-slate-400 text-lg">No notices found</div>
+            <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Try adjusting your filters</p>
           </motion.div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-slate-800/50 border-b border-slate-700">
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Sl No.</th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
-                    <User className="h-4 w-4 inline mr-1" />
-                    Full Name
-                  </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">Sl No.</th>
+                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
                     <FileText className="h-4 w-4 inline mr-1" />
-                    Message
+                    Title
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
+                    Priority
+                  </th>
+                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
                     <Building2 className="h-4 w-4 inline mr-1" />
                     School
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
+                    <User className="h-4 w-4 inline mr-1" />
+                    Created By
+                  </th>
+                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
                     <Calendar className="h-4 w-4 inline mr-1" />
                     Date
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Actions</th>
+                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">Status</th>
+                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 <AnimatePresence>
-                  {filteredNotifications.map((notification, index) => (
+                  {filteredNotices.map((notice: Notice, index: number) => (
                     <motion.tr 
-                      key={notification.id}
+                      key={notice.id}
                       custom={index}
                       variants={tableRowVariants}
                       initial="hidden"
                       animate="visible"
-                      whileHover="hover"
-                      className="border-b border-slate-800/50"
+                      className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30"
                     >
-                      <td className="py-4 px-5 text-slate-400 font-mono text-sm">{index + 1}</td>
+                      <td className="py-4 px-5 text-slate-500 dark:text-slate-400 font-mono text-sm">{index + 1}</td>
                       <td className="py-4 px-5">
-                        <span className="text-blue-400 font-medium">{notification.fullName}</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-medium max-w-[200px] truncate block" title={notice.title}>
+                          {notice.title}
+                        </span>
                       </td>
                       <td className="py-4 px-5">
-                        <Badge className={
-                          notification.message.includes('Training') 
-                            ? 'bg-amber-500/20 text-amber-400' 
-                            : notification.message.includes('System')
-                            ? 'bg-blue-500/20 text-blue-400'
-                            : 'bg-slate-500/20 text-slate-400'
-                        }>
-                          {notification.message}
+                        <Badge className={priorityStyles[notice.priority]}>
+                          {notice.priority}
                         </Badge>
                       </td>
-                      <td className="py-4 px-5 text-slate-300 max-w-[250px] truncate" title={notification.school}>
-                        {notification.school}
+                      <td className="py-4 px-5 text-slate-700 dark:text-slate-300 max-w-[200px] truncate" title={notice.school?.name || 'All Schools'}>
+                        {notice.school?.name || 'All Schools'}
                       </td>
-                      <td className="py-4 px-5 text-slate-400">{notification.date}</td>
+                      <td className="py-4 px-5 text-slate-600 dark:text-slate-400">
+                        {notice.creator?.name || 'System'}
+                      </td>
+                      <td className="py-4 px-5 text-slate-600 dark:text-slate-400">{formatDate(notice.created_at)}</td>
                       <td className="py-4 px-5">
-                        <div className="flex items-center gap-2">
-                          <motion.button
-                            onClick={() => handleViewFile(notification.fileUrl)}
-                            className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"
-                            title="View File"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            <Eye className="h-5 w-5" />
-                          </motion.button>
-                          <motion.button
-                            onClick={() => setDeleteConfirmId(notification.id)}
-                            disabled={deletingId === notification.id}
-                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all disabled:opacity-50"
-                            title="Delete"
-                            whileHover={{ scale: deletingId === notification.id ? 1 : 1.1 }}
-                            whileTap={{ scale: deletingId === notification.id ? 1 : 0.9 }}
-                          >
-                            {deletingId === notification.id ? (
-                              <div className='size-5 border-2 border-t-[3px] border-white/20 border-t-red-600 rounded-full animate-spin'/>
-                            ) : (
-                              <Trash2 className="h-5 w-5" />
-                            )}
-                          </motion.button>
+                        <Badge className={notice.is_active 
+                          ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' 
+                          : 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
+                        }>
+                          {notice.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-5">
+                        <div className="flex items-center gap-1">
+                          <ViewNoticeButton notice={notice} />
+                          <DeleteNoticeButton noticeId={notice.id} noticeTitle={notice.title} />
                         </div>
                       </td>
                     </motion.tr>
@@ -372,36 +349,6 @@ export default function NotificationsPage() {
           </div>
         )}
       </motion.div>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
-        <AlertDialogContent className="bg-slate-900 border-slate-700/50 rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-white text-lg font-semibold flex items-center gap-2">
-              <div className="p-2 bg-red-500/10 rounded-lg">
-                <Trash2 className="h-5 w-5 text-red-500" />
-              </div>
-              Delete Notification?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
-              Are you sure you want to delete this notification?
-              <br />
-              <span className="text-red-400 font-medium">This action cannot be undone.</span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-3 mt-4">
-            <AlertDialogCancel className="bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white transition-all duration-200">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
-              className="bg-red-600 hover:bg-red-700 text-white transition-all duration-200"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </motion.div>
   );
 }

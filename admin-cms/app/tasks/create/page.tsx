@@ -43,8 +43,8 @@ export default function CreateTaskPage() {
         const fetchUsers = async () => {
             try {
                 const allUsers = await usersApi.getAll();
-                // Filter only DELIVERY users
-                const deliveryUsers = allUsers.filter(u => u.role === UserRole.DELIVERY && u.is_active);
+                // Filter only DEALING_ASSISTANT users for delivery tasks
+                const deliveryUsers = allUsers.filter(u => u.role === UserRole.DEALING_ASSISTANT && u.is_active);
                 setUsers(deliveryUsers);
             } catch {
                 setError('Failed to load users');

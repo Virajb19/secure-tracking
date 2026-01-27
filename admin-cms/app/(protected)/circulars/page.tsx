@@ -212,11 +212,11 @@ export default function CircularsPage() {
           >
             <FileUp className="h-6 w-6 text-white" />
           </motion.div>
-          <h1 className="text-2xl font-bold text-white">Create New Circular</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create New Circular</h1>
         </div>
 
         <motion.div 
-          className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 p-6 shadow-xl"
+          className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-xl"
           variants={cardVariants}
         >
           <Form {...form}>
@@ -228,7 +228,7 @@ export default function CircularsPage() {
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-300 flex items-center gap-2">
+                      <FormLabel className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-yellow-500" />
                         Circular Title
                       </FormLabel>
@@ -236,7 +236,7 @@ export default function CircularsPage() {
                         <Input
                           placeholder="Enter a descriptive title for the circular"
                           {...field}
-                          className="bg-slate-800/50 border-blue-500/50 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-all"
+                          className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-blue-500/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-all"
                         />
                       </FormControl>
                       <FormMessage />
@@ -252,12 +252,12 @@ export default function CircularsPage() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-300">Description (Optional)</FormLabel>
+                      <FormLabel className="text-slate-700 dark:text-slate-300">Description (Optional)</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="Enter detailed description..."
                           {...field}
-                          className="bg-slate-800/50 border-blue-500/50 text-white placeholder:text-slate-500 min-h-[100px] focus:border-blue-500 focus:ring-blue-500/20 transition-all resize-none"
+                          className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-blue-500/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 min-h-[100px] focus:border-blue-500 focus:ring-blue-500/20 transition-all resize-none"
                         />
                       </FormControl>
                       <FormMessage />
@@ -276,7 +276,7 @@ export default function CircularsPage() {
                   name="issued_by"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-300 flex items-center gap-2">
+                      <FormLabel className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
                         <User className="h-4 w-4 text-emerald-500" />
                         Issued By
                       </FormLabel>
@@ -284,7 +284,7 @@ export default function CircularsPage() {
                         <Input
                           placeholder="e.g., SEBA, Directorate"
                           {...field}
-                          className="bg-slate-800/50 border-blue-500/50 text-white placeholder:text-slate-500 focus:border-blue-500 transition-all"
+                          className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-blue-500/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 transition-all"
                         />
                       </FormControl>
                       <FormMessage />
@@ -297,7 +297,7 @@ export default function CircularsPage() {
                   name="issued_date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-300 flex items-center gap-2">
+                      <FormLabel className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-orange-500" />
                         Issued Date
                       </FormLabel>
@@ -305,7 +305,7 @@ export default function CircularsPage() {
                         <Input
                           type="date"
                           {...field}
-                          className="bg-slate-800/50 border-blue-500/50 text-white focus:border-blue-500 transition-all"
+                          className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-blue-500/50 text-slate-900 dark:text-white focus:border-blue-500 transition-all [color-scheme:light] dark:[color-scheme:dark]"
                         />
                       </FormControl>
                       <FormMessage />
@@ -318,7 +318,7 @@ export default function CircularsPage() {
                   name="effective_date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-300 flex items-center gap-2">
+                      <FormLabel className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-purple-500" />
                         Effective Date
                       </FormLabel>
@@ -326,7 +326,7 @@ export default function CircularsPage() {
                         <Input
                           type="date"
                           {...field}
-                          className="bg-slate-800/50 border-blue-500/50 text-white focus:border-blue-500 transition-all"
+                          className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-blue-500/50 text-slate-900 dark:text-white focus:border-blue-500 transition-all [color-scheme:light] dark:[color-scheme:dark]"
                         />
                       </FormControl>
                       <FormMessage />
@@ -346,7 +346,7 @@ export default function CircularsPage() {
                   name="district_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-300 flex items-center gap-2">
+                      <FormLabel className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
                         <Building2 className="h-4 w-4 text-blue-500" />
                         Select District
                       </FormLabel>
@@ -355,16 +355,16 @@ export default function CircularsPage() {
                         setSelectedSchools([]);
                       }} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="bg-slate-800/50 border-blue-500/50 text-white focus:border-blue-500 transition-all">
+                          <SelectTrigger className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-blue-500/50 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
                             <SelectValue placeholder="All Districts" />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent className="bg-slate-800 border-slate-700">
-                          <SelectItem value="all" className="text-white hover:bg-slate-700">
+                        <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                          <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
                             All Districts (Global)
                           </SelectItem>
                           {districts.map((d) => (
-                            <SelectItem key={d.id} value={d.id} className="text-white hover:bg-slate-700">
+                            <SelectItem key={d.id} value={d.id} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
                               {d.name}
                             </SelectItem>
                           ))}
@@ -377,15 +377,15 @@ export default function CircularsPage() {
 
                 {/* Circular File */}
                 <div>
-                  <label className="text-slate-300 text-sm mb-2 flex items-center gap-2">
+                  <label className="text-slate-700 dark:text-slate-300 text-sm mb-2 flex items-center gap-2">
                     <Upload className="h-4 w-4 text-pink-500" />
                     Circular File
                   </label>
                   <motion.label 
                     className={`flex items-center gap-3 h-10 px-4 rounded-lg cursor-pointer transition-all border ${
                       selectedFile 
-                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' 
-                        : 'bg-slate-800/50 border-slate-600 text-slate-400 hover:bg-slate-700/50 hover:border-slate-500'
+                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-600 dark:text-emerald-400' 
+                        : 'bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-400 dark:hover:border-slate-500'
                     }`}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
@@ -424,10 +424,10 @@ export default function CircularsPage() {
                     transition={{ duration: 0.3 }}
                   >
                     <div className="flex items-center justify-between">
-                      <label className="text-slate-300 text-sm font-medium flex items-center gap-2">
+                      <label className="text-slate-700 dark:text-slate-300 text-sm font-medium flex items-center gap-2">
                         <Building2 className="h-4 w-4 text-cyan-500" />
                         Select Schools 
-                        <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full text-xs">
+                        <span className="bg-blue-500/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full text-xs">
                           {selectedSchools.length} selected
                         </span>
                       </label>
@@ -435,7 +435,7 @@ export default function CircularsPage() {
                         <motion.button
                           type="button"
                           onClick={() => handleSelectAllSchools(selectedSchools.length !== schools.length)}
-                          className="text-sm text-blue-400 hover:scale-105 hover:text-blue-300 font-medium p-2 rounded-full bg-blue-500/10 hover:bg-blue-500/20 transition-all"
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:scale-105 hover:text-blue-500 dark:hover:text-blue-300 font-medium p-2 rounded-full bg-blue-500/10 hover:bg-blue-500/20 transition-all"
                           whileTap={{ scale: 0.97 }}
                         >
                           {selectedSchools.length === schools.length ? 'Deselect All' : 'Select All'}
@@ -444,7 +444,7 @@ export default function CircularsPage() {
                         <motion.button
                           type="button"
                           onClick={() => setIsSchoolListExpanded(!isSchoolListExpanded)}
-                          className="flex items-center gap-1 bg-white/10 p-2 rounded-full text-sm text-slate-400 hover:text-slate-300"
+                          className="flex items-center gap-1 bg-slate-100 dark:bg-white/10 p-2 rounded-full text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
@@ -464,7 +464,7 @@ export default function CircularsPage() {
                     </div>
                     
                     <motion.div 
-                      className={`bg-slate-800/30 border border-slate-700/50 rounded-xl p-3 overflow-y-auto transition-all duration-300 ${
+                      className={`bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 rounded-xl p-3 overflow-y-auto transition-all duration-300 ${
                         isSchoolListExpanded ? 'max-h-72' : 'max-h-36'
                       }`}
                       layout
@@ -479,7 +479,7 @@ export default function CircularsPage() {
                               className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors ${
                                 selectedSchools.includes(school.id)
                                   ? 'bg-blue-500/10 border border-blue-500/30'
-                                  : 'hover:bg-slate-700/50 border border-transparent'
+                                  : 'hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-transparent'
                               }`}
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
@@ -488,10 +488,10 @@ export default function CircularsPage() {
                               <Checkbox
                                 checked={selectedSchools.includes(school.id)}
                                 onCheckedChange={(checked) => handleSchoolToggle(school.id, checked as boolean)}
-                                className="border-slate-500 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                                className="border-slate-400 dark:border-slate-500 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                               />
-                              <span className="text-slate-300 text-sm flex-1">{school.name}</span>
-                              <span className="text-slate-500 text-xs font-mono bg-slate-800 px-2 py-0.5 rounded">
+                              <span className="text-slate-700 dark:text-slate-300 text-sm flex-1">{school.name}</span>
+                              <span className="text-slate-500 dark:text-slate-500 text-xs font-mono bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded">
                                 {school.registration_code}
                               </span>
                             </motion.label>
@@ -570,14 +570,14 @@ export default function CircularsPage() {
           >
             <FileText className="h-6 w-6 text-white" />
           </motion.div>
-          <h2 className="text-2xl font-bold text-white">All Circulars</h2>
-          <span className="bg-slate-700 text-slate-300 px-3 py-1 rounded-full text-sm">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">All Circulars</h2>
+          <span className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 rounded-full text-sm">
             {circulars.length} total
           </span>
         </div>
 
         <motion.div 
-          className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 overflow-hidden shadow-xl"
+          className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
           variants={cardVariants}
         >
           {circularsLoading ? (
@@ -605,31 +605,31 @@ export default function CircularsPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
             >
-              <FileText className="h-16 w-16 text-slate-700 mx-auto mb-4" />
-              <div className="text-slate-400 text-lg">No circulars found</div>
-              <p className="text-slate-500 text-sm mt-2">Create your first circular above</p>
+            <FileText className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
+            <div className="text-slate-500 dark:text-slate-400 text-lg">No circulars found</div>
+            <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Create your first circular above</p>
             </motion.div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-slate-800/50 border-b border-slate-700">
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                    <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                       <Hash className="h-4 w-4 inline mr-1" />
                       Sl No.
                     </th>
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Circular No.</th>
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Title</th>
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                    <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Circular No.</th>
+                    <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Title</th>
+                    <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                       <User className="h-4 w-4 inline mr-1" />
                       Issued By
                     </th>
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                    <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                       <Calendar className="h-4 w-4 inline mr-1" />
                       Date
                     </th>
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">File</th>
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Action</th>
+                    <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">File</th>
+                    <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -642,25 +642,25 @@ export default function CircularsPage() {
                         initial="hidden"
                         animate="visible"
                         whileHover="hover"
-                        className="border-b border-slate-800/50 cursor-pointer"
+                        className="border-b border-slate-100 dark:border-slate-800/50 cursor-pointer"
                       >
                         <td className="py-4 px-5">
-                          <span className="bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full text-sm font-mono">
+                          <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-full text-sm font-mono">
                             {index + 1}
                           </span>
                         </td>
                         <td className="py-4 px-5">
-                          <span className="text-slate-300 font-mono text-sm bg-slate-800/50 px-2 py-1 rounded">
+                          <span className="text-slate-700 dark:text-slate-300 font-mono text-sm bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded">
                             {circular.circular_no}
                           </span>
                         </td>
                         <td className="py-4 px-5 max-w-xs">
-                          <span className="text-blue-400 font-medium line-clamp-2">
+                          <span className="text-blue-600 dark:text-blue-400 font-medium line-clamp-2">
                             {circular.title}
                           </span>
                         </td>
-                        <td className="py-4 px-5 text-slate-300">{circular.issued_by}</td>
-                        <td className="py-4 px-5 text-slate-400 text-sm">
+                        <td className="py-4 px-5 text-slate-700 dark:text-slate-300">{circular.issued_by}</td>
+                        <td className="py-4 px-5 text-slate-500 dark:text-slate-400 text-sm">
                           {formatDate(circular.issued_date)}
                         </td>
                         <td className="py-4 px-5">
@@ -675,7 +675,7 @@ export default function CircularsPage() {
                               View File
                             </motion.button>
                           ) : (
-                            <span className="text-slate-600 text-sm italic">No file attached</span>
+                            <span className="text-slate-400 dark:text-slate-600 text-sm italic">No file attached</span>
                           )}
                         </td>
                         <td className="py-4 px-5">

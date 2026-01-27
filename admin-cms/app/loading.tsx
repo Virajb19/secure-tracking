@@ -2,7 +2,7 @@
 
 export default function Loading() {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-6">
                 {/* Infinity Spinner */}
                 <div className="relative">
@@ -16,7 +16,7 @@ export default function Loading() {
                 </div>
                 
                 {/* Pulsing Loading Text */}
-                <p className="text-blue-400 text-lg font-medium animate-pulse">
+                <p className="text-blue-500 dark:text-blue-400 text-lg font-medium animate-pulse">
                     Loading page...
                 </p>
             </div>

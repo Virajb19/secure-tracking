@@ -1,6 +1,7 @@
 import { Module, Global } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
+import { AdminNotificationsController } from './admin-notifications.controller';
 
 /**
  * NotificationsModule
@@ -10,7 +11,7 @@ import { NotificationsController } from './notifications.controller';
  */
 @Global()
 @Module({
-    controllers: [NotificationsController],
+    controllers: [NotificationsController, AdminNotificationsController],
     providers: [NotificationsService],
     exports: [NotificationsService],
 })

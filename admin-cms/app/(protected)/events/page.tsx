@@ -258,8 +258,8 @@ export default function EventsPage() {
               <CalendarDays className="h-6 w-6 text-white" />
             </motion.div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Events</h1>
-              <p className="text-slate-400 text-sm">Manage meetings, exams, and other events</p>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Events</h1>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">Manage meetings, exams, and other events</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -278,12 +278,12 @@ export default function EventsPage() {
 
       {/* Filters */}
       <motion.div 
-        className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 p-6 shadow-xl"
+        className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-xl"
         variants={cardVariants}
       >
         <div className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[200px]">
-            <label className="text-slate-400 text-sm mb-2 flex items-center gap-2">
+            <label className="text-slate-500 dark:text-slate-400 text-sm mb-2 flex items-center gap-2">
               <Search className="h-4 w-4" />
               Search Events
             </label>
@@ -296,9 +296,9 @@ export default function EventsPage() {
           </div>
 
           <div className="min-w-[160px]">
-            <label className="text-slate-400 text-sm mb-2 block">Type</label>
+            <label className="text-slate-500 dark:text-slate-400 text-sm mb-2 block">Type</label>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="bg-slate-800/50 border-blue-500/50 text-white">
+              <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-blue-500/50 text-slate-900 dark:text-white">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent className="bg-slate-800 border-slate-700">
@@ -311,9 +311,9 @@ export default function EventsPage() {
           </div>
 
           <div className="min-w-[160px]">
-            <label className="text-slate-400 text-sm mb-2 block">Status</label>
+            <label className="text-slate-500 dark:text-slate-400 text-sm mb-2 block">Status</label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="bg-slate-800/50 border-blue-500/50 text-white">
+              <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-blue-500/50 text-slate-900 dark:text-white">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent className="bg-slate-800 border-slate-700">
@@ -328,7 +328,7 @@ export default function EventsPage() {
 
       {/* Events Table */}
       <motion.div 
-        className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 overflow-hidden shadow-xl"
+        className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
         variants={cardVariants}
       >
         {filteredEvents.length === 0 ? (
@@ -337,33 +337,33 @@ export default function EventsPage() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <CalendarDays className="h-16 w-16 text-slate-700 mx-auto mb-4" />
-            <div className="text-slate-400 text-lg">No events found</div>
-            <p className="text-slate-500 text-sm mt-2">Create an event to get started</p>
+            <CalendarDays className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
+            <div className="text-slate-500 dark:text-slate-400 text-lg">No events found</div>
+            <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Create an event to get started</p>
           </motion.div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-slate-800/50 border-b border-slate-700">
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <Calendar className="h-4 w-4 inline mr-1" />
                     Event
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Type</th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Type</th>
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <Clock className="h-4 w-4 inline mr-1" />
                     Date & Time
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <MapPin className="h-4 w-4 inline mr-1" />
                     Location
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <Users className="h-4 w-4 inline mr-1" />
                     Invitations
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Actions</th>
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -376,7 +376,7 @@ export default function EventsPage() {
                       initial="hidden"
                       animate="visible"
                       whileHover="hover"
-                      className="border-b border-slate-800/50"
+                      className="border-b border-slate-100 dark:border-slate-800/50"
                     >
                       <td className="py-4 px-5">
                         <div className="flex items-center gap-3">
@@ -387,13 +387,13 @@ export default function EventsPage() {
                               className="w-12 h-12 rounded-lg object-cover"
                             />
                           ) : (
-                            <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center">
-                              <Calendar className="h-6 w-6 text-slate-400" />
+                            <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                              <Calendar className="h-6 w-6 text-slate-500 dark:text-slate-400" />
                             </div>
                           )}
                           <div>
-                            <p className="text-white font-medium">{event.title}</p>
-                            <p className="text-slate-400 text-sm">
+                            <p className="text-slate-900 dark:text-white font-medium">{event.title}</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm">
                               by {event.creator?.name || 'Admin'}
                             </p>
                           </div>
@@ -404,19 +404,19 @@ export default function EventsPage() {
                           {eventTypeLabels[event.event_type as EventType] || event.event_type}
                         </Badge>
                       </td>
-                      <td className="py-4 px-5 text-slate-300">
+                      <td className="py-4 px-5 text-slate-700 dark:text-slate-300">
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-slate-500" />
+                          <Calendar className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                           {formatDate(event.event_date)}
                           {event.event_time && (
                             <>
-                              <Clock className="h-4 w-4 text-slate-500 ml-2" />
+                              <Clock className="h-4 w-4 text-slate-400 dark:text-slate-500 ml-2" />
                               {event.event_time}
                             </>
                           )}
                         </div>
                       </td>
-                      <td className="py-4 px-5 text-slate-300">
+                      <td className="py-4 px-5 text-slate-700 dark:text-slate-300">
                         {event.location ? (
                           <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4 text-slate-500" />

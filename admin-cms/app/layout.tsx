@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import QueryProvider from "@/components/QueryProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { Space_Grotesk, Inter } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner'
@@ -29,16 +30,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.className} antialiased`} suppressHydrationWarning={true} style={{ backgroundColor: '#020617' }}>
-      <head>
-        <style dangerouslySetInnerHTML={{ __html: `html, body { background-color: #020617 !important; }` }} />
-      </head>
-      <body className={`${inter.variable} antialiased bg-slate-950 text-white`}>
-        <QueryProvider>
-           <NextTopLoader height={6} color="#0ea5e9" showSpinner={false} easing="ease"/>
-           <Toaster position="bottom-right" richColors closeButton theme="dark" expand />
-            {children}
-        </QueryProvider>
+    <html lang="en" className={`${inter.className} antialiased`} suppressHydrationWarning={true}>
+      <body className={`${inter.variable} antialiased bg-background text-foreground`}>
+        <ThemeProvider>
+          <QueryProvider>
+            <NextTopLoader height={6} color="#0ea5e9" showSpinner={false} easing="ease"/>
+            <Toaster position="bottom-right" richColors closeButton expand />
+              {children}
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

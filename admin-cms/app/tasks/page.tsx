@@ -58,7 +58,7 @@ export default function TasksPage() {
     return (
         <MainLayout title="Tasks" subtitle="Manage delivery tasks">
             {/* Header with Create Button */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex gap-2 flex-wrap">
                     {['ALL', ...Object.values(TaskStatus)].map((status) => (
                         <button
@@ -66,7 +66,7 @@ export default function TasksPage() {
                             onClick={() => setFilter(status as TaskStatus | 'ALL')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === status
                                 ? 'bg-blue-600 text-white'
-                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                                 }`}
                         >
                             {status}
@@ -80,59 +80,59 @@ export default function TasksPage() {
                 </div>
                 <Link
                     href="/tasks/create"
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors font-medium flex items-center gap-2"
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
                 >
                     <span>+</span> Create Task
                 </Link>
             </div>
 
             {/* Tasks Table */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden mx-1">
                 {loading ? (
                     <div className="p-8 text-center">
-                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-blue-500 mx-auto mb-3"></div>
-                        <p className="text-slate-400">Loading tasks...</p>
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-blue-500 mx-auto mb-3"></div>
+                        <p className="text-slate-500 dark:text-slate-400">Loading tasks...</p>
                     </div>
                 ) : error ? (
                     <div className="p-8 text-center">
-                        <p className="text-red-400">{error}</p>
+                        <p className="text-red-500 dark:text-red-400">{error}</p>
                     </div>
                 ) : sortedTasks.length === 0 ? (
                     <div className="p-8 text-center">
-                        <p className="text-slate-400">No tasks found</p>
+                        <p className="text-slate-500 dark:text-slate-400">No tasks found</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-slate-800/50">
+                            <thead className="bg-slate-50 dark:bg-slate-800/50">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">Pack Code</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">Source</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">Destination</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">Assigned To</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">Status</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">Created</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-400"></th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Pack Code</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Source</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Destination</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Assigned To</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Status</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Created</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400"></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800">
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {sortedTasks.map((task) => (
                                     <tr
                                         key={task.id}
-                                        className={`hover:bg-slate-800/30 transition-colors ${task.status === TaskStatus.SUSPICIOUS ? 'bg-red-500/5' : ''
+                                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${task.status === TaskStatus.SUSPICIOUS ? 'bg-red-50 dark:bg-red-500/5' : ''
                                             }`}
                                     >
                                         <td className="px-4 py-4">
-                                            <span className="font-mono text-sm text-white">{task.sealed_pack_code}</span>
+                                            <span className="font-mono text-sm text-slate-900 dark:text-white">{task.sealed_pack_code}</span>
                                         </td>
                                         <td className="px-4 py-4">
-                                            <span className="text-sm text-slate-300 line-clamp-1">{task.source_location}</span>
+                                            <span className="text-sm text-slate-700 dark:text-slate-300 line-clamp-1">{task.source_location}</span>
                                         </td>
                                         <td className="px-4 py-4">
-                                            <span className="text-sm text-slate-300 line-clamp-1">{task.destination_location}</span>
+                                            <span className="text-sm text-slate-700 dark:text-slate-300 line-clamp-1">{task.destination_location}</span>
                                         </td>
                                         <td className="px-4 py-4">
-                                            <span className="text-sm text-slate-300">{task.assigned_user?.name || 'N/A'}</span>
+                                            <span className="text-sm text-slate-700 dark:text-slate-300">{task.assigned_user?.name || 'N/A'}</span>
                                         </td>
                                         <td className="px-4 py-4">
                                             <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[task.status]}`}>
@@ -143,12 +143,12 @@ export default function TasksPage() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-4">
-                                            <span className="text-sm text-slate-400">{formatDate(task.created_at)}</span>
+                                            <span className="text-sm text-slate-500 dark:text-slate-400">{formatDate(task.created_at)}</span>
                                         </td>
                                         <td className="px-4 py-4">
                                             <Link
                                                 href={`/tasks/${task.id}`}
-                                                className="text-blue-400 hover:text-blue-300 text-sm font-medium"
+                                                className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 text-sm font-medium"
                                             >
                                                 View →
                                             </Link>
@@ -163,7 +163,7 @@ export default function TasksPage() {
 
             {/* Task count */}
             {!loading && !error && (
-                <div className="mt-4 text-sm text-slate-400">
+                <div className="mt-4 text-sm text-slate-500 dark:text-slate-400">
                     Showing {sortedTasks.length} of {tasks.length} tasks
                 </div>
             )}
