@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { tasksApi } from '@/services/api';
-import { analyticsApi } from '@/services/paper-setter.service';
+import { analyticsApi, GenderStats, DistrictUserStats } from '@/services/paper-setter.service';
 import { Task, TaskStatus } from '@/types';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -19,6 +19,7 @@ import {
     ArrowRight,
     Loader2
 } from 'lucide-react';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 // Animation variants
 const containerVariants = {
@@ -51,6 +52,14 @@ const statusColors: Record<TaskStatus, string> = {
     [TaskStatus.SUSPICIOUS]: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
+// Chart colors
+const CHART_COLORS = {
+    pending: '#eab308',
+    inProgress: '#3b82f6',
+    completed: '#22c55e',
+    suspicious: '#ef4444',
+};
+
 export default function DashboardPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
@@ -60,6 +69,18 @@ export default function DashboardPage() {
     const { data: analyticsData, isLoading: analyticsLoading } = useQuery({
         queryKey: ['dashboard-analytics'],
         queryFn: analyticsApi.getTeacherStudentRatio,
+    });
+
+    // Fetch gender stats
+    const { data: genderStats, isLoading: genderStatsLoading } = useQuery({
+        queryKey: ['gender-stats'],
+        queryFn: analyticsApi.getGenderStats,
+    });
+
+    // Fetch district user stats
+    const { data: districtUserStats, isLoading: districtStatsLoading } = useQuery({
+        queryKey: ['district-user-stats'],
+        queryFn: analyticsApi.getDistrictUserStats,
     });
 
     useEffect(() => {
@@ -86,6 +107,22 @@ export default function DashboardPage() {
         suspicious: tasks.filter(t => t.status === TaskStatus.SUSPICIOUS).length,
     };
 
+    // Chart data for pie chart
+    const pieChartData = [
+        { name: 'Completed', value: stats.completed, color: CHART_COLORS.completed },
+        { name: 'In Progress', value: stats.inProgress, color: CHART_COLORS.inProgress },
+        { name: 'Pending', value: stats.pending, color: CHART_COLORS.pending },
+        { name: 'Suspicious', value: stats.suspicious, color: CHART_COLORS.suspicious },
+    ];
+
+    // Chart data for bar chart
+    const barChartData = [
+        { name: 'Pending', value: stats.pending, fill: CHART_COLORS.pending },
+        { name: 'In Progress', value: stats.inProgress, fill: CHART_COLORS.inProgress },
+        { name: 'Completed', value: stats.completed, fill: CHART_COLORS.completed },
+        { name: 'Suspicious', value: stats.suspicious, fill: CHART_COLORS.suspicious },
+    ];
+
     // Get recent tasks (last 5)
     const recentTasks = [...tasks]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -102,7 +139,7 @@ export default function DashboardPage() {
             <motion.div variants={itemVariants}>
                 <div className="flex items-center gap-3">
                     <motion.div
-                        className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg"
+                        className="p-2 bg-linear-to-br from-blue-500 to-purple-600 rounded-lg"
                         whileHover={{ scale: 1.05, rotate: 5 }}
                         whileTap={{ scale: 0.95 }}
                     >
@@ -122,7 +159,7 @@ export default function DashboardPage() {
             >
                 {/* Total Tasks */}
                 <motion.div 
-                    className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-xl p-5 shadow-lg dark:shadow-xl"
+                    className="bg-white dark:bg-linear-to-br dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-xl p-5 shadow-lg dark:shadow-xl"
                     variants={cardVariants}
                     whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                 >
@@ -141,7 +178,7 @@ export default function DashboardPage() {
 
                 {/* Pending */}
                 <motion.div 
-                    className="bg-yellow-50 dark:bg-gradient-to-br dark:from-yellow-900/20 dark:via-slate-900 dark:to-slate-800 border border-yellow-200 dark:border-yellow-500/30 rounded-xl p-5 shadow-lg dark:shadow-xl"
+                    className="bg-yellow-50 dark:bg-linear-to-br dark:from-yellow-900/20 dark:via-slate-900 dark:to-slate-800 border border-yellow-200 dark:border-yellow-500/30 rounded-xl p-5 shadow-lg dark:shadow-xl"
                     variants={cardVariants}
                     whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                 >
@@ -160,7 +197,7 @@ export default function DashboardPage() {
 
                 {/* In Progress */}
                 <motion.div 
-                    className="bg-blue-50 dark:bg-gradient-to-br dark:from-blue-900/20 dark:via-slate-900 dark:to-slate-800 border border-blue-200 dark:border-blue-500/30 rounded-xl p-5 shadow-lg dark:shadow-xl"
+                    className="bg-blue-50 dark:bg-linear-to-br dark:from-blue-900/20 dark:via-slate-900 dark:to-slate-800 border border-blue-200 dark:border-blue-500/30 rounded-xl p-5 shadow-lg dark:shadow-xl"
                     variants={cardVariants}
                     whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                 >
@@ -179,7 +216,7 @@ export default function DashboardPage() {
 
                 {/* Completed */}
                 <motion.div 
-                    className="bg-green-50 dark:bg-gradient-to-br dark:from-green-900/20 dark:via-slate-900 dark:to-slate-800 border border-green-200 dark:border-green-500/30 rounded-xl p-5 shadow-lg dark:shadow-xl"
+                    className="bg-green-50 dark:bg-linear-to-br dark:from-green-900/20 dark:via-slate-900 dark:to-slate-800 border border-green-200 dark:border-green-500/30 rounded-xl p-5 shadow-lg dark:shadow-xl"
                     variants={cardVariants}
                     whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                 >
@@ -198,7 +235,7 @@ export default function DashboardPage() {
 
                 {/* Suspicious */}
                 <motion.div 
-                    className="bg-red-50 dark:bg-gradient-to-br dark:from-red-900/20 dark:via-slate-900 dark:to-slate-800 border border-red-200 dark:border-red-500/30 rounded-xl p-5 shadow-lg dark:shadow-xl"
+                    className="bg-red-50 dark:bg-linear-to-br dark:from-red-900/20 dark:via-slate-900 dark:to-slate-800 border border-red-200 dark:border-red-500/30 rounded-xl p-5 shadow-lg dark:shadow-xl"
                     variants={cardVariants}
                     whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                 >
@@ -216,6 +253,88 @@ export default function DashboardPage() {
                 </motion.div>
             </motion.div>
 
+            {/* Charts Row - Using Recharts */}
+            <motion.div 
+                className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+                variants={itemVariants}
+            >
+                {/* Bar Chart */}
+                <motion.div 
+                    className="bg-white dark:bg-linear-to-br dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-lg dark:shadow-xl"
+                    variants={cardVariants}
+                >
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Task Status Distribution</h3>
+                    {loading ? (
+                        <div className="flex items-center justify-center h-64">
+                            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                        </div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={barChartData} layout="vertical">
+                                <XAxis type="number" stroke="#64748b" fontSize={12} />
+                                <YAxis dataKey="name" type="category" stroke="#64748b" fontSize={12} width={80} />
+                                <Tooltip 
+                                    contentStyle={{ 
+                                        backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                                        border: '1px solid rgba(51, 65, 85, 0.5)',
+                                        borderRadius: '8px',
+                                        color: '#fff'
+                                    }} 
+                                />
+                                <Bar dataKey="value" radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    )}
+                </motion.div>
+
+                {/* Pie Chart */}
+                <motion.div 
+                    className="bg-white dark:bg-linear-to-br dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-lg dark:shadow-xl"
+                    variants={cardVariants}
+                >
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Task Overview</h3>
+                    {loading ? (
+                        <div className="flex items-center justify-center h-64">
+                            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                        </div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={250}>
+                            <PieChart>
+                                <Pie
+                                    data={pieChartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={90}
+                                    paddingAngle={2}
+                                    dataKey="value"
+                                    label={({ name, value }) => `${name}: ${value}`}
+                                    labelLine={false}
+                                >
+                                    {pieChartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip 
+                                    contentStyle={{ 
+                                        backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                                        border: '1px solid rgba(51, 65, 85, 0.5)',
+                                        borderRadius: '8px',
+                                        color: '#fff'
+                                    }} 
+                                />
+                                <Legend 
+                                    verticalAlign="middle" 
+                                    align="right"
+                                    layout="vertical"
+                                    wrapperStyle={{ paddingLeft: '20px' }}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    )}
+                </motion.div>
+            </motion.div>
+
             {/* Analytics Row */}
             <motion.div 
                 className="grid grid-cols-1 md:grid-cols-3 gap-4"
@@ -223,7 +342,7 @@ export default function DashboardPage() {
             >
                 {/* Teacher-Student Ratio */}
                 <motion.div 
-                    className="bg-gradient-to-br from-purple-900/30 via-slate-100 dark:via-slate-900 to-slate-50 dark:to-slate-800 border border-purple-500/30 rounded-xl p-6 shadow-xl"
+                    className="bg-purple-50 dark:bg-linear-to-br dark:from-purple-900/30 dark:via-slate-900 dark:to-slate-800 border border-purple-200 dark:border-purple-500/30 rounded-xl p-6 shadow-lg dark:shadow-xl"
                     variants={cardVariants}
                     whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                 >
@@ -245,7 +364,7 @@ export default function DashboardPage() {
                                     : 'No data available'}
                             </p>
                         </div>
-                        <div className="h-14 w-14 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                        <div className="h-14 w-14 rounded-xl bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center">
                             <Users className="w-7 h-7 text-purple-600 dark:text-purple-400" />
                         </div>
                     </div>
@@ -253,7 +372,7 @@ export default function DashboardPage() {
 
                 {/* Total Teachers */}
                 <motion.div 
-                    className="bg-gradient-to-br from-cyan-900/30 via-slate-100 dark:via-slate-900 to-slate-50 dark:to-slate-800 border border-cyan-500/30 rounded-xl p-6 shadow-xl"
+                    className="bg-cyan-50 dark:bg-linear-to-br dark:from-cyan-900/30 dark:via-slate-900 dark:to-slate-800 border border-cyan-200 dark:border-cyan-500/30 rounded-xl p-6 shadow-lg dark:shadow-xl"
                     variants={cardVariants}
                     whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                 >
@@ -270,7 +389,7 @@ export default function DashboardPage() {
                                 )}
                             </p>
                         </div>
-                        <div className="h-14 w-14 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                        <div className="h-14 w-14 rounded-xl bg-cyan-100 dark:bg-cyan-500/20 flex items-center justify-center">
                             <svg className="w-7 h-7 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
@@ -280,7 +399,7 @@ export default function DashboardPage() {
 
                 {/* Total Students */}
                 <motion.div 
-                    className="bg-gradient-to-br from-amber-900/30 via-slate-100 dark:via-slate-900 to-slate-50 dark:to-slate-800 border border-amber-500/30 rounded-xl p-6 shadow-xl"
+                    className="bg-amber-50 dark:bg-linear-to-br dark:from-amber-900/30 dark:via-slate-900 dark:to-slate-800 border border-amber-200 dark:border-amber-500/30 rounded-xl p-6 shadow-lg dark:shadow-xl"
                     variants={cardVariants}
                     whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                 >
@@ -297,16 +416,135 @@ export default function DashboardPage() {
                                 )}
                             </p>
                         </div>
-                        <div className="h-14 w-14 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                        <div className="h-14 w-14 rounded-xl bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center">
                             <GraduationCap className="w-7 h-7 text-amber-600 dark:text-amber-400" />
                         </div>
                     </div>
                 </motion.div>
             </motion.div>
 
+            {/* Recent Stats - Gender & District */}
+            <motion.div variants={itemVariants}>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Recent Stats</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Gender-wise Pie Chart */}
+                    <motion.div 
+                        className="bg-white dark:bg-linear-to-br dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-lg dark:shadow-xl"
+                        variants={cardVariants}
+                    >
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Gender-wise</h3>
+                        {genderStatsLoading ? (
+                            <div className="flex items-center justify-center h-64">
+                                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                            </div>
+                        ) : genderStats ? (
+                            <ResponsiveContainer width="100%" height={250}>
+                                <PieChart>
+                                    <Pie
+                                        data={[
+                                            { name: 'Male', value: genderStats.MALE, color: '#3b82f6' },
+                                            { name: 'Female', value: genderStats.FEMALE, color: '#ec4899' },
+                                            { name: 'Other', value: genderStats.OTHER, color: '#8b5cf6' },
+                                        ].filter(item => item.value > 0)}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={90}
+                                        paddingAngle={2}
+                                        dataKey="value"
+                                    >
+                                        {[
+                                            { name: 'Male', value: genderStats.MALE, color: '#3b82f6' },
+                                            { name: 'Female', value: genderStats.FEMALE, color: '#ec4899' },
+                                            { name: 'Other', value: genderStats.OTHER, color: '#8b5cf6' },
+                                        ].filter(item => item.value > 0).map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip 
+                                        contentStyle={{ 
+                                            backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                                            border: '1px solid rgba(51, 65, 85, 0.5)',
+                                            borderRadius: '8px',
+                                            color: '#fff'
+                                        }} 
+                                    />
+                                    <Legend 
+                                        verticalAlign="bottom" 
+                                        align="center"
+                                        layout="horizontal"
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex items-center justify-center h-64 text-slate-400">
+                                No data available
+                            </div>
+                        )}
+                    </motion.div>
+
+                    {/* District-wise Histogram */}
+                    <motion.div 
+                        className="bg-white dark:bg-linear-to-br dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-lg dark:shadow-xl"
+                        variants={cardVariants}
+                    >
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Number of Users District-Wise</h3>
+                        {districtStatsLoading ? (
+                            <div className="flex items-center justify-center h-64">
+                                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                            </div>
+                        ) : districtUserStats && districtUserStats.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={250}>
+                                <BarChart 
+                                    data={districtUserStats.map(d => ({ 
+                                        name: d.district_name, 
+                                        value: d.user_count 
+                                    }))}
+                                    margin={{ top: 5, right: 20, left: 10, bottom: 60 }}
+                                >
+                                    <XAxis 
+                                        dataKey="name" 
+                                        stroke="#64748b" 
+                                        fontSize={10} 
+                                        angle={-45}
+                                        textAnchor="end"
+                                        interval={0}
+                                        height={60}
+                                    />
+                                    <YAxis stroke="#64748b" fontSize={12} />
+                                    <Tooltip 
+                                        contentStyle={{ 
+                                            backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                                            border: '1px solid rgba(51, 65, 85, 0.5)',
+                                            borderRadius: '8px',
+                                            color: '#fff'
+                                        }} 
+                                    />
+                                    <Legend 
+                                        verticalAlign="top"
+                                        align="right"
+                                        wrapperStyle={{ paddingBottom: '10px' }}
+                                    />
+                                    <Bar 
+                                        dataKey="value" 
+                                        fill="#60a5fa" 
+                                        radius={[4, 4, 0, 0]}
+                                        name="Number of Users District-Wise"
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex items-center justify-center h-64 text-slate-400">
+                                No data available
+                            </div>
+                        )}
+                    </motion.div>
+                </div>
+            </motion.div>
+
             {/* Recent Tasks */}
             <motion.div 
-                className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-lg dark:shadow-xl"
+                className="bg-white dark:bg-linear-to-br dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-lg dark:shadow-xl"
                 variants={cardVariants}
             >
                 <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700/50">

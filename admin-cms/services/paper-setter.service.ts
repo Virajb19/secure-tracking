@@ -205,6 +205,19 @@ export interface DistrictRatio {
   ratioValue: number;
 }
 
+export interface GenderStats {
+  MALE: number;
+  FEMALE: number;
+  OTHER: number;
+  total: number;
+}
+
+export interface DistrictUserStats {
+  district_id: string;
+  district_name: string;
+  user_count: number;
+}
+
 export const analyticsApi = {
   // Get overall teacher-student ratio
   getTeacherStudentRatio: async (): Promise<TeacherStudentRatio> => {
@@ -227,6 +240,18 @@ export const analyticsApi = {
     teacherStudentRatio: string;
   }> => {
     const response = await api.get('/analytics/dashboard');
+    return response.data;
+  },
+
+  // Get gender-wise user statistics
+  getGenderStats: async (): Promise<GenderStats> => {
+    const response = await api.get('/admin/analytics/gender-stats');
+    return response.data;
+  },
+
+  // Get district-wise user statistics
+  getDistrictUserStats: async (): Promise<DistrictUserStats[]> => {
+    const response = await api.get('/admin/analytics/district-user-stats');
     return response.data;
   },
 };

@@ -56,4 +56,22 @@ export class AnalyticsController {
     async getClassStrength(@Param('schoolId') schoolId: string) {
         return this.analyticsService.getClassWiseStrength(schoolId);
     }
+
+    /**
+     * Get gender-wise user statistics
+     * GET /api/admin/analytics/gender-stats
+     */
+    @Get('gender-stats')
+    async getGenderStats() {
+        return this.analyticsService.getGenderStats();
+    }
+
+    /**
+     * Get district-wise user statistics
+     * GET /api/admin/analytics/district-user-stats
+     */
+    @Get('district-user-stats')
+    async getDistrictUserStats() {
+        return this.analyticsService.getDistrictWiseUserStats();
+    }
 }

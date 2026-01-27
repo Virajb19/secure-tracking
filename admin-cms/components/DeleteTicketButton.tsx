@@ -52,15 +52,15 @@ export function DeleteTicketButton({ ticketId }: DeleteTicketButtonProps) {
           )}
         </motion.button>
       </AlertDialogTrigger>
-      <AlertDialogContent className="bg-slate-900 border-slate-700">
+      <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-white">Delete Ticket</AlertDialogTitle>
-          <AlertDialogDescription className="text-slate-400">
+          <AlertDialogTitle className="text-slate-900 dark:text-white">Delete Ticket</AlertDialogTitle>
+          <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
             Are you sure you want to delete this ticket? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white">
+          <AlertDialogCancel className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white">
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction

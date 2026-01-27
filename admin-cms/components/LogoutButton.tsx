@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useAuthStore } from '@/lib/store';
-import { useRouter } from 'next/navigation';
-import { LogOut } from 'lucide-react';
+import { useRouter } from 'nextjs-toploader/app';
+import { LogOut, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
   AlertDialog,
@@ -21,10 +21,16 @@ export function LogoutButton() {
   const logout = useAuthStore((state) => state.logout);
   const router = useRouter();
 
-  const handleLogout = () => {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    // Delay to show loading state
+    await new Promise(resolve => setTimeout(resolve, 1000));
     logout();
-    router.push('/login');
-  };
+    // router.push('/login');
+    window.location.href = '/login'
+  }
 
   return (
     <>
@@ -39,7 +45,7 @@ export function LogoutButton() {
       </motion.button>
 
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <AlertDialogContent className="bg-slate-900 border-slate-700/50 rounded-2xl overflow-hidden p-0">
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700/50 rounded-2xl overflow-hidden p-0">
           {/* Red header background */}
           <div className="bg-linear-to-r from-red-600 to-red-700 p-6">
             <AlertDialogHeader className="space-y-2">
@@ -54,15 +60,23 @@ export function LogoutButton() {
               </AlertDialogDescription>
             </AlertDialogHeader>
           </div>
-          <AlertDialogFooter className="gap-3 p-6 bg-slate-900">
-            <AlertDialogCancel className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white transition-all duration-200">
+          <AlertDialogFooter className="gap-3 p-6 bg-slate-50 dark:bg-slate-900">
+            <AlertDialogCancel className="bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-all duration-200">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-500 text-white transition-all duration-200"
+              disabled={isLoggingOut}
+              className="bg-red-600 hover:bg-red-500 text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              Logout
+              {isLoggingOut ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Logging out...
+                </>
+              ) : (
+                'Logout'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

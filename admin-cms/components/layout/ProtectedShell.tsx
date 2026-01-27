@@ -4,7 +4,8 @@ import { ReactNode, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
-import { useNavigationStore, useAuthStore } from '@/lib/store';
+import { useNavigationStore, useAuthStore, useSidebarStore } from '@/lib/store';
+import { twMerge } from 'tailwind-merge';
 
 function NavigationLoader() {
   const isNavigating = useNavigationStore((state) => state.isNavigating);
@@ -41,6 +42,7 @@ export default function ProtectedShell({ children }: ProtectedShellProps) {
   const pathname = usePathname();
   const stopNavigation = useNavigationStore((state) => state.stopNavigation);
   const hydrate = useAuthStore((state) => state.hydrate);
+  const isCollapsed = useSidebarStore((state) => state.isCollapsed);
 
   // Hydrate auth store on mount
   useEffect(() => {
@@ -55,9 +57,9 @@ export default function ProtectedShell({ children }: ProtectedShellProps) {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="ml-72 flex flex-col min-h-screen">
+      <div className={twMerge("flex flex-col min-h-screen transition-all duration-300 ease-in-out", isCollapsed ? "ml-20" : "ml-72")}>
         <Header />
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 w-full">
           {children}
         </main>
       </div>

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useNavigationStore, useAuthStore } from '@/lib/store';
+import { useNavigationStore, useAuthStore, useSidebarStore } from '@/lib/store';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import Image from 'next/image';
@@ -15,11 +15,12 @@ interface MainLayoutProps {
 
 function NavigationLoader() {
     const isNavigating = useNavigationStore((state) => state.isNavigating);
+    const isCollapsed = useSidebarStore((state) => state.isCollapsed);
 
     if (!isNavigating) return null;
 
     return (
-        <div className="fixed inset-0 ml-64 z-50 flex items-center justify-center">
+        <div className={`fixed inset-0 ${isCollapsed ? 'ml-20' : 'ml-72'} z-50 flex items-center justify-center transition-all duration-300`}>
             <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-md" />
             <div className="relative z-10">
                 <Image
@@ -84,14 +85,26 @@ export default function MainLayout({ children }: MainLayoutProps) {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950">
+        <MainContent>
+            {children}
+        </MainContent>
+    );
+}
+
+function MainContent({ children }: { children: React.ReactNode }) {
+    const isCollapsed = useSidebarStore((state) => state.isCollapsed);
+
+    return (
+        <div className="min-h-screen bg-slate-100 dark:bg-slate-950 transition-colors">
             {/* Sidebar */}
             <Sidebar />
 
-            {/* Main Content */}
-            <div className="ml-64 flex flex-col min-h-screen">
+            {/* Main Content - uses dynamic margin based on sidebar state */}
+            <div 
+                className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'ml-20' : 'ml-72'}`}
+            >
                 <Header />
-                <main className="flex-1 p-6">
+                <main className="flex-1 p-6 w-full">
                     {children}
                 </main>
             </div>

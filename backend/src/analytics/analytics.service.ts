@@ -143,4 +143,72 @@ export class AnalyticsService {
                 : 0,
         }));
     }
+
+    /**
+     * Get gender-wise user statistics
+     */
+    async getGenderStats() {
+        const genderCounts = await this.db.user.groupBy({
+            by: ['gender'],
+            _count: {
+                id: true,
+            },
+        });
+
+        const result = {
+            MALE: 0,
+            FEMALE: 0,
+            OTHER: 0,
+            total: 0,
+        };
+
+        genderCounts.forEach((item) => {
+            if (item.gender === 'MALE') result.MALE = item._count.id;
+            else if (item.gender === 'FEMALE') result.FEMALE = item._count.id;
+            else if (item.gender === 'OTHER') result.OTHER = item._count.id;
+        });
+
+        result.total = result.MALE + result.FEMALE + result.OTHER;
+
+        return result;
+    }
+
+    /**
+     * Get district-wise user statistics
+     */
+    async getDistrictWiseUserStats() {
+        // Get all districts with user counts through faculty -> school -> district relationship
+        const districts = await this.db.district.findMany({
+            select: {
+                id: true,
+                name: true,
+                schools: {
+                    select: {
+                        faculties: {
+                            select: {
+                                user_id: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        const districtStats = districts.map((district) => {
+            const userCount = district.schools.reduce((acc, school) => {
+                return acc + school.faculties.length;
+            }, 0);
+
+            return {
+                district_id: district.id,
+                district_name: district.name,
+                user_count: userCount,
+            };
+        });
+
+        // Sort by user count descending
+        districtStats.sort((a, b) => b.user_count - a.user_count);
+
+        return districtStats;
+    }
 }
