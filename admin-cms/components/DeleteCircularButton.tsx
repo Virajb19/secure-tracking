@@ -16,6 +16,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { circularsApi } from '@/services/api';
 import { toast } from 'sonner';
+import { showErrorToast, showSuccessToast } from './ui/custom-toast';
 
 interface DeleteCircularButtonProps {
   circularId: string;
@@ -36,12 +37,12 @@ export function DeleteCircularButton({
        await circularsApi.delete(circularId)
      },
      onSuccess: () => {
-       toast.success('Circular deleted successfully', { closeButton: false});
+       showSuccessToast('Circular deleted successfully', 4000);
        setOpen(false);
      },
      onError: (error) => {
        console.error('Failed to delete circular', error);
-       toast.error('Failed to delete circular. Please try again.', { duration: 5000 * 2});
+       showErrorToast('Failed to delete circular. Please try again.', 10 * 1000);
      },
      onSettled: () => {
        queryClient.refetchQueries({ queryKey: ['circulars'] });

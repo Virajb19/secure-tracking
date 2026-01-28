@@ -113,7 +113,7 @@ export default function LoginScreen() {
 
         try {
             const result = await login({ email, password, phone });
-
+        
             if (result.success) {
                 // Navigate to protected area
                 router.replace('/(protected)/tasks');
@@ -180,8 +180,8 @@ export default function LoginScreen() {
                             value={email}
                             onChangeText={(text) => {
                                 setEmail(text);
-                                setError(null);
                             }}
+                            onFocus={() => setError(null)}  
                             editable={!isSubmitting}
                         />
 

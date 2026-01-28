@@ -45,11 +45,13 @@ export default function LoginPage() {
     try {
       await login(data.email, data.password, data.phone);
       showSuccessToast("Login successful! Welcome Back.", 4000, 'top-center');
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 100);
+      // setTimeout(() => {
+      //   router.push('/dashboard');
+      // }, 100);
+      router.push('/dashboard');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
+      // const message = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
+      const message = "Login failed. Please check your credentials.";
       setServerError(message);
       toast.error(message, { position: 'top-center', duration: 6000, closeButton: false });
     }

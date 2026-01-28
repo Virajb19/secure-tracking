@@ -293,7 +293,9 @@ export default function UsersPage() {
           <td colSpan={7} className="py-16">
             <div className="text-center">
               <p className="text-red-400 text-lg">Failed to load users</p>
-              <p className="text-slate-500 text-sm mt-2">{error?.message || 'An error occurred'}</p>
+              <p className="text-slate-500 text-sm mt-2">
+                 {typeof error?.message === 'string' ? error.message : 'An error occurred'}
+              </p>
             </div>
           </td>
         </tr>
@@ -395,7 +397,7 @@ export default function UsersPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <motion.div
-              className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg"
+              className="p-2 bg-linear-to-br from-blue-500 to-purple-600 rounded-lg"
               whileHover={{ scale: 1.05, rotate: 5 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -447,10 +449,10 @@ export default function UsersPage() {
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="User Type" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700">
-              <SelectItem value="all" className="text-white hover:bg-slate-700">All User Types</SelectItem>
+            <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
+              <SelectItem value="all" className=" dark:text-white hover:bg-slate-700">All User Types</SelectItem>
               {displayRoles.map((role) => (
-                <SelectItem key={role} value={role} className="text-white hover:bg-slate-700">
+                <SelectItem key={role} value={role} className="text-black dark:text-white hover:bg-slate-700">
                   {roleLabels[role]}
                 </SelectItem>
               ))}
@@ -461,7 +463,7 @@ export default function UsersPage() {
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="District" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700">
+            <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
               <SelectItem value="all" className="text-white hover:bg-slate-700">All Districts</SelectItem>
               {districts.map((district) => (
                 <SelectItem key={district.id} value={district.id} className="text-white hover:bg-slate-700">
@@ -475,7 +477,7 @@ export default function UsersPage() {
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="School" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700">
+            <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
               <SelectItem value="all" className="text-white hover:bg-slate-700">All Schools</SelectItem>
               {schools.map((school) => (
                 <SelectItem key={school.id} value={school.id} className="text-white hover:bg-slate-700">
@@ -489,7 +491,7 @@ export default function UsersPage() {
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="Class" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700">
+            <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
               <SelectItem value="all" className="text-white hover:bg-slate-700">All Classes</SelectItem>
               {classes.map((cls) => (
                 <SelectItem key={cls} value={cls.toString()} className="text-white hover:bg-slate-700">
@@ -503,13 +505,16 @@ export default function UsersPage() {
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="Subject" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700">
+            <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
               <SelectItem value="all" className="text-white hover:bg-slate-700">All Subjects</SelectItem>
-              {subjects.map((subject) => (
-                <SelectItem key={subject} value={subject} className="text-white hover:bg-slate-700">
-                  {subject}
-                </SelectItem>
-              ))}
+              {subjects.map((subject) => {
+                // Handle both string and object formats
+                return (
+                  <SelectItem key={subject} value={subject} className="text-white hover:bg-slate-700">
+                    {subject}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
 
@@ -517,7 +522,7 @@ export default function UsersPage() {
             <button
               className={`w-full p-2 rounded-lg duration-300 ${showOnlyInactive 
                 ? "bg-linear-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white border border-transparent" 
-                : "bg-slate-100 dark:bg-blue-500 border-slate-300 dark:border-transparent hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700/50  dark:hover:text-white"
+                : "bg-blue-500 border-slate-300 dark:border-transparent hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700/50  dark:hover:text-white"
               }`}
               onClick={() => {
                 setShowOnlyInactive(!showOnlyInactive);
@@ -547,7 +552,7 @@ export default function UsersPage() {
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Button
                   onClick={() => openNotificationDialog()}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-blue-500/20"
+                  className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-blue-500/20"
                 >
                   <Bell className="h-4 w-4 mr-2" />
                   Send Notification
@@ -560,7 +565,7 @@ export default function UsersPage() {
 
       {/* Users Table */}
       <motion.div 
-        className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
+        className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
         variants={cardVariants}
       >
         <div className="overflow-x-auto">

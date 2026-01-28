@@ -12,6 +12,7 @@ import { AuditLogsService, AuditAction } from '../audit-logs/audit-logs.service'
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
+import { env } from '@/env.validation';
 
 /**
  * Login response structure.
@@ -92,10 +93,10 @@ export class AuthService {
                 throw new UnauthorizedException('Invalid credentials');
             }
 
-            // Verify password
-            // const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+            const isPasswordValid = env.NODE_ENV === 'development'
+                ? (loginDto.password === user.password) // TEMPORARY: Plaintext check in development
+                : await bcrypt.compare(loginDto.password, user.password);
 
-            const isPasswordValid = (loginDto.password === user.password); // TEMPORARY: Plaintext password check (to be replaced with bcrypt)
             if (!isPasswordValid) {
                 await this.auditLogsService.log(
                     AuditAction.USER_LOGIN_FAILED,
@@ -338,7 +339,11 @@ export class AuthService {
         }
 
         // Verify password
-        const isPasswordValid = loginDto.password === user.password; // TEMPORARY: Plaintext password check
+        const isPasswordValid = env.NODE_ENV === 'development'
+            ? (loginDto.password === user.password) // TEMPORARY: Plaintext check in development
+            : await bcrypt.compare(loginDto.password, user.password);
+
+        loginDto.password === user.password; // TEMPORARY: Plaintext password check
         if (!isPasswordValid) {
             await this.auditLogsService.log(
                 AuditAction.USER_LOGIN_FAILED,

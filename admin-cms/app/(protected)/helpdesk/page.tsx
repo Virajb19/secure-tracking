@@ -1,12 +1,14 @@
 'use client';
 
-import { Trash2, CheckCircle, Loader2, AlertCircle, Headphones, Hash, User, MessageSquare, Phone, Calendar, RotateCcw, HelpCircle } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Trash2, CheckCircle, Loader2, AlertCircle, Headphones, Hash, User, MessageSquare, Phone, Calendar, RotateCcw, HelpCircle, Search, Filter, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { helpdeskApi } from '@/services/helpdesk.service';
 import { HelpdeskTicket } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { DeleteTicketButton } from '@/components/DeleteTicketButton';
+import { ExpandableText } from '@/components/ExpandableText';
 import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
 
 // Animation variants
@@ -66,6 +68,8 @@ function formatDate(dateString: string): string {
 
 export default function HelpdeskPage() {
   const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showPendingOnly, setShowPendingOnly] = useState(false);
 
   // Fetch all helpdesk tickets
   const { data: tickets, isLoading, error } = useQuery<HelpdeskTicket[]>({
@@ -104,6 +108,30 @@ export default function HelpdeskPage() {
   const handleResolve = (id: string) => {
     resolveMutation.mutate(id);
   };
+
+  // Filter tickets based on search query and pending filter
+  const filteredTickets = useMemo(() => {
+    if (!tickets) return [];
+    
+    let result = tickets;
+    
+    // Apply pending filter
+    if (showPendingOnly) {
+      result = result.filter(t => !t.is_resolved);
+    }
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(t => 
+        t.full_name.toLowerCase().includes(query) ||
+        t.phone.toLowerCase().includes(query) ||
+        t.message.toLowerCase().includes(query)
+      );
+    }
+    
+    return result;
+  }, [tickets, searchQuery, showPendingOnly]);
 
   const pendingCount = tickets?.filter(t => !t.is_resolved).length || 0;
   const resolvedCount = tickets?.filter(t => t.is_resolved).length || 0;
@@ -205,12 +233,53 @@ export default function HelpdeskPage() {
         </div>
       </motion.div>
 
+      {/* Search and Filter Bar */}
+      <motion.div 
+        className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"
+        variants={itemVariants}
+      >
+        {/* Search Input */}
+        <div className="relative flex-1 max-w-md w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by name, phone, or message..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 p-2 rounded-full hover:bg-red-500/30 duration-200 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Pending Filter Button */}
+        <motion.button
+          onClick={() => setShowPendingOnly(!showPendingOnly)}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
+            showPendingOnly
+              ? 'bg-yellow-500 text-white shadow-lg shadow-yellow-500/25'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+          }`}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <Filter className="h-4 w-4" />
+          {showPendingOnly ? 'Show All Tickets' : 'Show Pending Only'}
+        </motion.button>
+      </motion.div>
+
       {/* Tickets Table */}
       <motion.div 
         className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
         variants={cardVariants}
       >
-        {tickets && tickets.length > 0 ? (
+        {filteredTickets && filteredTickets.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -241,7 +310,7 @@ export default function HelpdeskPage() {
               </thead>
               <tbody>
                 <AnimatePresence>
-                  {tickets.map((ticket, index) => (
+                  {filteredTickets.map((ticket, index) => (
                     <motion.tr 
                       key={ticket.id}
                       custom={index}
@@ -260,12 +329,11 @@ export default function HelpdeskPage() {
                         <span className="text-blue-600 dark:text-blue-400 font-medium">{ticket.full_name}</span>
                       </td>
                       <td className="py-4 px-5 max-w-xs">
-                        <span 
-                          className="text-slate-700 dark:text-slate-300 line-clamp-2" 
-                          title={ticket.message}
-                        >
-                          {ticket.message}
-                        </span>
+                        <ExpandableText 
+                          text={ticket.message} 
+                          maxLength={60} 
+                          className="text-slate-700 dark:text-slate-300 text-sm" 
+                        />
                       </td>
                       <td className="py-4 px-5">
                         <span className="text-slate-700 dark:text-slate-300 font-mono text-sm bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded">
@@ -335,8 +403,25 @@ export default function HelpdeskPage() {
             animate={{ opacity: 1, scale: 1 }}
           >
             <Headphones className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
-            <div className="text-slate-500 dark:text-slate-400 text-lg">No helpdesk tickets found</div>
-            <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Tickets submitted by users will appear here</p>
+            <div className="text-slate-500 dark:text-slate-400 text-lg">
+              {searchQuery || showPendingOnly ? 'No matching tickets found' : 'No helpdesk tickets found'}
+            </div>
+            <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">
+              {searchQuery || showPendingOnly 
+                ? 'Try adjusting your search or filter criteria' 
+                : 'Tickets submitted by users will appear here'}
+            </p>
+            {(searchQuery || showPendingOnly) && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setShowPendingOnly(false);
+                }}
+                className="mt-4 text-blue-500 hover:text-blue-600 text-sm font-medium"
+              >
+                Clear all filters
+              </button>
+            )}
           </motion.div>
         )}
       </motion.div>

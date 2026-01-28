@@ -49,6 +49,7 @@ const client_1 = require("@prisma/client");
 const users_service_1 = require("../users/users.service");
 const audit_logs_service_1 = require("../audit-logs/audit-logs.service");
 const bcrypt = __importStar(require("bcrypt"));
+const env_validation_1 = require("../env.validation");
 let AuthService = class AuthService {
     constructor(usersService, jwtService, auditLogsService) {
         this.usersService = usersService;
@@ -64,7 +65,9 @@ let AuthService = class AuthService {
                 await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', null, null, ipAddress);
                 throw new common_1.UnauthorizedException('Invalid credentials');
             }
-            const isPasswordValid = (loginDto.password === user.password);
+            const isPasswordValid = env_validation_1.env.NODE_ENV === 'development'
+                ? (loginDto.password === user.password)
+                : await bcrypt.compare(loginDto.password, user.password);
             if (!isPasswordValid) {
                 await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
                 throw new common_1.UnauthorizedException('Invalid credentials');
@@ -173,7 +176,10 @@ let AuthService = class AuthService {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
             throw new common_1.ForbiddenException('Access denied. Only administrators can access this portal.');
         }
-        const isPasswordValid = loginDto.password === user.password;
+        const isPasswordValid = env_validation_1.env.NODE_ENV === 'development'
+            ? (loginDto.password === user.password)
+            : await bcrypt.compare(loginDto.password, user.password);
+        loginDto.password === user.password;
         if (!isPasswordValid) {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
             throw new common_1.UnauthorizedException('Invalid credentials');

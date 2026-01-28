@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View,
     Text,
@@ -7,6 +7,9 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     RefreshControl,
+    TextInput,
+    Image,
+    Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,10 +23,17 @@ interface Notice {
     type: 'INFO' | 'WARNING' | 'URGENT' | 'ANNOUNCEMENT';
     created_at: string;
     author?: string;
+    file_url?: string;
+    file_name?: string;
 }
+
+// No notices image - using a URI since the GIF needs to be added to assets
+// To use: Place the no-notices.gif file in mobile-app/assets/ folder
+const NO_NOTICES_IMAGE_URI = 'https://raw.githubusercontent.com/AliARIOGLU/react-native-gif/main/assets/empty-box.gif';
 
 export default function NoticesScreen() {
     const router = useRouter();
+    const [searchQuery, setSearchQuery] = useState('');
 
     const {
         data: notices,
@@ -46,6 +56,19 @@ export default function NoticesScreen() {
             }
         },
     });
+
+    // Filter notices based on search query
+    const filteredNotices = useMemo(() => {
+        if (!notices) return [];
+        if (!searchQuery.trim()) return notices;
+        
+        const query = searchQuery.toLowerCase();
+        return notices.filter(
+            notice =>
+                notice.title.toLowerCase().includes(query) ||
+                notice.content.toLowerCase().includes(query)
+        );
+    }, [notices, searchQuery]);
 
     const getNoticeIcon = (type: Notice['type']) => {
         switch (type) {
@@ -124,6 +147,25 @@ export default function NoticesScreen() {
                 <View style={styles.placeholder} />
             </View>
 
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+                <View style={styles.searchInput}>
+                    <Ionicons name="search" size={20} color="#9ca3af" />
+                    <TextInput
+                        style={styles.searchTextInput}
+                        placeholder="Search notices..."
+                        placeholderTextColor="#9ca3af"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <Ionicons name="close-circle" size={20} color="#9ca3af" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+
             {/* Notices List */}
             <ScrollView
                 style={styles.scrollView}
@@ -132,9 +174,9 @@ export default function NoticesScreen() {
                     <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
                 }
             >
-                {notices && notices.length > 0 ? (
+                {filteredNotices && filteredNotices.length > 0 ? (
                     <>
-                        {notices.map((notice) => {
+                        {filteredNotices.map((notice) => {
                             const icon = getNoticeIcon(notice.type);
                             const typeStyle = getNoticeTypeStyle(notice.type);
                             
@@ -179,16 +221,35 @@ export default function NoticesScreen() {
                                     {notice.author && (
                                         <Text style={styles.authorText}>— {notice.author}</Text>
                                     )}
+                                    {/* File attachment */}
+                                    {notice.file_url && (
+                                        <TouchableOpacity 
+                                            style={styles.fileAttachment}
+                                            onPress={() => Linking.openURL(notice.file_url!)}
+                                        >
+                                            <Ionicons name="document-attach" size={18} color="#3b82f6" />
+                                            <Text style={styles.fileText}>
+                                                {notice.file_name || 'View Attachment'}
+                                            </Text>
+                                            <Ionicons name="open-outline" size={16} color="#3b82f6" />
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             );
                         })}
                     </>
                 ) : (
                     <View style={styles.emptyContainer}>
-                        <Ionicons name="notifications-off-outline" size={64} color="#d1d5db" />
+                        <Image 
+                            source={{ uri: NO_NOTICES_IMAGE_URI }}
+                            style={styles.emptyGif}
+                            resizeMode="contain"
+                        />
                         <Text style={styles.emptyTitle}>No Notices</Text>
                         <Text style={styles.emptyText}>
-                            There are no important notices at this time. Check back later for updates.
+                            {searchQuery
+                                ? 'No notices match your search.'
+                                : 'There are no important notices at this time. Check back later for updates.'}
                         </Text>
                     </View>
                 )}
@@ -222,6 +283,27 @@ const styles = StyleSheet.create({
     },
     placeholder: {
         width: 40,
+    },
+    searchContainer: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#ffffff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    searchInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f3f4f6',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        gap: 8,
+    },
+    searchTextInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#1f2937',
     },
     scrollView: {
         flex: 1,
@@ -282,6 +364,22 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         marginTop: 12,
     },
+    fileAttachment: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 12,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: '#eff6ff',
+        borderRadius: 8,
+        gap: 8,
+    },
+    fileText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#3b82f6',
+        fontWeight: '500',
+    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -321,7 +419,11 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingTop: 80,
+        paddingTop: 40,
+    },
+    emptyGif: {
+        width: 200,
+        height: 200,
     },
     emptyTitle: {
         fontSize: 18,

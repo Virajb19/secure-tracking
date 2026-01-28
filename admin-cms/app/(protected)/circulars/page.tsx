@@ -37,7 +37,8 @@ import {
   User,
   Hash,
   Sparkles,
-  FileUp
+  FileUp,
+  X
 } from 'lucide-react';
 import { circularsApi, masterDataApi } from '@/services/api';
 import { Circular, District, School } from '@/types';
@@ -206,7 +207,7 @@ export default function CircularsPage() {
       <motion.div variants={itemVariants}>
         <div className="flex items-center gap-3 mb-6">
           <motion.div
-            className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg"
+            className="p-2 bg-linear-to-br from-blue-500 to-purple-600 rounded-lg"
             whileHover={{ scale: 1.05, rotate: 5 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -216,7 +217,7 @@ export default function CircularsPage() {
         </div>
 
         <motion.div 
-          className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-xl"
+          className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-xl"
           variants={cardVariants}
         >
           <Form {...form}>
@@ -376,41 +377,73 @@ export default function CircularsPage() {
                 />
 
                 {/* Circular File */}
-                <div>
-                  <label className="text-slate-700 dark:text-slate-300 text-sm mb-2 flex items-center gap-2">
-                    <Upload className="h-4 w-4 text-pink-500" />
-                    Circular File
-                  </label>
-                  <motion.label 
-                    className={`flex items-center gap-3 h-10 px-4 rounded-lg cursor-pointer transition-all border ${
-                      selectedFile 
-                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-600 dark:text-emerald-400' 
-                        : 'bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-400 dark:hover:border-slate-500'
-                    }`}
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                  >
-                    {selectedFile ? (
-                      <FileText className="h-4 w-4" />
-                    ) : (
-                      <Upload className="h-4 w-4" />
-                    )}
-                    <span className="text-sm truncate flex-1">
-                      {selectedFile ? selectedFile.name : 'Click to select file (Image/PDF)'}
-                    </span>
-                    {selectedFile && (
-                      <span className="text-xs bg-emerald-500/20 px-2 py-0.5 rounded-full">
-                        Selected
-                      </span>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      className="hidden"
-                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    />
-                  </motion.label>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="file"
+                  render={({ field: { onChange, value, ...field } }) => (
+                    <FormItem>
+                      <FormLabel className="text-slate-700 dark:text-slate-300 text-sm flex items-center gap-2">
+                        <Upload className="h-4 w-4 text-pink-500" />
+                        Circular File
+                        <span className="text-slate-400 text-xs">(Max 10MB)</span>
+                      </FormLabel>
+                      <FormControl>
+                        <div className="flex items-center gap-2">
+                          <motion.label 
+                            className={`flex items-center gap-3 h-10 px-4 rounded-lg cursor-pointer transition-all border flex-1 ${
+                              selectedFile 
+                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-600 dark:text-emerald-400' 
+                                : 'bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-400 dark:hover:border-slate-500'
+                            }`}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                          >
+                            {selectedFile ? (
+                              <FileText className="h-4 w-4" />
+                            ) : (
+                              <Upload className="h-4 w-4" />
+                            )}
+                            <span className="text-sm truncate flex-1">
+                              {selectedFile ? selectedFile.name : 'Click to select file (Image/PDF)'}
+                            </span>
+                            {selectedFile && (
+                              <span className="text-xs bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                                Selected
+                              </span>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*,.pdf"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0] || null;
+                                setSelectedFile(file);
+                                onChange(file);
+                              }}
+                              {...field}
+                            />
+                          </motion.label>
+                          {selectedFile && (
+                            <motion.button
+                              type="button"
+                              onClick={() => {
+                                setSelectedFile(null);
+                                onChange(undefined);
+                              }}
+                              className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              title="Remove file"
+                            >
+                              <X className="h-4 w-4" />
+                            </motion.button>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </motion.div>
 
               {/* Multi-Select Schools Section */}
@@ -532,10 +565,10 @@ export default function CircularsPage() {
               <motion.div variants={itemVariants}>
                 <Button
                   type="submit"
-                  disabled={createCircularMutation.isPending}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white py-6 text-lg font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50"
+                  disabled={form.formState.isSubmitting}
+                  className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white py-6 text-lg font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50"
                 >
-                  {createCircularMutation.isPending ? (
+                  {form.formState.isSubmitting ? (
                     <motion.div 
                       className="flex items-center gap-2"
                       initial={{ opacity: 0 }}
@@ -564,7 +597,7 @@ export default function CircularsPage() {
       <motion.div variants={itemVariants}>
         <div className="flex items-center gap-3 mb-6">
           <motion.div
-            className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg"
+            className="p-2 bg-linear-to-br from-emerald-500 to-teal-600 rounded-lg"
             whileHover={{ scale: 1.05, rotate: -5 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -577,7 +610,7 @@ export default function CircularsPage() {
         </div>
 
         <motion.div 
-          className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
+          className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
           variants={cardVariants}
         >
           {circularsLoading ? (
@@ -667,7 +700,7 @@ export default function CircularsPage() {
                           {circular.file_url ? (
                             <motion.button
                               onClick={() => handleViewFile(circular.file_url!)}
-                              className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-emerald-500/20 transition-all"
+                              className="inline-flex items-center gap-2 bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-emerald-500/20 transition-all"
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                             >

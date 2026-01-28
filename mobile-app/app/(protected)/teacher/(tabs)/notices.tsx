@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View,
     Text,
@@ -7,16 +7,28 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     RefreshControl,
+    Linking,
+    TextInput,
+    Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../../src/api/client';
 
+// No notices image URI
+const NO_NOTICES_IMAGE_URI = 'https://raw.githubusercontent.com/AliARIOGLU/react-native-gif/main/assets/empty-box.gif';
+
 interface Notice {
     id: string;
     title: string;
     content: string;
-    priority: 'HIGH' | 'NORMAL' | 'LOW';
+    type?: 'General' | 'Paper Setter' | 'Paper Checker' | 'Invitation' | 'Push Notification';
+    subject?: string;
+    venue?: string;
+    event_time?: string;
+    event_date?: string;
+    file_url?: string;
+    file_name?: string;
     published_at: string;
     created_at: string;
     creator?: {
@@ -25,7 +37,55 @@ interface Notice {
     };
 }
 
+// Type-based styling configuration
+const getTypeStyle = (type?: Notice['type']) => {
+    switch (type) {
+        case 'Paper Setter':
+            return {
+                bg: '#f0fdf4',
+                text: '#16a34a',
+                border: '#bbf7d0',
+                icon: 'create-outline' as const,
+                label: 'Paper Setter',
+            };
+        case 'Paper Checker':
+            return {
+                bg: '#fef3c7',
+                text: '#d97706',
+                border: '#fde68a',
+                icon: 'checkmark-done-outline' as const,
+                label: 'Paper Checker',
+            };
+        case 'Invitation':
+            return {
+                bg: '#fae8ff',
+                text: '#a855f7',
+                border: '#f5d0fe',
+                icon: 'calendar-outline' as const,
+                label: 'Invitation',
+            };
+        case 'Push Notification':
+            return {
+                bg: '#dbeafe',
+                text: '#2563eb',
+                border: '#bfdbfe',
+                icon: 'notifications-outline' as const,
+                label: 'Notification',
+            };
+        default: // General
+            return {
+                bg: '#f1f5f9',
+                text: '#475569',
+                border: '#cbd5e1',
+                icon: 'document-text-outline' as const,
+                label: 'General',
+            };
+    }
+};
+
 export default function NoticesScreen() {
+    const [searchQuery, setSearchQuery] = useState('');
+    
     const {
         data: notices,
         isLoading,
@@ -48,25 +108,47 @@ export default function NoticesScreen() {
         },
     });
 
-    const getNoticeIcon = (priority: Notice['priority']) => {
-        switch (priority) {
-            case 'HIGH':
-                return { name: 'alert-circle', color: '#ef4444' };
-            case 'LOW':
-                return { name: 'information-circle', color: '#3b82f6' };
-            default:
-                return { name: 'notifications', color: '#f59e0b' };
-        }
+    // Filter notices based on search query
+    const filteredNotices = useMemo(() => {
+        if (!notices) return [];
+        if (!searchQuery.trim()) return notices;
+        
+        const query = searchQuery.toLowerCase();
+        return notices.filter(
+            notice =>
+                notice.title.toLowerCase().includes(query) ||
+                notice.content.toLowerCase().includes(query)
+        );
+    }, [notices, searchQuery]);
+
+    const formatEventDate = (dateString?: string) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-IN', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        });
     };
 
-    const getNoticePriorityStyle = (priority: Notice['priority']) => {
-        switch (priority) {
-            case 'HIGH':
-                return { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' };
-            case 'LOW':
-                return { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' };
-            default:
-                return { bg: '#fffbeb', text: '#d97706', border: '#fde68a' };
+    const formatEventTime = (timeString?: string) => {
+        if (!timeString) return '';
+        // Time is in HH:MM format
+        const [hours, minutes] = timeString.split(':');
+        const hour = parseInt(hours, 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+    };
+
+    const openFile = async (url?: string) => {
+        if (url) {
+            try {
+                await Linking.openURL(url);
+            } catch (err) {
+                console.log('Failed to open file:', err);
+            }
         }
     };
 
@@ -109,6 +191,25 @@ export default function NoticesScreen() {
 
     return (
         <View style={styles.container}>
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+                <View style={styles.searchInput}>
+                    <Ionicons name="search" size={20} color="#9ca3af" />
+                    <TextInput
+                        style={styles.searchTextInput}
+                        placeholder="Search notices..."
+                        placeholderTextColor="#9ca3af"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <Ionicons name="close-circle" size={20} color="#9ca3af" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+
             {/* Notices List */}
             <ScrollView
                 style={styles.scrollView}
@@ -117,63 +218,120 @@ export default function NoticesScreen() {
                     <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
                 }
             >
-                {notices && notices.length > 0 ? (
+                {filteredNotices && filteredNotices.length > 0 ? (
                     <>
-                        {notices.map((notice) => {
-                            const icon = getNoticeIcon(notice.priority);
-                            const priorityStyle = getNoticePriorityStyle(notice.priority);
+                        {filteredNotices.map((notice) => {
+                            const typeStyle = getTypeStyle(notice.type);
                             
                             return (
                                 <View
                                     key={notice.id}
                                     style={[
                                         styles.noticeCard,
-                                        { borderLeftColor: priorityStyle.text },
+                                        { borderLeftColor: typeStyle.text },
                                     ]}
                                 >
+                                    {/* Header with Type Badge and Date */}
                                     <View style={styles.noticeHeader}>
                                         <View
                                             style={[
                                                 styles.typeBadge,
                                                 {
-                                                    backgroundColor: priorityStyle.bg,
-                                                    borderColor: priorityStyle.border,
+                                                    backgroundColor: typeStyle.bg,
+                                                    borderColor: typeStyle.border,
                                                 },
                                             ]}
                                         >
                                             <Ionicons
-                                                name={icon.name as any}
+                                                name={typeStyle.icon}
                                                 size={14}
-                                                color={priorityStyle.text}
+                                                color={typeStyle.text}
                                             />
                                             <Text
                                                 style={[
                                                     styles.typeText,
-                                                    { color: priorityStyle.text },
+                                                    { color: typeStyle.text },
                                                 ]}
                                             >
-                                                {notice.priority}
+                                                {typeStyle.label}
                                             </Text>
                                         </View>
                                         <Text style={styles.dateText}>
                                             {formatDate(notice.published_at || notice.created_at)}
                                         </Text>
                                     </View>
+
+                                    {/* Title */}
                                     <Text style={styles.noticeTitle}>{notice.title}</Text>
-                                    <Text style={styles.noticeContent}>{notice.content}</Text>
-                                    {notice.creator?.name && (
-                                        <Text style={styles.authorText}>— {notice.creator.name}</Text>
+
+                                    {/* Subject for Paper Setter/Checker */}
+                                    {(notice.type === 'Paper Setter' || notice.type === 'Paper Checker') && notice.subject && (
+                                        <View style={styles.subjectContainer}>
+                                            <Ionicons name="book-outline" size={16} color="#6b7280" />
+                                            <Text style={styles.subjectText}>Subject: {notice.subject}</Text>
+                                        </View>
                                     )}
+
+                                    {/* Invitation Details */}
+                                    {notice.type === 'Invitation' && (
+                                        <View style={styles.invitationDetails}>
+                                            {notice.venue && (
+                                                <View style={styles.invitationRow}>
+                                                    <Ionicons name="location-outline" size={16} color="#6b7280" />
+                                                    <Text style={styles.invitationText}>{notice.venue}</Text>
+                                                </View>
+                                            )}
+                                            {notice.event_date && (
+                                                <View style={styles.invitationRow}>
+                                                    <Ionicons name="calendar-outline" size={16} color="#6b7280" />
+                                                    <Text style={styles.invitationText}>{formatEventDate(notice.event_date)}</Text>
+                                                </View>
+                                            )}
+                                            {notice.event_time && (
+                                                <View style={styles.invitationRow}>
+                                                    <Ionicons name="time-outline" size={16} color="#6b7280" />
+                                                    <Text style={styles.invitationText}>{formatEventTime(notice.event_time)}</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    )}
+
+                                    {/* Content/Message */}
+                                    <Text style={styles.noticeContent}>{notice.content}</Text>
+
+                                    {/* File Attachment */}
+                                    {notice.file_url && (
+                                        <TouchableOpacity 
+                                            style={styles.fileButton}
+                                            onPress={() => openFile(notice.file_url)}
+                                        >
+                                            <Ionicons name="attach" size={16} color="#3b82f6" />
+                                            <Text style={styles.fileButtonText}>
+                                                {notice.file_name || 'View Attachment'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+
+                                    {/* Author */}
+                                    {/* {notice.creator?.name && (
+                                        <Text style={styles.authorText}>— {notice.creator.name}</Text>
+                                    )} */}
                                 </View>
                             );
                         })}
                     </>
                 ) : (
                     <View style={styles.emptyContainer}>
-                        <Ionicons name="notifications-off-outline" size={64} color="#d1d5db" />
+                        <Image 
+                            source={{ uri: NO_NOTICES_IMAGE_URI }}
+                            style={styles.emptyGif}
+                            resizeMode="contain"
+                        />
                         <Text style={styles.emptyTitle}>No Notices</Text>
                         <Text style={styles.emptyText}>
-                            There are no important notices at this time. Check back later for updates.
+                            {searchQuery
+                                ? 'No notices match your search.'
+                                : 'There are no important notices at this time. Check back later for updates.'}
                         </Text>
                     </View>
                 )}
@@ -186,6 +344,27 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f9fafb',
+    },
+    searchContainer: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#ffffff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    searchInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f3f4f6',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        gap: 8,
+    },
+    searchTextInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#1f2937',
     },
     scrollView: {
         flex: 1,
@@ -285,7 +464,11 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingTop: 80,
+        paddingTop: 40,
+    },
+    emptyGif: {
+        width: 200,
+        height: 200,
     },
     emptyTitle: {
         fontSize: 18,
@@ -299,5 +482,53 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginTop: 8,
         paddingHorizontal: 32,
+    },
+    // New styles for type-based UI
+    subjectContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f3f4f6',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        marginBottom: 12,
+        gap: 8,
+    },
+    subjectText: {
+        fontSize: 14,
+        color: '#374151',
+        fontWeight: '500',
+    },
+    invitationDetails: {
+        backgroundColor: '#faf5ff',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 12,
+        gap: 8,
+    },
+    invitationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    invitationText: {
+        fontSize: 14,
+        color: '#374151',
+    },
+    fileButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#eff6ff',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        marginTop: 12,
+        gap: 6,
+        alignSelf: 'flex-start',
+    },
+    fileButtonText: {
+        fontSize: 13,
+        color: '#3b82f6',
+        fontWeight: '500',
     },
 });

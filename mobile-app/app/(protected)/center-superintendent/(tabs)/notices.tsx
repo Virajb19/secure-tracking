@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     RefreshControl,
+    Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -17,6 +18,13 @@ interface Notice {
     title: string;
     content: string;
     priority: 'HIGH' | 'NORMAL' | 'LOW';
+    type?: 'General' | 'Paper Setter' | 'Paper Checker' | 'Invitation' | 'Push Notification';
+    subject?: string;
+    venue?: string;
+    event_time?: string;
+    event_date?: string;
+    file_url?: string;
+    file_name?: string;
     published_at: string;
     created_at: string;
     creator?: {
@@ -24,6 +32,52 @@ interface Notice {
         name: string;
     };
 }
+
+// Type-based styling configuration
+const getTypeStyle = (type?: Notice['type']) => {
+    switch (type) {
+        case 'Paper Setter':
+            return {
+                bg: '#f0fdf4',
+                text: '#16a34a',
+                border: '#bbf7d0',
+                icon: 'create-outline' as const,
+                label: 'Paper Setter',
+            };
+        case 'Paper Checker':
+            return {
+                bg: '#fef3c7',
+                text: '#d97706',
+                border: '#fde68a',
+                icon: 'checkmark-done-outline' as const,
+                label: 'Paper Checker',
+            };
+        case 'Invitation':
+            return {
+                bg: '#fae8ff',
+                text: '#a855f7',
+                border: '#f5d0fe',
+                icon: 'calendar-outline' as const,
+                label: 'Invitation',
+            };
+        case 'Push Notification':
+            return {
+                bg: '#dbeafe',
+                text: '#2563eb',
+                border: '#bfdbfe',
+                icon: 'notifications-outline' as const,
+                label: 'Notification',
+            };
+        default: // General
+            return {
+                bg: '#f1f5f9',
+                text: '#475569',
+                border: '#cbd5e1',
+                icon: 'document-text-outline' as const,
+                label: 'General',
+            };
+    }
+};
 
 export default function NoticesScreen() {
     const {
@@ -67,6 +121,36 @@ export default function NoticesScreen() {
                 return { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' };
             default:
                 return { bg: '#fffbeb', text: '#d97706', border: '#fde68a' };
+        }
+    };
+
+    const formatEventDate = (dateString?: string) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-IN', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        });
+    };
+
+    const formatEventTime = (timeString?: string) => {
+        if (!timeString) return '';
+        const [hours, minutes] = timeString.split(':');
+        const hour = parseInt(hours, 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+    };
+
+    const openFile = async (url?: string) => {
+        if (url) {
+            try {
+                await Linking.openURL(url);
+            } catch (err) {
+                console.log('Failed to open file:', err);
+            }
         }
     };
 
@@ -120,39 +204,35 @@ export default function NoticesScreen() {
                 {notices && notices.length > 0 ? (
                     <>
                         {notices.map((notice) => {
-                            const icon = getNoticeIcon(notice.priority);
-                            const priorityStyle = getNoticePriorityStyle(notice.priority);
+                            const typeStyle = getTypeStyle(notice.type);
                             
                             return (
                                 <View
                                     key={notice.id}
                                     style={[
                                         styles.noticeCard,
-                                        { borderLeftColor: priorityStyle.text },
+                                        { borderLeftColor: typeStyle.text },
                                     ]}
                                 >
                                     <View style={styles.noticeHeader}>
                                         <View
                                             style={[
                                                 styles.typeBadge,
-                                                {
-                                                    backgroundColor: priorityStyle.bg,
-                                                    borderColor: priorityStyle.border,
-                                                },
+                                                { backgroundColor: typeStyle.bg },
                                             ]}
                                         >
                                             <Ionicons
-                                                name={icon.name as any}
+                                                name={typeStyle.icon as any}
                                                 size={14}
-                                                color={priorityStyle.text}
+                                                color={typeStyle.text}
                                             />
                                             <Text
                                                 style={[
                                                     styles.typeText,
-                                                    { color: priorityStyle.text },
+                                                    { color: typeStyle.text },
                                                 ]}
                                             >
-                                                {notice.priority}
+                                                {notice.type || 'General'}
                                             </Text>
                                         </View>
                                         <Text style={styles.dateText}>
@@ -161,9 +241,55 @@ export default function NoticesScreen() {
                                     </View>
                                     <Text style={styles.noticeTitle}>{notice.title}</Text>
                                     <Text style={styles.noticeContent}>{notice.content}</Text>
-                                    {notice.creator?.name && (
-                                        <Text style={styles.authorText}>— {notice.creator.name}</Text>
+                                    
+                                    {/* Subject for Paper Setter/Checker */}
+                                    {notice.subject && (notice.type === 'Paper Setter' || notice.type === 'Paper Checker') && (
+                                        <View style={styles.subjectContainer}>
+                                            <Ionicons name="book-outline" size={14} color="#6366f1" />
+                                            <Text style={styles.subjectText}>Subject: {notice.subject}</Text>
+                                        </View>
                                     )}
+                                    
+                                    {/* Invitation Details */}
+                                    {notice.type === 'Invitation' && (
+                                        <View style={styles.invitationDetails}>
+                                            {notice.venue && (
+                                                <View style={styles.detailRow}>
+                                                    <Ionicons name="location-outline" size={14} color="#ec4899" />
+                                                    <Text style={styles.detailText}>Venue: {notice.venue}</Text>
+                                                </View>
+                                            )}
+                                            {notice.event_date && (
+                                                <View style={styles.detailRow}>
+                                                    <Ionicons name="calendar-outline" size={14} color="#ec4899" />
+                                                    <Text style={styles.detailText}>{formatEventDate(notice.event_date)}</Text>
+                                                </View>
+                                            )}
+                                            {notice.event_time && (
+                                                <View style={styles.detailRow}>
+                                                    <Ionicons name="time-outline" size={14} color="#ec4899" />
+                                                    <Text style={styles.detailText}>{formatEventTime(notice.event_time)}</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    )}
+                                    
+                                    {/* File Attachment */}
+                                    {notice.file_url && (
+                                        <TouchableOpacity
+                                            style={styles.fileButton}
+                                            onPress={() => openFile(notice.file_url)}
+                                        >
+                                            <Ionicons name="document-attach-outline" size={16} color="#3b82f6" />
+                                            <Text style={styles.fileButtonText}>
+                                                {notice.file_name || 'View Attachment'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    
+                                    {/* {notice.creator?.name && (
+                                        <Text style={styles.authorText}>— {notice.creator.name}</Text>
+                                    )} */}
                                 </View>
                             );
                         })}
@@ -217,13 +343,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 4,
-        borderWidth: 1,
         gap: 4,
     },
     typeText: {
         fontSize: 11,
         fontWeight: '600',
-        textTransform: 'uppercase',
     },
     dateText: {
         fontSize: 12,
@@ -245,6 +369,50 @@ const styles = StyleSheet.create({
         color: '#6b7280',
         fontStyle: 'italic',
         marginTop: 12,
+    },
+    subjectContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#f3f4f6',
+    },
+    subjectText: {
+        fontSize: 13,
+        color: '#6366f1',
+        fontWeight: '500',
+    },
+    invitationDetails: {
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#f3f4f6',
+        gap: 8,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    detailText: {
+        fontSize: 13,
+        color: '#4b5563',
+    },
+    fileButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#f3f4f6',
+    },
+    fileButtonText: {
+        fontSize: 13,
+        color: '#3b82f6',
+        fontWeight: '500',
     },
     loadingContainer: {
         flex: 1,

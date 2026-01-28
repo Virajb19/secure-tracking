@@ -12,7 +12,7 @@ export default function Header() {
 
     return (
         <header className="sticky top-0 z-30 bg-white/60 dark:bg-slate-900/60 backdrop-blur-lg border-b border-slate-200 dark:border-slate-800">
-            <div className="flex h-16 items-center justify-between px-6">
+            <div className="flex h-19 items-center justify-between px-6">
                 {/* Left side - can be used for breadcrumbs or page title */}
                 <div />
 

@@ -1,15 +1,23 @@
 import api from './api';
 
+export type NoticeType = 'General' | 'Paper Setter' | 'Paper Checker' | 'Invitation' | 'Push Notification';
+
 export interface Notice {
   id: string;
   title: string;
   content: string;
-  priority: 'HIGH' | 'NORMAL' | 'LOW';
+  type: NoticeType;
+  subject: string | null;
+  venue: string | null;
+  event_time: string | null;
+  event_date: string | null;
   published_at: string | null;
   expires_at: string | null;
   is_active: boolean;
   school_id: string | null;
   created_by: string | null;
+  file_url: string | null;
+  file_name: string | null;
   created_at: string;
   updated_at: string;
   school?: {
@@ -30,24 +38,35 @@ export interface Notice {
 export interface CreateNoticePayload {
   title: string;
   content: string;
-  priority?: 'HIGH' | 'NORMAL' | 'LOW';
+  type?: NoticeType;
+  subject?: string;
+  venue?: string;
+  event_time?: string;
+  event_date?: string;
   expires_at?: string;
   school_id?: string;
   created_by?: string;
+  file_url?: string;
+  file_name?: string;
 }
 
 export interface UpdateNoticePayload {
   title?: string;
   content?: string;
-  priority?: 'HIGH' | 'NORMAL' | 'LOW';
+  type?: NoticeType;
+  subject?: string;
+  venue?: string;
+  event_time?: string;
+  event_date?: string;
   expires_at?: string;
   is_active?: boolean;
   school_id?: string;
+  file_url?: string;
+  file_name?: string;
 }
 
 export interface NoticesFilters {
-  priority?: string;
-  is_active?: boolean;
+  type?: string;
   school_id?: string;
 }
 
@@ -57,8 +76,7 @@ const noticesApi = {
    */
   getAll: async (filters?: NoticesFilters): Promise<Notice[]> => {
     const params = new URLSearchParams();
-    if (filters?.priority) params.append('priority', filters.priority);
-    if (filters?.is_active !== undefined) params.append('is_active', String(filters.is_active));
+    if (filters?.type) params.append('type', filters.type);
     if (filters?.school_id) params.append('school_id', filters.school_id);
     
     const queryString = params.toString();

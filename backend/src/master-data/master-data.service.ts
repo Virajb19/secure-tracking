@@ -42,7 +42,30 @@ export class MasterDataService {
     }
 
     /**
+     * Default subjects list for fallback
+     */
+    private readonly DEFAULT_SUBJECTS = [
+        'Alternative English',
+        'English',
+        'Hindi',
+        'Mathematics',
+        'Science',
+        'Social Science',
+        'Physics',
+        'Chemistry',
+        'Biology',
+        'History',
+        'Geography',
+        'Economics',
+        'Political Science',
+        'Computer Science',
+        'Accountancy',
+        'Business Studies',
+    ];
+
+    /**
      * Get distinct subjects from teaching assignments.
+     * Returns default subjects if no teaching assignments exist.
      */
     async getSubjects() {
         const assignments = await this.db.teachingAssignment.findMany({
@@ -50,6 +73,14 @@ export class MasterDataService {
             distinct: ['subject'],
             orderBy: { subject: 'asc' },
         });
+
+        console.log('Fetched subjects from teaching assignments:', assignments);
+        
+        // If no subjects found from teaching assignments, return default list
+        if (assignments.length === 0) {
+            return this.DEFAULT_SUBJECTS;
+        }
+        
         return assignments.map(a => a.subject);
     }
 }

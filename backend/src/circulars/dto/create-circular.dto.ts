@@ -27,13 +27,11 @@ export const CreateCircularSchema = z.object({
     .optional(),
 
   district_id: z
-    .string()
     .uuid('Invalid district ID')
     .optional(),
 
   // Support single school_id (legacy) or multiple school_ids
   school_id: z
-    .string()
     .uuid('Invalid school ID')
     .optional(),
 
@@ -41,7 +39,21 @@ export const CreateCircularSchema = z.object({
   school_ids: z
     .array(z.string().uuid('Invalid school ID'))
     .optional(),
+
+  // File URL from Appwrite storage (validated on upload - max 10MB)
+  file_url: z
+    .url('Invalid file URL')
+    .optional(),
+
+  // Original file name
+  file_name: z
+    .string()
+    .max(255, 'File name too long')
+    .optional(),
 });
+
+// Maximum file size for circular uploads: 10MB
+export const CIRCULAR_MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export class CreateCircularDto extends createZodDto(
   CreateCircularSchema,

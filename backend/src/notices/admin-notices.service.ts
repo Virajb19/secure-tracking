@@ -55,7 +55,6 @@ export class AdminNoticesService {
                 },
             },
             orderBy: [
-                { priority: 'asc' },
                 { created_at: 'desc' },
             ],
         });
@@ -107,7 +106,6 @@ export class AdminNoticesService {
             data: {
                 title: dto.title,
                 content: dto.content,
-                priority: dto.priority || 'NORMAL',
                 expires_at: dto.expires_at ? new Date(dto.expires_at) : null,
                 school_id: dto.school_id || null,
                 created_by: dto.created_by || null,
@@ -223,11 +221,15 @@ export class AdminNoticesService {
             data: {
                 title: dto.title,
                 content: dto.message,
-                priority: 'HIGH', // Sent notices are high priority
+                type: dto.type || 'General',
+                subject: dto.subject,
+                venue: dto.venue,
+                event_time: dto.event_time,
+                event_date: dto.event_date ? new Date(dto.event_date) : null,
                 is_active: true,
                 created_by: createdBy,
-                // Store file info in the content or as metadata
-                // The content will include the file URL if provided
+                file_url: dto.file_url,
+                file_name: dto.file_name,
             },
             include: {
                 creator: {

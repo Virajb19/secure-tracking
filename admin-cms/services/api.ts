@@ -28,10 +28,14 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+
+    const url = error.config?.url || '';
+    const isAuthlogin = url.includes('/auth/admin/login');
+
+    if (error.response?.status === 401 && typeof window !== 'undefined' && !isAuthlogin) {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('userRole');
-      window.location.href = '/login';
+      // window.location.href = '/login';
     }
     return Promise.reject(error);
   }

@@ -38,11 +38,11 @@ export class PaperSetterService {
         // Get coordinator info to verify role
         const coordinator = await this.db.user.findUnique({
             where: { id: coordinatorId },
-            select: { role: true, coordinator_subject: true, coordinator_class: true },
+            select: { role: true },
         });
 
-        if (!coordinator || coordinator.role !== UserRole.SUBJECT_COORDINATOR) {
-            throw new ForbiddenException('Only Subject Coordinators can search for paper setters');
+        if (!coordinator || (coordinator.role !== UserRole.ADMIN && coordinator.role !== UserRole.SUPER_ADMIN)) {
+            throw new ForbiddenException('Only Admins can search for paper setters');
         }
 
         // Get all teacher IDs already selected for ANY subject (EXCLUSIVE LOGIC)
@@ -168,8 +168,8 @@ export class PaperSetterService {
             select: { role: true, name: true },
         });
 
-        if (!coordinator || coordinator.role !== UserRole.SUBJECT_COORDINATOR) {
-            throw new ForbiddenException('Only Subject Coordinators can select paper setters');
+        if (!coordinator || (coordinator.role !== UserRole.ADMIN && coordinator.role !== UserRole.SUPER_ADMIN)) {
+            throw new ForbiddenException('Only Admins can select paper setters');
         }
 
         // Check if teacher is already selected for ANY subject (EXCLUSIVE)

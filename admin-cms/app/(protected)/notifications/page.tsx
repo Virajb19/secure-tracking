@@ -12,10 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Bell, Loader2, FileText, Calendar, User, Building2 } from 'lucide-react';
+import { Search, Bell, Loader2, FileText, Calendar, Building2, Tag, Paperclip, MessageSquare } from 'lucide-react';
 import { DeleteNoticeButton } from '@/components/DeleteNoticeButton';
 import { ViewNoticeButton } from '@/components/ViewNoticeButton';
-import noticesService, { type Notice } from '@/services/notices.service';
+import { ExpandableText } from '@/components/ExpandableText';
+import noticesService, { type Notice, type NoticeType } from '@/services/notices.service';
 
 // Animation variants
 const containerVariants = {
@@ -54,22 +55,25 @@ const cardVariants = {
   }
 };
 
-const priorityOptions = [
-  { value: 'all', label: 'All Priorities' },
-  { value: 'HIGH', label: 'High Priority' },
-  { value: 'NORMAL', label: 'Normal Priority' },
-  { value: 'LOW', label: 'Low Priority' },
+const typeOptions = [
+  { value: 'all', label: 'All Types' },
+  { value: 'General', label: 'General' },
+  { value: 'Paper Setter', label: 'Paper Setter' },
+  { value: 'Paper Checker', label: 'Paper Checker' },
+  { value: 'Invitation', label: 'Invitation' },
+  { value: 'Push Notification', label: 'Push Notification' },
 ];
 
-const statusOptions = [
-  { value: 'all', label: 'All Status' },
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-];
+const typeStyles: Record<string, string> = {
+  'General': 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400',
+  'Paper Setter': 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400',
+  'Paper Checker': 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400',
+  'Invitation': 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400',
+  'Push Notification': 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400',
+};
 
 export default function NotificationsPage() {
-  const [selectedPriority, setSelectedPriority] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedType, setSelectedType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch notices from API
@@ -81,21 +85,23 @@ export default function NotificationsPage() {
   // Filter notices based on selections
   const filteredNotices = useMemo(() => {
     return notices.filter((notice: Notice) => {
-      const matchesPriority = selectedPriority === 'all' || notice.priority === selectedPriority;
-      const matchesStatus = selectedStatus === 'all' || 
-        (selectedStatus === 'active' ? notice.is_active : !notice.is_active);
+      const matchesType = selectedType === 'all' || notice.type === selectedType;
       const matchesSearch = searchQuery === '' || 
         notice.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         notice.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (notice.school?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-      return matchesPriority && matchesStatus && matchesSearch;
+      return matchesType && matchesSearch;
     });
-  }, [notices, selectedPriority, selectedStatus, searchQuery]);
+  }, [notices, selectedType, searchQuery]);
 
   // Stats
   const totalCount = notices.length;
-  const highPriorityCount = notices.filter((n: Notice) => n.priority === 'HIGH').length;
-  const activeCount = notices.filter((n: Notice) => n.is_active).length;
+  const withFileCount = notices.filter((n: Notice) => n.file_url).length;
+  const typeCounts = {
+    general: notices.filter((n: Notice) => n.type === 'General').length,
+    paperSetter: notices.filter((n: Notice) => n.type === 'Paper Setter').length,
+    invitation: notices.filter((n: Notice) => n.type === 'Invitation').length,
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -103,12 +109,6 @@ export default function NotificationsPage() {
       month: 'short',
       year: 'numeric',
     });
-  };
-
-  const priorityStyles: Record<string, string> = {
-    HIGH: 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400',
-    NORMAL: 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400',
-    LOW: 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400',
   };
 
   if (isLoading) {
@@ -188,11 +188,11 @@ export default function NotificationsPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Badge className="bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 px-3 py-1">
-              {highPriorityCount} High Priority
+            <Badge className="bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 px-3 py-1">
+              {typeCounts.general} General
             </Badge>
             <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 px-3 py-1">
-              {activeCount} Active
+              {withFileCount} With Files
             </Badge>
             <Badge className="bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-500/20 px-3 py-1">
               {totalCount} Total
@@ -221,29 +221,13 @@ export default function NotificationsPage() {
           </div>
 
           <div className="min-w-[180px]">
-            <label className="text-slate-500 dark:text-slate-400 text-sm mb-2 block">Priority</label>
-            <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+            <label className="text-slate-500 dark:text-slate-400 text-sm mb-2 block">Type</label>
+            <Select value={selectedType} onValueChange={setSelectedType}>
               <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white">
-                <SelectValue placeholder="All Priorities" />
+                <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                {priorityOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="min-w-[150px]">
-            <label className="text-slate-500 dark:text-slate-400 text-sm mb-2 block">Status</label>
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                {statusOptions.map((option) => (
+                {typeOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
                     {option.label}
                   </SelectItem>
@@ -280,21 +264,25 @@ export default function NotificationsPage() {
                     Title
                   </th>
                   <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
-                    Priority
+                    <Tag className="h-4 w-4 inline mr-1" />
+                    Type
+                  </th>
+                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
+                    <MessageSquare className="h-4 w-4 inline mr-1" />
+                    Message
                   </th>
                   <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
                     <Building2 className="h-4 w-4 inline mr-1" />
                     School
                   </th>
                   <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
-                    <User className="h-4 w-4 inline mr-1" />
-                    Created By
-                  </th>
-                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
                     <Calendar className="h-4 w-4 inline mr-1" />
                     Date
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">Status</th>
+                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
+                    <Paperclip className="h-4 w-4 inline mr-1" />
+                    File
+                  </th>
                   <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">Actions</th>
                 </tr>
               </thead>
@@ -316,23 +304,27 @@ export default function NotificationsPage() {
                         </span>
                       </td>
                       <td className="py-4 px-5">
-                        <Badge className={priorityStyles[notice.priority]}>
-                          {notice.priority}
+                        <Badge className={typeStyles[notice.type] || typeStyles['General']}>
+                          {notice.type || 'General'}
                         </Badge>
+                      </td>
+                      <td className="py-4 px-5 max-w-[300px]">
+                        <ExpandableText 
+                          text={notice.content} 
+                          maxLength={60} 
+                          className="text-slate-600 dark:text-slate-400 text-sm" 
+                        />
                       </td>
                       <td className="py-4 px-5 text-slate-700 dark:text-slate-300 max-w-[200px] truncate" title={notice.school?.name || 'All Schools'}>
                         {notice.school?.name || 'All Schools'}
                       </td>
-                      <td className="py-4 px-5 text-slate-600 dark:text-slate-400">
-                        {notice.creator?.name || 'System'}
-                      </td>
                       <td className="py-4 px-5 text-slate-600 dark:text-slate-400">{formatDate(notice.created_at)}</td>
                       <td className="py-4 px-5">
-                        <Badge className={notice.is_active 
+                        <Badge className={notice.file_url 
                           ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' 
                           : 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
                         }>
-                          {notice.is_active ? 'Active' : 'Inactive'}
+                          {notice.file_url ? 'Yes' : 'No'}
                         </Badge>
                       </td>
                       <td className="py-4 px-5">

@@ -1,31 +1,104 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View,
     Text,
-    StyleSheet,
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
     RefreshControl,
+    TextInput,
+    Linking,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { styled } from 'nativewind';
 import apiClient from '../../../../src/api/client';
+
+const StyledView = styled(View);
+const StyledText = styled(Text);
+const StyledScrollView = styled(ScrollView);
+const StyledTouchable = styled(TouchableOpacity);
+const StyledInput = styled(TextInput);
 
 interface Notice {
     id: string;
     title: string;
     content: string;
     priority: 'HIGH' | 'NORMAL' | 'LOW';
+    type?: 'General' | 'Paper Setter' | 'Paper Checker' | 'Invitation' | 'Push Notification';
+    subject?: string;
+    venue?: string;
+    event_time?: string;
+    event_date?: string;
     published_at: string;
     created_at: string;
+    file_url?: string;
+    file_name?: string;
     creator?: {
         id: string;
         name: string;
     };
 }
 
+type PriorityFilter = 'ALL' | 'HIGH' | 'NORMAL' | 'LOW';
+
+// Type-based styling configuration
+const getTypeStyle = (type?: Notice['type']) => {
+    switch (type) {
+        case 'Paper Setter':
+            return {
+                bg: '#f0fdf4',
+                text: '#16a34a',
+                border: '#16a34a',
+                icon: 'create-outline' as const,
+                label: 'Paper Setter',
+            };
+        case 'Paper Checker':
+            return {
+                bg: '#fef3c7',
+                text: '#d97706',
+                border: '#d97706',
+                icon: 'checkmark-done-outline' as const,
+                label: 'Paper Checker',
+            };
+        case 'Invitation':
+            return {
+                bg: '#fae8ff',
+                text: '#a855f7',
+                border: '#a855f7',
+                icon: 'calendar-outline' as const,
+                label: 'Invitation',
+            };
+        case 'Push Notification':
+            return {
+                bg: '#dbeafe',
+                text: '#2563eb',
+                border: '#2563eb',
+                icon: 'notifications-outline' as const,
+                label: 'Notification',
+            };
+        default: // General
+            return {
+                bg: '#f1f5f9',
+                text: '#475569',
+                border: '#475569',
+                icon: 'document-text-outline' as const,
+                label: 'General',
+            };
+    }
+};
+
+const PRIORITY_OPTIONS: { value: PriorityFilter; label: string; icon: string; color: string }[] = [
+    { value: 'ALL', label: 'All', icon: 'layers-outline', color: '#6366f1' },
+    { value: 'HIGH', label: 'High', icon: 'alert-circle', color: '#ef4444' },
+    { value: 'NORMAL', label: 'Normal', icon: 'notifications', color: '#f59e0b' },
+    { value: 'LOW', label: 'Low', icon: 'information-circle', color: '#3b82f6' },
+];
+
 export default function NoticesScreen() {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('ALL');
+
     const {
         data: notices,
         isLoading,
@@ -39,7 +112,6 @@ export default function NoticesScreen() {
                 const response = await apiClient.get('/notices');
                 return response.data;
             } catch (err: any) {
-                // Return empty array if endpoint not found (not implemented yet)
                 if (err.response?.status === 404) {
                     return [];
                 }
@@ -48,27 +120,74 @@ export default function NoticesScreen() {
         },
     });
 
-    const getNoticeIcon = (priority: Notice['priority']) => {
+    const filteredNotices = useMemo(() => {
+        if (!notices) return [];
+        
+        let filtered = notices;
+        
+        if (priorityFilter !== 'ALL') {
+            filtered = filtered.filter(notice => notice.priority === priorityFilter);
+        }
+        
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            filtered = filtered.filter(
+                notice =>
+                    notice.title.toLowerCase().includes(query) ||
+                    notice.content.toLowerCase().includes(query)
+            );
+        }
+        
+        return filtered;
+    }, [notices, priorityFilter, searchQuery]);
+
+    const getPriorityConfig = (priority: Notice['priority']) => {
         switch (priority) {
             case 'HIGH':
-                return { name: 'alert-circle', color: '#ef4444' };
+                return {
+                    icon: 'alert-circle',
+                    color: '#ef4444',
+                    borderColor: '#ef4444',
+                    badgeBg: '#fef2f2',
+                    badgeTextColor: '#dc2626',
+                };
             case 'LOW':
-                return { name: 'information-circle', color: '#3b82f6' };
+                return {
+                    icon: 'information-circle',
+                    color: '#3b82f6',
+                    borderColor: '#3b82f6',
+                    badgeBg: '#eff6ff',
+                    badgeTextColor: '#2563eb',
+                };
             default:
-                return { name: 'notifications', color: '#f59e0b' };
+                return {
+                    icon: 'notifications',
+                    color: '#f59e0b',
+                    borderColor: '#f59e0b',
+                    badgeBg: '#fffbeb',
+                    badgeTextColor: '#d97706',
+                };
         }
     };
 
-    const getNoticePriorityStyle = (priority: Notice['priority']) => {
-        switch (priority) {
-            case 'HIGH':
-                return { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' };
-            case 'LOW':
-                return { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' };
-            default:
-                return { bg: '#fffbeb', text: '#d97706', border: '#fde68a' };
-        }
+    const formatEventDate = (dateString?: string) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-IN', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        });
     };
+
+    const formatEventTime = (timeString?: string) => {
+        if (!timeString) return '';
+        const [hours, minutes] = timeString.split(':');
+        const hour = parseInt(hours, 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
     };
 
     const formatDate = (dateString: string) => {
@@ -89,216 +208,290 @@ export default function NoticesScreen() {
 
     if (isLoading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#3b82f6" />
-                <Text style={styles.loadingText}>Loading notices...</Text>
-            </View>
+            <StyledView className="flex-1 justify-center items-center bg-gray-50">
+                <StyledView className="bg-white p-8 rounded-3xl items-center" 
+                    style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5 }}>
+                    <ActivityIndicator size="large" color="#6366f1" />
+                    <StyledText className="mt-4 text-base text-gray-600 font-medium">
+                        Loading notices...
+                    </StyledText>
+                </StyledView>
+            </StyledView>
         );
     }
 
     if (error) {
         return (
-            <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
-                <Text style={styles.errorText}>Failed to load notices</Text>
-                <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
-                    <Text style={styles.retryButtonText}>Retry</Text>
-                </TouchableOpacity>
-            </View>
+            <StyledView className="flex-1 justify-center items-center bg-gray-50 p-6">
+                <StyledView className="bg-white p-8 rounded-3xl items-center"
+                    style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5, maxWidth: 320 }}>
+                    <StyledView className="w-20 h-20 rounded-full bg-red-50 justify-center items-center mb-4">
+                        <Ionicons name="cloud-offline-outline" size={40} color="#ef4444" />
+                    </StyledView>
+                    <StyledText className="text-lg font-bold text-gray-800 mb-2">
+                        Connection Error
+                    </StyledText>
+                    <StyledText className="text-sm text-gray-500 text-center mb-6">
+                        Unable to load notices. Please check your connection.
+                    </StyledText>
+                    <StyledTouchable
+                        className="bg-indigo-500 px-8 py-3 rounded-xl"
+                        onPress={() => refetch()}
+                        activeOpacity={0.8}
+                    >
+                        <StyledText className="text-white font-semibold">Try Again</StyledText>
+                    </StyledTouchable>
+                </StyledView>
+            </StyledView>
         );
     }
 
     return (
-        <View style={styles.container}>
+        <StyledView className="flex-1 bg-gray-100">
+            {/* Header Section */}
+            <StyledView className="bg-white px-4 pt-3 pb-4"
+                style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+                {/* Search Bar */}
+                <StyledView className="flex-row items-center bg-gray-100 rounded-2xl px-4 py-3 mb-3">
+                    <Ionicons name="search" size={20} color="#64748b" />
+                    <StyledInput
+                        className="flex-1 ml-3 text-base text-gray-800"
+                        placeholder="Search notices..."
+                        placeholderTextColor="#94a3b8"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                        <StyledTouchable onPress={() => setSearchQuery('')} activeOpacity={0.7}>
+                            <Ionicons name="close-circle" size={20} color="#94a3b8" />
+                        </StyledTouchable>
+                    )}
+                </StyledView>
+
+                {/* Filter Pills */}
+                <StyledScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 2 }}
+                >
+                    {PRIORITY_OPTIONS.map((option) => {
+                        const isActive = priorityFilter === option.value;
+                        return (
+                            <StyledTouchable
+                                key={option.value}
+                                onPress={() => setPriorityFilter(option.value)}
+                                activeOpacity={0.8}
+                                className={`flex-row items-center px-4 py-2.5 mr-2 rounded-full ${
+                                    isActive ? 'bg-indigo-500' : 'bg-gray-100'
+                                }`}
+                            >
+                                <Ionicons
+                                    name={option.icon as any}
+                                    size={16}
+                                    color={isActive ? '#ffffff' : option.color}
+                                />
+                                <StyledText
+                                    className={`ml-2 text-sm font-semibold ${
+                                        isActive ? 'text-white' : 'text-gray-600'
+                                    }`}
+                                >
+                                    {option.label}
+                                </StyledText>
+                            </StyledTouchable>
+                        );
+                    })}
+                </StyledScrollView>
+            </StyledView>
+
             {/* Notices List */}
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
+            <StyledScrollView
+                className="flex-1"
+                contentContainerStyle={{ padding: 16 }}
                 refreshControl={
-                    <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+                    <RefreshControl 
+                        refreshing={isRefetching} 
+                        onRefresh={refetch}
+                        colors={['#6366f1']}
+                        tintColor="#6366f1"
+                    />
                 }
             >
-                {notices && notices.length > 0 ? (
-                    <>
-                        {notices.map((notice) => {
-                            const icon = getNoticeIcon(notice.priority);
-                            const priorityStyle = getNoticePriorityStyle(notice.priority);
-                            
-                            return (
-                                <View
-                                    key={notice.id}
-                                    style={[
-                                        styles.noticeCard,
-                                        { borderLeftColor: priorityStyle.text },
-                                    ]}
-                                >
-                                    <View style={styles.noticeHeader}>
-                                        <View
-                                            style={[
-                                                styles.typeBadge,
-                                                {
-                                                    backgroundColor: priorityStyle.bg,
-                                                    borderColor: priorityStyle.border,
-                                                },
-                                            ]}
+                {filteredNotices && filteredNotices.length > 0 ? (
+                    filteredNotices.map((notice) => {
+                        const config = getPriorityConfig(notice.priority);
+                        const typeStyle = getTypeStyle(notice.type);
+                        
+                        return (
+                            <StyledView
+                                key={notice.id}
+                                className="bg-white rounded-2xl mb-4 overflow-hidden"
+                                style={{ 
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.06,
+                                    shadowRadius: 8,
+                                    elevation: 3,
+                                    borderLeftWidth: 4,
+                                    borderLeftColor: typeStyle.border,
+                                }}
+                            >
+                                {/* Card Header */}
+                                <StyledView className="flex-row justify-between items-center px-4 pt-4 pb-2">
+                                    <StyledView className="flex-row items-center gap-2">
+                                        {/* Type Badge */}
+                                        <StyledView 
+                                            className="flex-row items-center px-3 py-1.5 rounded-full"
+                                            style={{ backgroundColor: typeStyle.bg }}
                                         >
                                             <Ionicons
-                                                name={icon.name as any}
+                                                name={typeStyle.icon}
                                                 size={14}
-                                                color={priorityStyle.text}
+                                                color={typeStyle.text}
                                             />
-                                            <Text
-                                                style={[
-                                                    styles.typeText,
-                                                    { color: priorityStyle.text },
-                                                ]}
+                                            <StyledText 
+                                                className="ml-1.5 text-xs font-bold"
+                                                style={{ color: typeStyle.text, textTransform: 'uppercase' }}
                                             >
-                                                {notice.priority}
-                                            </Text>
-                                        </View>
-                                        <Text style={styles.dateText}>
+                                                {typeStyle.label}
+                                            </StyledText>
+                                        </StyledView>
+                                        {/* Priority Badge for HIGH */}
+                                        {notice.priority === 'HIGH' && (
+                                            <StyledView 
+                                                className="flex-row items-center px-2 py-1 rounded-full"
+                                                style={{ backgroundColor: '#fef2f2' }}
+                                            >
+                                                <Ionicons name="alert-circle" size={12} color="#dc2626" />
+                                                <StyledText className="ml-1 text-xs font-bold" style={{ color: '#dc2626' }}>
+                                                    URGENT
+                                                </StyledText>
+                                            </StyledView>
+                                        )}
+                                    </StyledView>
+                                    <StyledView className="flex-row items-center">
+                                        <Ionicons name="time-outline" size={14} color="#94a3b8" />
+                                        <StyledText className="ml-1 text-xs text-gray-400">
                                             {formatDate(notice.published_at || notice.created_at)}
-                                        </Text>
-                                    </View>
-                                    <Text style={styles.noticeTitle}>{notice.title}</Text>
-                                    <Text style={styles.noticeContent}>{notice.content}</Text>
-                                    {notice.creator?.name && (
-                                        <Text style={styles.authorText}>— {notice.creator.name}</Text>
+                                        </StyledText>
+                                    </StyledView>
+                                </StyledView>
+
+                                {/* Card Content */}
+                                <StyledView className="px-4 pb-4">
+                                    <StyledText className="text-lg font-bold text-gray-800 mb-2">
+                                        {notice.title}
+                                    </StyledText>
+
+                                    {/* Subject for Paper Setter/Checker */}
+                                    {(notice.type === 'Paper Setter' || notice.type === 'Paper Checker') && notice.subject && (
+                                        <StyledView className="flex-row items-center bg-gray-100 px-3 py-2 rounded-lg mb-3">
+                                            <Ionicons name="book-outline" size={16} color="#6b7280" />
+                                            <StyledText className="ml-2 text-sm font-medium text-gray-700">
+                                                Subject: {notice.subject}
+                                            </StyledText>
+                                        </StyledView>
                                     )}
-                                </View>
-                            );
-                        })}
-                    </>
+
+                                    {/* Invitation Details */}
+                                    {notice.type === 'Invitation' && (
+                                        <StyledView className="bg-purple-50 rounded-lg p-3 mb-3">
+                                            {notice.venue && (
+                                                <StyledView className="flex-row items-center mb-2">
+                                                    <Ionicons name="location-outline" size={16} color="#6b7280" />
+                                                    <StyledText className="ml-2 text-sm text-gray-700">{notice.venue}</StyledText>
+                                                </StyledView>
+                                            )}
+                                            {notice.event_date && (
+                                                <StyledView className="flex-row items-center mb-2">
+                                                    <Ionicons name="calendar-outline" size={16} color="#6b7280" />
+                                                    <StyledText className="ml-2 text-sm text-gray-700">{formatEventDate(notice.event_date)}</StyledText>
+                                                </StyledView>
+                                            )}
+                                            {notice.event_time && (
+                                                <StyledView className="flex-row items-center">
+                                                    <Ionicons name="time-outline" size={16} color="#6b7280" />
+                                                    <StyledText className="ml-2 text-sm text-gray-700">{formatEventTime(notice.event_time)}</StyledText>
+                                                </StyledView>
+                                            )}
+                                        </StyledView>
+                                    )}
+
+                                    <StyledText className="text-sm text-gray-600 leading-5" numberOfLines={3}>
+                                        {notice.content}
+                                    </StyledText>
+
+                                    {/* File Attachment */}
+                                    {notice.file_url && (
+                                        <StyledTouchable
+                                            className="flex-row items-center bg-indigo-50 mt-4 px-4 py-3 rounded-xl"
+                                            onPress={() => Linking.openURL(notice.file_url!)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <StyledView className="w-10 h-10 bg-indigo-100 rounded-xl justify-center items-center mr-3">
+                                                <MaterialCommunityIcons 
+                                                    name="file-document-outline" 
+                                                    size={22} 
+                                                    color="#6366f1" 
+                                                />
+                                            </StyledView>
+                                            <StyledView className="flex-1">
+                                                <StyledText className="text-sm font-semibold text-indigo-700" numberOfLines={1}>
+                                                    {notice.file_name || 'View Attachment'}
+                                                </StyledText>
+                                                <StyledText className="text-xs text-indigo-400">
+                                                    Tap to open file
+                                                </StyledText>
+                                            </StyledView>
+                                            <Ionicons name="open-outline" size={18} color="#6366f1" />
+                                        </StyledTouchable>
+                                    )}
+
+                                    {/* Author Info */}
+                                    {/* {notice.creator?.name && (
+                                        <StyledView className="flex-row items-center mt-4 pt-3 border-t border-gray-100">
+                                            <StyledView className="w-8 h-8 bg-gray-100 rounded-full justify-center items-center mr-2">
+                                                <Ionicons name="person" size={16} color="#64748b" />
+                                            </StyledView>
+                                            <StyledView>
+                                                <StyledText className="text-xs text-gray-400">Posted by</StyledText>
+                                                <StyledText className="text-sm font-medium text-gray-700">
+                                                    {notice.creator.name}
+                                                </StyledText>
+                                            </StyledView>
+                                        </StyledView>
+                                    )} */}
+                                </StyledView>
+                            </StyledView>
+                        );
+                    })
                 ) : (
-                    <View style={styles.emptyContainer}>
-                        <Ionicons name="notifications-off-outline" size={64} color="#d1d5db" />
-                        <Text style={styles.emptyTitle}>No Notices</Text>
-                        <Text style={styles.emptyText}>
-                            There are no important notices at this time. Check back later for updates.
-                        </Text>
-                    </View>
+                    <StyledView className="flex-1 justify-center items-center pt-20">
+                        <StyledView className="w-24 h-24 bg-gray-200 rounded-full justify-center items-center mb-6">
+                            <Ionicons name="notifications-off-outline" size={48} color="#94a3b8" />
+                        </StyledView>
+                        <StyledText className="text-xl font-bold text-gray-700 mb-2">
+                            No Notices
+                        </StyledText>
+                        <StyledText className="text-sm text-gray-500 text-center px-8 mb-6">
+                            {searchQuery || priorityFilter !== 'ALL'
+                                ? 'No notices match your filter criteria.'
+                                : 'There are no notices at this time. Check back later for updates.'}
+                        </StyledText>
+                        {(searchQuery || priorityFilter !== 'ALL') && (
+                            <StyledTouchable
+                                className="bg-gray-200 px-6 py-3 rounded-xl"
+                                onPress={() => {
+                                    setSearchQuery('');
+                                    setPriorityFilter('ALL');
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                <StyledText className="text-gray-700 font-semibold">Clear Filters</StyledText>
+                            </StyledTouchable>
+                        )}
+                    </StyledView>
                 )}
-            </ScrollView>
-        </View>
+            </StyledScrollView>
+        </StyledView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f9fafb',
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        padding: 16,
-    },
-    noticeCard: {
-        backgroundColor: '#ffffff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        borderLeftWidth: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    noticeHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    typeBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
-        borderWidth: 1,
-        gap: 4,
-    },
-    typeText: {
-        fontSize: 11,
-        fontWeight: '600',
-        textTransform: 'uppercase',
-    },
-    dateText: {
-        fontSize: 12,
-        color: '#9ca3af',
-    },
-    noticeTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1f2937',
-        marginBottom: 8,
-    },
-    noticeContent: {
-        fontSize: 14,
-        color: '#4b5563',
-        lineHeight: 20,
-    },
-    authorText: {
-        fontSize: 13,
-        color: '#6b7280',
-        fontStyle: 'italic',
-        marginTop: 12,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#f9fafb',
-    },
-    loadingText: {
-        marginTop: 12,
-        fontSize: 16,
-        color: '#6b7280',
-    },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#f9fafb',
-        padding: 24,
-    },
-    errorText: {
-        fontSize: 16,
-        color: '#6b7280',
-        marginTop: 12,
-        marginBottom: 16,
-    },
-    retryButton: {
-        backgroundColor: '#3b82f6',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
-    },
-    retryButtonText: {
-        color: '#ffffff',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingTop: 80,
-    },
-    emptyTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#374151',
-        marginTop: 16,
-    },
-    emptyText: {
-        fontSize: 14,
-        color: '#6b7280',
-        textAlign: 'center',
-        marginTop: 8,
-        paddingHorizontal: 32,
-    },
-});

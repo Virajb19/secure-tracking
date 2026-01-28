@@ -32,7 +32,7 @@ export class PaperSetterController {
      * GET /api/paper-setter/search?subject=Mathematics&classLevel=10
      */
     @Get('search')
-    @Roles(UserRole.SUBJECT_COORDINATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
     async searchTeachers(
         @CurrentUser() user: User,
         @Query('subject') subject: string,
@@ -54,7 +54,7 @@ export class PaperSetterController {
      * POST /api/paper-setter/select
      */
     @Post('select')
-    @Roles(UserRole.SUBJECT_COORDINATOR)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
     async selectTeacher(
         @CurrentUser() user: User,
         @Body() body: {
@@ -78,7 +78,7 @@ export class PaperSetterController {
      * GET /api/paper-setter/my-selections
      */
     @Get('my-selections')
-    @Roles(UserRole.SUBJECT_COORDINATOR)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
     async getMySelections(@CurrentUser() user: User) {
         return this.paperSetterService.getCoordinatorSelections(user.id);
     }
@@ -111,7 +111,7 @@ export class PaperSetterController {
      * POST /api/paper-setter/:id/official-order
      */
     @Post(':id/official-order')
-    @Roles(UserRole.SUBJECT_COORDINATOR)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
     @UseInterceptors(FileInterceptor('file'))
     async uploadOfficialOrder(
         @CurrentUser() user: User,
@@ -126,7 +126,7 @@ export class PaperSetterController {
      * GET /api/paper-setter/school-count/:schoolId
      */
     @Get('school-count/:schoolId')
-    @Roles(UserRole.SUBJECT_COORDINATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
     async getSchoolCount(@Param('schoolId') schoolId: string) {
         return this.paperSetterService.getSchoolSelectionCount(schoolId);
     }

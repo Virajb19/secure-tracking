@@ -14,8 +14,6 @@ enum UserRole {
   HEADMASTER
   TEACHER
   CENTER_SUPERINTENDENT
-  SUBJECT_COORDINATOR
-  DEALING_ASSISTANT
 }
 
 enum TaskStatus {
@@ -312,16 +310,24 @@ model EventInvitation {
 }
 
 // Official Notices from SEBA/Administration
+// CRITICAL CONSTRAINT: Notices can ONLY be created by ADMIN or SUPER_ADMIN users
+// The created_by field MUST reference a user with role ADMIN or SUPER_ADMIN
 model Notice {
   id           String    @id @default(uuid()) @db.Uuid
   title        String    @db.VarChar(255)
   content      String    @db.Text
-  priority     String    @db.VarChar(20) @default("NORMAL")  // HIGH, NORMAL, LOW
+  type         String    @db.VarChar(50) @default("General")  // General, Paper Setter, Paper Checker, Invitation, Push Notification
+  subject      String?   @db.VarChar(100)  // For Paper Setter/Checker
+  venue        String?   @db.VarChar(255)  // For Invitation
+  event_time   String?   @db.VarChar(20)   // For Invitation (HH:MM format)
+  event_date   DateTime? @db.Date          // For Invitation
   published_at DateTime  @default(now())
   expires_at   DateTime?
   is_active    Boolean   @default(true)
   school_id    String?   @db.Uuid
   created_by   String?   @db.Uuid
+  file_url     String?   @db.Text          // Appwrite bucket URL for uploaded file
+  file_name    String?   @db.VarChar(255)
   created_at   DateTime  @default(now())
   updated_at   DateTime  @default(now()) @updatedAt
 
@@ -329,10 +335,13 @@ model Notice {
   creator      User?     @relation("NoticeCreator", fields: [created_by], references: [id])
 
   @@index([school_id])
+  @@index([type])
   @@map("notices")
 }
 
 // Official Circulars/Documents
+// CRITICAL CONSTRAINT: Circulars can ONLY be created by ADMIN or SUPER_ADMIN users
+// The created_by field MUST reference a user with role ADMIN or SUPER_ADMIN
 model Circular {
   id             String    @id @default(uuid()) @db.Uuid
   circular_no    String    @unique @db.VarChar(50)

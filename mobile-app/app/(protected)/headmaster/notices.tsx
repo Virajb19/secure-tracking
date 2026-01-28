@@ -15,12 +15,18 @@ import {
     TextInput,
     ActivityIndicator,
     RefreshControl,
+    Image,
+    Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../src/api/client';
+
+// No notices image - using a URI since the GIF needs to be added to assets
+// To use: Place the no-notices.gif file in mobile-app/assets/ folder
+const NO_NOTICES_IMAGE_URI = 'https://raw.githubusercontent.com/AliARIOGLU/react-native-gif/main/assets/empty-box.gif';
 
 interface Notice {
     id: string;
@@ -30,6 +36,8 @@ interface Notice {
     created_at: string;
     author?: string;
     target?: 'SELF' | 'SCHOOL';
+    file_url?: string;
+    file_name?: string;
 }
 
 type TabType = 'self' | 'colleagues';
@@ -247,13 +255,30 @@ export default function NoticesScreen() {
                                     {notice.author && (
                                         <Text style={styles.authorText}>— {notice.author}</Text>
                                     )}
+                                    {/* File attachment */}
+                                    {notice.file_url && (
+                                        <TouchableOpacity 
+                                            style={styles.fileAttachment}
+                                            onPress={() => Linking.openURL(notice.file_url!)}
+                                        >
+                                            <Ionicons name="document-attach" size={18} color="#0d9488" />
+                                            <Text style={styles.fileText}>
+                                                {notice.file_name || 'View Attachment'}
+                                            </Text>
+                                            <Ionicons name="open-outline" size={16} color="#0d9488" />
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             );
                         })}
                     </>
                 ) : (
                     <View style={styles.emptyContainer}>
-                        <Ionicons name="notifications-off-outline" size={64} color="#d1d5db" />
+                        <Image 
+                            source={{ uri: NO_NOTICES_IMAGE_URI }}
+                            style={styles.emptyGif}
+                            resizeMode="contain"
+                        />
                         <Text style={styles.emptyTitle}>No Notices</Text>
                         <Text style={styles.emptyText}>
                             {searchQuery
@@ -396,6 +421,22 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         marginTop: 12,
     },
+    fileAttachment: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 12,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: '#ccfbf1',
+        borderRadius: 8,
+        gap: 8,
+    },
+    fileText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#0d9488',
+        fontWeight: '500',
+    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -435,7 +476,11 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingTop: 80,
+        paddingTop: 40,
+    },
+    emptyGif: {
+        width: 200,
+        height: 200,
     },
     emptyTitle: {
         fontSize: 18,

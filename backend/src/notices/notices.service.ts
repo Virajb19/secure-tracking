@@ -32,7 +32,19 @@ export class NoticesService {
                     schoolFilter,
                 ],
             },
-            include: {
+            select: {
+                id: true,
+                title: true,
+                content: true,
+                type: true,
+                subject: true,
+                venue: true,
+                event_time: true,
+                event_date: true,
+                published_at: true,
+                created_at: true,
+                file_url: true,
+                file_name: true,
                 creator: {
                     select: {
                         id: true,
@@ -41,7 +53,6 @@ export class NoticesService {
                 },
             },
             orderBy: [
-                { priority: 'asc' }, // HIGH comes before NORMAL, NORMAL before LOW
                 { published_at: 'desc' },
             ],
         });
