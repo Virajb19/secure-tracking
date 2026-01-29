@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -16,91 +18,228 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Download, FileText, Check, X, Loader2, AlertTriangle, Eye, RefreshCw } from 'lucide-react';
+import { Download, FileText, Check, X, Loader2, AlertTriangle, Eye, RefreshCw, Search } from 'lucide-react';
 import { formSubmissionsApi, FormSubmission } from '@/services/paper-setter.service';
+import { masterDataApi } from '@/services/api';
 import { toast } from 'sonner';
+import { RetryButton } from '@/components/RetryButton';
+import { RefreshTableButton } from '@/components/RefreshTableButton';
+import { ApproveFormButton } from '@/components/ApproveFormButton';
+import { RejectFormButton } from '@/components/RejectFormButton';
 import { twMerge } from 'tailwind-merge';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+// Animation variants for table rows
+const tableRowVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: {
+      delay: i * 0.03,
+      duration: 0.3
+    }
+  }),
+  exit: { opacity: 0, x: 20, transition: { duration: 0.2 } }
+};
 
 const formTypes = [
-  { value: '6A', label: 'Form 6A (Class VIII)' },
-  { value: '6B', label: 'Form 6B (Class IX - X)' },
-  { value: '6C_LOWER', label: 'Form 6C Lower (Class XI)' },
-  { value: '6C_HIGHER', label: 'Form 6C Higher (Class XII)' },
-  { value: '6D', label: 'Form 6D' },
+  { value: '6A', label: 'Form 6A (Teaching Staff Pre-Primary to Class 10)' },
+  { value: '6B', label: 'Form 6B (Non-Teaching Staff)' },
+  { value: '6C_LOWER', label: 'Form 6C Lower (Students Pre-Primary to Class 10)' },
+  { value: '6C_HIGHER', label: 'Form 6C Higher (Students Class 11 & 12)' },
+  { value: '6D', label: 'Form 6D (Teaching Staff Class 11 & 12)' },
 ];
+
+const classNames: Record<number, string> = {
+  0: 'Pre-Primary',
+  1: 'Class 1',
+  2: 'Class 2',
+  3: 'Class 3',
+  4: 'Class 4',
+  5: 'Class 5',
+  6: 'Class 6',
+  7: 'Class 7',
+  8: 'Class 8',
+  9: 'Class 9',
+  10: 'Class 10',
+  11: 'Class 11',
+  12: 'Class 12',
+};
 
 export default function Form6Page() {
   const queryClient = useQueryClient();
   const [formType, setFormType] = useState('all');
+  const [districtId, setDistrictId] = useState('all');
   const [page, setPage] = useState(1);
-  const [rejectDialog, setRejectDialog] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
-  const [rejectReason, setRejectReason] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewDialog, setViewDialog] = useState<{ open: boolean; schoolId: string | null; formType: string | null; schoolName: string }>({ 
+    open: false, 
+    schoolId: null, 
+    formType: null,
+    schoolName: ''
+  });
   const [downloadingXlsx, setDownloadingXlsx] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
 
-  // Fetch pending submissions
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['form-submissions', formType, page],
-    queryFn: () => formSubmissionsApi.getPending(
+  // Fetch districts for filter
+  const { data: districts = [] } = useQuery({
+    queryKey: ['districts'],
+    queryFn: masterDataApi.getDistricts,
+  });
+
+  // Fetch all submissions with filters
+  const { data, isFetching, error } = useQuery({
+    queryKey: ['form-submissions', formType, districtId, statusFilter, page],
+    queryFn: () => formSubmissionsApi.getAll(
       formType !== 'all' ? formType : undefined,
       page,
-      20
+      20,
+      districtId !== 'all' ? districtId : undefined,
+      statusFilter !== 'all' ? statusFilter : undefined
     ),
   });
 
-  // Approve mutation
-  const approveMutation = useMutation({
-    mutationFn: formSubmissionsApi.approve,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-submissions'] });
-      toast.success('Form approved successfully');
+  // Fetch form details for viewing
+  const { data: viewData, isLoading: viewLoading } = useQuery({
+    queryKey: ['form-details', viewDialog.formType, viewDialog.schoolId],
+    queryFn: async () => {
+      if (!viewDialog.schoolId || !viewDialog.formType) return null;
+      switch (viewDialog.formType) {
+        case '6A':
+          return formSubmissionsApi.getForm6ADetails(viewDialog.schoolId);
+        case '6B':
+          return formSubmissionsApi.getForm6BDetails(viewDialog.schoolId);
+        case '6C_LOWER':
+          return formSubmissionsApi.getForm6CLowerDetails(viewDialog.schoolId);
+        case '6C_HIGHER':
+          return formSubmissionsApi.getForm6CHigherDetails(viewDialog.schoolId);
+        case '6D':
+          return formSubmissionsApi.getForm6DDetails(viewDialog.schoolId);
+        default:
+          return null;
+      }
     },
-    onError: () => {
-      toast.error('Failed to approve form');
-    },
-  });
-
-  // Reject mutation
-  const rejectMutation = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => 
-      formSubmissionsApi.reject(id, reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-submissions'] });
-      setRejectDialog({ open: false, id: null });
-      setRejectReason('');
-      toast.success('Form rejected successfully');
-    },
-    onError: () => {
-      toast.error('Failed to reject form');
-    },
+    enabled: viewDialog.open && !!viewDialog.schoolId && !!viewDialog.formType,
   });
 
   const handleDownloadXlsx = async () => {
-    if (downloadingXlsx) return;
+    if (downloadingXlsx || submissions.length === 0) return;
     setDownloadingXlsx(true);
     
-    // Small delay for nicer animation
-    await new Promise((r) => setTimeout(r, 1000));
+    try {
+      // Create worksheet data
+      const wsData = submissions.map((sub, index) => ({
+        'Sl No.': index + 1,
+        'School Name': sub.school?.name || '-',
+        'Registration Code': sub.school?.registration_code || '-',
+        'District': sub.school?.district?.name || '-',
+        'Form Type': formTypes.find(f => f.value === sub.form_type)?.label || sub.form_type,
+        'Submitted At': sub.submitted_at 
+          ? new Date(sub.submitted_at).toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '-',
+        'Status': sub.status,
+      }));
+
+      // Create workbook and worksheet
+      const ws = XLSX.utils.json_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Form Submissions');
+
+      // Download
+      XLSX.writeFile(wb, `form-submissions-${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.success('Downloaded successfully');
+    } catch (err) {
+      toast.error('Failed to download');
+    } finally {
+      setDownloadingXlsx(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (downloadingPdf || submissions.length === 0) return;
+    setDownloadingPdf(true);
     
-    // TODO: Implement actual download logic - file will download directly
-    // For now just simulate the download process
-    setDownloadingXlsx(false);
-  };
+    try {
+      const doc = new jsPDF();
+      
+      // Title
+      doc.setFontSize(18);
+      doc.text('Form 6 Submissions Report', 14, 22);
+      
+      // Date
+      doc.setFontSize(10);
+      doc.text(`Generated: ${new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`, 14, 30);
 
-  const handleApprove = (id: string) => {
-    if (confirm('Are you sure you want to approve this form?')) {
-      approveMutation.mutate(id);
+      // Table data
+      const tableData = submissions.map((sub, index) => [
+        index + 1,
+        sub.school?.name || '-',
+        sub.school?.registration_code || '-',
+        sub.school?.district?.name || '-',
+        formTypes.find(f => f.value === sub.form_type)?.label?.replace(/Form \d[A-Z]? \(|\)/g, '') || sub.form_type,
+        sub.submitted_at 
+          ? new Date(sub.submitted_at).toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })
+          : '-',
+        sub.status,
+      ]);
+
+      autoTable(doc, {
+        head: [['#', 'School Name', 'Reg. Code', 'District', 'Form Type', 'Submitted', 'Status']],
+        body: tableData,
+        startY: 35,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [59, 130, 246] },
+      });
+
+      doc.save(`form-submissions-${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('PDF downloaded successfully');
+    } catch (err) {
+      console.error('PDF Error:', err);
+      toast.error('Failed to download PDF');
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
-  const handleReject = () => {
-    if (!rejectDialog.id || !rejectReason.trim()) {
-      toast.error('Please provide a reason for rejection');
-      return;
-    }
-    rejectMutation.mutate({ id: rejectDialog.id, reason: rejectReason });
+  const handleView = (submission: FormSubmission) => {
+    setViewDialog({
+      open: true,
+      schoolId: submission.school_id,
+      formType: submission.form_type,
+      schoolName: `${submission.school?.registration_code || ''} - ${submission.school?.name || 'School'}`
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -116,16 +255,205 @@ export default function Form6Page() {
     }
   };
 
-  const submissions = data?.data || [];
+  const allSubmissions = data?.data || [];
   const total = data?.total || 0;
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-red-400">
-        <AlertTriangle className="mr-2" /> Failed to load form submissions
-      </div>
+  // Filter submissions by search query (client-side)
+  const submissions = useMemo(() => {
+    if (!searchQuery.trim()) return allSubmissions;
+    const query = searchQuery.toLowerCase();
+    return allSubmissions.filter((sub: FormSubmission) => 
+      sub.school?.name?.toLowerCase().includes(query) ||
+      sub.school?.registration_code?.toLowerCase().includes(query)
     );
-  }
+  }, [allSubmissions, searchQuery]);
+
+  // Render view dialog content based on form type
+  const renderViewDialogContent = () => {
+    if (viewLoading) {
+      return (
+        <div className="flex items-center justify-center h-32">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        </div>
+      );
+    }
+
+    if (!viewData) {
+      return <p className="text-slate-500 text-center py-8">No data available</p>;
+    }
+
+    // Form 6A or 6D - Teaching Staff
+    if (viewDialog.formType === '6A' || viewDialog.formType === '6D') {
+      const staffData = viewData as { school: any; staff: any[] };
+      return (
+        <div className="overflow-x-auto max-h-[60vh]">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-slate-700 dark:text-slate-300">Sl No.</TableHead>
+                <TableHead className="text-slate-700 dark:text-slate-300">Name</TableHead>
+                <TableHead className="text-slate-700 dark:text-slate-300">Designation</TableHead>
+                <TableHead className="text-slate-700 dark:text-slate-300">Experience</TableHead>
+                {viewDialog.formType === '6A' && (
+                  <>
+                    <TableHead className="text-slate-700 dark:text-slate-300">Class 8 Subject</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-300">Class 9 Subject</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-300">Class 10 Subject</TableHead>
+                  </>
+                )}
+                {viewDialog.formType === '6D' && (
+                  <>
+                    <TableHead className="text-slate-700 dark:text-slate-300">Class 11 Subject</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-300">Class 12 Subject</TableHead>
+                  </>
+                )}
+                <TableHead className="text-slate-700 dark:text-slate-300">Phone Number</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {staffData.staff.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={viewDialog.formType === '6A' ? 8 : 7} className="text-center py-8 text-slate-500">
+                    No teaching staff found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                staffData.staff.map((staff, index) => {
+                  const subjectsByClass: Record<number, string[]> = {};
+                  staff.teaching_assignments?.forEach((ta: any) => {
+                    if (!subjectsByClass[ta.class_level]) subjectsByClass[ta.class_level] = [];
+                    subjectsByClass[ta.class_level].push(ta.subject);
+                  });
+
+                  return (
+                    <TableRow key={staff.id}>
+                      <TableCell className="text-slate-700 dark:text-slate-300">{index + 1}</TableCell>
+                      <TableCell className="text-slate-700 dark:text-slate-300">{staff.user?.name || '-'}</TableCell>
+                      <TableCell className="text-slate-700 dark:text-slate-300">{staff.designation || 'Teacher'}</TableCell>
+                      <TableCell className="text-slate-700 dark:text-slate-300">{staff.years_of_experience || 0}</TableCell>
+                      {viewDialog.formType === '6A' && (
+                        <>
+                          <TableCell className="text-slate-700 dark:text-slate-300">{subjectsByClass[8]?.join(', ') || ''}</TableCell>
+                          <TableCell className="text-slate-700 dark:text-slate-300">{subjectsByClass[9]?.join(', ') || ''}</TableCell>
+                          <TableCell className="text-slate-700 dark:text-slate-300">{subjectsByClass[10]?.join(', ') || ''}</TableCell>
+                        </>
+                      )}
+                      {viewDialog.formType === '6D' && (
+                        <>
+                          <TableCell className="text-slate-700 dark:text-slate-300">{subjectsByClass[11]?.join(', ') || ''}</TableCell>
+                          <TableCell className="text-slate-700 dark:text-slate-300">{subjectsByClass[12]?.join(', ') || ''}</TableCell>
+                        </>
+                      )}
+                      <TableCell className="text-slate-700 dark:text-slate-300">{staff.user?.phone || '-'}</TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      );
+    }
+
+    // Form 6B - Non-Teaching Staff
+    if (viewDialog.formType === '6B') {
+      const staffData = viewData as { school: any; staff: any[] };
+      return (
+        <div className="overflow-x-auto max-h-[60vh]">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-slate-700 dark:text-slate-300">Sl No.</TableHead>
+                <TableHead className="text-slate-700 dark:text-slate-300">Full Name</TableHead>
+                <TableHead className="text-slate-700 dark:text-slate-300">Qualification</TableHead>
+                <TableHead className="text-slate-700 dark:text-slate-300">Nature of Work</TableHead>
+                <TableHead className="text-slate-700 dark:text-slate-300">Years of Service</TableHead>
+                <TableHead className="text-slate-700 dark:text-slate-300">Phone Number</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {staffData.staff.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                    No non-teaching staff found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                staffData.staff.map((staff, index) => (
+                  <TableRow key={staff.id}>
+                    <TableCell className="text-slate-700 dark:text-slate-300">{index + 1}</TableCell>
+                    <TableCell className="text-slate-700 dark:text-slate-300">{staff.full_name}</TableCell>
+                    <TableCell className="text-slate-700 dark:text-slate-300">{staff.qualification}</TableCell>
+                    <TableCell className="text-slate-700 dark:text-slate-300">{staff.nature_of_work}</TableCell>
+                    <TableCell className="text-slate-700 dark:text-slate-300">{staff.years_of_service}</TableCell>
+                    <TableCell className="text-slate-700 dark:text-slate-300">{staff.phone}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      );
+    }
+
+    // Form 6C Lower/Higher - Student Strength
+    if (viewDialog.formType === '6C_LOWER' || viewDialog.formType === '6C_HIGHER') {
+      const strengthData = viewData as { school: any; strengths: any[] };
+      const totals = strengthData.strengths.reduce(
+        (acc, s) => ({
+          boys: acc.boys + s.boys,
+          girls: acc.girls + s.girls,
+          sections: acc.sections + s.sections,
+        }),
+        { boys: 0, girls: 0, sections: 0 }
+      );
+
+      return (
+        <div className="overflow-x-auto max-h-[60vh]">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-slate-700 dark:text-slate-300">Class</TableHead>
+                <TableHead className="text-slate-700 dark:text-slate-300">Boys</TableHead>
+                <TableHead className="text-slate-700 dark:text-slate-300">Girls</TableHead>
+                <TableHead className="text-slate-700 dark:text-slate-300">Sections</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {strengthData.strengths.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+                    No student strength data found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                <>
+                  {strengthData.strengths.map((strength) => (
+                    <TableRow key={strength.id}>
+                      <TableCell className="text-slate-700 dark:text-slate-300 font-medium">
+                        {classNames[strength.class_level] || `Class ${strength.class_level}`}
+                      </TableCell>
+                      <TableCell className="text-slate-700 dark:text-slate-300">{strength.boys}</TableCell>
+                      <TableCell className="text-slate-700 dark:text-slate-300">{strength.girls}</TableCell>
+                      <TableCell className="text-slate-700 dark:text-slate-300">{strength.sections}</TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="bg-slate-100 dark:bg-slate-800 font-bold">
+                    <TableCell className="text-slate-900 dark:text-white">Total</TableCell>
+                    <TableCell className="text-slate-900 dark:text-white">{totals.boys}</TableCell>
+                    <TableCell className="text-slate-900 dark:text-white">{totals.girls}</TableCell>
+                    <TableCell className="text-slate-900 dark:text-white">{totals.sections}</TableCell>
+                  </TableRow>
+                </>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="space-y-6">
@@ -141,6 +469,7 @@ export default function Form6Page() {
           </div>
         </div>
         <div className="flex gap-3">
+          <RefreshTableButton queryKey={['form-submissions', formType, districtId, statusFilter, page]} isFetching={isFetching} />
           <button
             type="button"
             onClick={handleDownloadXlsx}
@@ -178,17 +507,18 @@ export default function Form6Page() {
           </button>
           <button
             type="button"
-            disabled={submissions.length === 0}
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf || submissions.length === 0}
             className={twMerge(
               "group gap-3 hover:-translate-y-1 cursor-pointer relative overflow-hidden border-slate-600 bg-slate-800 text-white flex items-center justify-center px-6 py-2 rounded-lg hover:bg-slate-700 duration-200 font-semibold",
-              submissions.length === 0 ? "pointer-events-none opacity-50 cursor-not-allowed hover:translate-y-0" : ""
+              (downloadingPdf || submissions.length === 0) ? "pointer-events-none opacity-50 cursor-not-allowed hover:translate-y-0" : ""
             )}
           >
             <span className="relative z-10 inline-flex items-center gap-2">
               <span className="grid place-items-center rounded-md bg-slate-700 p-2">
-                <FileText className="size-4" />
+                {downloadingPdf ? (<RefreshCw className="animate-spin size-4" />) : (<FileText className="size-4" />)}
               </span>
-              <span className="tracking-tight">Download PDF</span>
+              <span className="tracking-tight">{downloadingPdf ? "Downloading…" : "Download PDF"}</span>
             </span>
           </button>
         </div>
@@ -216,11 +546,25 @@ export default function Form6Page() {
 
       {/* Filters Card */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm dark:shadow-none">
+        {/* Search Bar */}
+        <div className="mb-4">
+          <label className="text-sm text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-2">
+            <Search className="h-4 w-4" />
+            Search School
+          </label>
+          <Input
+            placeholder="Search by school name or registration code..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="bg-slate-50 dark:bg-slate-800 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+          />
+        </div>
+
         {/* Filter Dropdowns */}
         <div className="flex flex-wrap gap-4 items-end mb-6">
-          <div className="flex-1 min-w-[250px]">
+          <div className="flex-1 min-w-[200px]">
             <label className="text-sm text-slate-500 dark:text-slate-400 mb-1 block">Form Type</label>
-            <Select value={formType} onValueChange={setFormType}>
+            <Select value={formType} onValueChange={(v) => { setFormType(v); setPage(1); }}>
               <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white">
                 <SelectValue placeholder="All Form Types" />
               </SelectTrigger>
@@ -232,13 +576,46 @@ export default function Form6Page() {
               </SelectContent>
             </Select>
           </div>
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-sm text-slate-500 dark:text-slate-400 mb-1 block">District</label>
+            <Select value={districtId} onValueChange={(v) => { setDistrictId(v); setPage(1); }}>
+              <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white">
+                <SelectValue placeholder="All Districts" />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <SelectItem value="all" className="text-slate-900 dark:text-white">All Districts</SelectItem>
+                {districts.map((d) => (
+                  <SelectItem key={d.id} value={d.id} className="text-slate-900 dark:text-white">{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1 min-w-[180px]">
+            <label className="text-sm text-slate-500 dark:text-slate-400 mb-1 block">Status</label>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+              <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <SelectItem value="all" className="text-slate-900 dark:text-white">All Status</SelectItem>
+                <SelectItem value="SUBMITTED" className="text-slate-900 dark:text-white">Pending</SelectItem>
+                <SelectItem value="APPROVED" className="text-slate-900 dark:text-white">Approved</SelectItem>
+                <SelectItem value="REJECTED" className="text-slate-900 dark:text-white">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Loading State */}
-        {isLoading ? (
+        {isFetching ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
           </div>
+        ) : error ? (
+          <RetryButton 
+            queryKey={['form-submissions']} 
+            message="Failed to load form submissions" 
+          />
         ) : (
           /* Table */
           <div className="overflow-x-auto">
@@ -254,15 +631,25 @@ export default function Form6Page() {
                 </tr>
               </thead>
               <tbody>
+                <AnimatePresence mode="popLayout">
                 {submissions.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-8 text-slate-500">
-                      No pending form submissions
+                      No form submissions found
                     </td>
                   </tr>
                 ) : (
                   submissions.map((submission, index) => (
-                    <tr key={submission.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <motion.tr 
+                      key={submission.id} 
+                      custom={index}
+                      variants={tableRowVariants}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      layout
+                      className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    >
                       <td className="py-4 px-4 text-slate-700 dark:text-slate-300">{(page - 1) * 20 + index + 1}</td>
                       <td className="py-4 px-4">
                         <div>
@@ -298,33 +685,28 @@ export default function Form6Page() {
                             variant="outline"
                             size="sm"
                             className="text-blue-400 border-blue-400 hover:bg-blue-400/10"
+                            onClick={() => handleView(submission)}
                           >
                             <Eye className="h-4 w-4 mr-1" /> View
                           </Button>
                           {submission.status === 'SUBMITTED' && (
                             <>
-                              <Button
-                                size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700"
-                                onClick={() => handleApprove(submission.id)}
-                                disabled={approveMutation.isPending}
-                              >
-                                <Check className="h-4 w-4 mr-1" /> Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => setRejectDialog({ open: true, id: submission.id })}
-                              >
-                                <X className="h-4 w-4 mr-1" /> Reject
-                              </Button>
+                              <ApproveFormButton 
+                                submissionId={submission.id} 
+                                formType={submission.form_type} 
+                              />
+                              <RejectFormButton 
+                                submissionId={submission.id} 
+                                formType={submission.form_type} 
+                              />
                             </>
                           )}
                         </div>
                       </td>
-                    </tr>
+                    </motion.tr>
                   ))
                 )}
+                </AnimatePresence>
               </tbody>
             </table>
           </div>
@@ -358,38 +740,23 @@ export default function Form6Page() {
         )}
       </div>
 
-      {/* Reject Dialog */}
-      <Dialog open={rejectDialog.open} onOpenChange={(open) => setRejectDialog({ open, id: open ? rejectDialog.id : null })}>
-        <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+      {/* View Form Details Dialog */}
+      <Dialog open={viewDialog.open} onOpenChange={(open) => setViewDialog({ ...viewDialog, open })}>
+        <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 max-w-4xl">
           <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-white">Reject Form Submission</DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-white">
+              {formTypes.find(f => f.value === viewDialog.formType)?.label || 'Form'} Details
+            </DialogTitle>
+            <DialogDescription className="text-slate-600 dark:text-slate-400">
+              {viewDialog.schoolName} | {formTypes.find(f => f.value === viewDialog.formType)?.label || viewDialog.formType}
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <label className="text-sm text-slate-600 dark:text-slate-400 mb-2 block">
-              Please provide a reason for rejection (required)
-            </label>
-            <Textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Enter rejection reason..."
-              className="bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
-              rows={4}
-            />
+            {renderViewDialogContent()}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectDialog({ open: false, id: null })}>
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleReject}
-              disabled={rejectMutation.isPending || !rejectReason.trim()}
-            >
-              {rejectMutation.isPending ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Rejecting...</>
-              ) : (
-                'Confirm Reject'
-              )}
+            <Button variant="outline" onClick={() => setViewDialog({ open: false, schoolId: null, formType: null, schoolName: '' })}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RetryButton } from '@/components/RetryButton';
 import {
   Select,
   SelectContent,
@@ -45,6 +46,7 @@ import { Circular, District, School } from '@/types';
 import { DeleteCircularButton } from '@/components/DeleteCircularButton';
 import { CircularFormSchema, circularFormSchema } from '@/lib/zod';
 import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
+import { RefreshTableButton } from '@/components/RefreshTableButton';
 
 // Animation variants
 const containerVariants = {
@@ -110,7 +112,7 @@ export default function CircularsPage() {
   const selectedDistrictId = form.watch('district_id');
 
   // Fetch circulars
-  const { data: circulars = [], isLoading: circularsLoading, error: circularsError } = useQuery<Circular[]>({
+  const { data: circulars = [], isLoading: circularsLoading, isFetching: circularsFetching, error: circularsError } = useQuery<Circular[]>({
     queryKey: ['circulars'],
     queryFn: circularsApi.getAll,
   });
@@ -607,13 +609,14 @@ export default function CircularsPage() {
           <span className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 rounded-full text-sm">
             {circulars.length} total
           </span>
+          <RefreshTableButton queryKey={['circulars']} isFetching={circularsFetching} />
         </div>
 
         <motion.div 
           className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
           variants={cardVariants}
         >
-          {circularsLoading ? (
+          {circularsLoading || circularsFetching ? (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <motion.div
                 animate={{ rotate: 360 }}
@@ -629,8 +632,7 @@ export default function CircularsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <div className="text-red-400 text-lg">Failed to load circulars</div>
-              <p className="text-slate-500 text-sm mt-2">Please refresh the page and try again</p>
+              <RetryButton queryKey={['circulars']} message="Failed to load circulars" />
             </motion.div>
           ) : circulars.length === 0 ? (
             <motion.div 

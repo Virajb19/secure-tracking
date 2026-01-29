@@ -1,18 +1,26 @@
 import { z } from 'zod';
 import { createZodDto } from 'nestjs-zod';
+import { NoticeType } from '@prisma/client';
 
 // Max file size: 5MB
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 // Notice types for categorization
-export const noticeTypes = ['General', 'Paper Setter', 'Paper Checker', 'Invitation', 'Push Notification'] as const;
+const noticeTypeEnum = z.enum([
+  NoticeType.GENERAL,
+  NoticeType.PAPER_SETTER,
+  NoticeType.PAPER_CHECKER,
+  NoticeType.INVITATION,
+  NoticeType.PUSH_NOTIFICATION,
+]);
+
 
 // Schema for creating a notice
 const CreateNoticeSchema = z.object({
     title: z.string().min(1, 'Title is required'),
     content: z.string().min(1, 'Content is required'),
     priority: z.enum(['HIGH', 'NORMAL', 'LOW']).optional().default('NORMAL'),
-    type: z.enum(noticeTypes).optional().default('General'),
+    type: noticeTypeEnum.optional().default(NoticeType.GENERAL),
     subject: z.string().optional(),  // For Paper Setter/Checker
     venue: z.string().optional(),     // For Invitation
     event_time: z.string().optional(), // For Invitation
@@ -29,7 +37,7 @@ const UpdateNoticeSchema = z.object({
     title: z.string().min(1, 'Title is required').optional(),
     content: z.string().min(1, 'Content is required').optional(),
     priority: z.enum(['HIGH', 'NORMAL', 'LOW']).optional(),
-    type: z.enum(noticeTypes).optional(),
+    type: noticeTypeEnum.optional(),
     subject: z.string().optional(),
     venue: z.string().optional(),
     event_time: z.string().optional(),
@@ -46,7 +54,7 @@ const SendNoticeSchema = z.object({
     user_ids: z.array(z.uuid('Invalid user ID')).min(1, 'At least one user ID is required'),
     title: z.string().min(1, 'Title is required'),
     message: z.string().min(1, 'Message is required').max(1000, 'Message cannot exceed 1000 characters'),
-    type: z.enum(noticeTypes).optional().default('General'),
+    type: noticeTypeEnum.optional().default(NoticeType.GENERAL),
     subject: z.string().optional(),  // For Paper Setter/Checker
     venue: z.string().optional(),     // For Invitation
     event_time: z.string().optional(), // For Invitation

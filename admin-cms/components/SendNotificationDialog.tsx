@@ -152,10 +152,19 @@ export function SendNotificationDialog({
         }
       }
 
+      // Map display type names to backend enum values
+      const typeToEnumMap: Record<NotificationType, string> = {
+        'General': 'GENERAL',
+        'Paper Setter': 'PAPER_SETTER',
+        'Paper Checker': 'PAPER_CHECKER',
+        'Invitation': 'INVITATION',
+        'Push Notification': 'PUSH_NOTIFICATION',
+      };
+
       // Build payload based on type
       let payload: any = {
         user_ids: recipientUserIds,
-        type: data.type,
+        type: typeToEnumMap[data.type],
         file_url: fileUrl,
         file_name: fileName,
         file_size: fileSize,

@@ -1,5 +1,7 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma';
 import { AppwriteModule } from './appwrite';
 import { AuthModule } from './auth/auth.module';
@@ -20,6 +22,7 @@ import { BankDetailsModule } from './bank-details/bank-details.module';
 import { UserStarsModule } from './user-stars/user-stars.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { FormSubmissionsModule } from './form-submissions/form-submissions.module';
+import { DevDelayMiddleware } from './shared/middlewares';
 
 /**
  * Root Application Module.
@@ -28,7 +31,9 @@ import { FormSubmissionsModule } from './form-submissions/form-submissions.modul
  * - Environment variables loading
  * - Prisma ORM with PostgreSQL
  * - Appwrite storage integration
+ * - Rate limiting (ThrottlerModule)
  * - All feature modules
+ * - Dev delay middleware for POST/DELETE (only in development)
  * 
  * IMPORTANT: AuditLogsModule is imported first (global module)
  * to ensure it's available for all other modules.
@@ -40,6 +45,13 @@ import { FormSubmissionsModule } from './form-submissions/form-submissions.modul
             isGlobal: true,
             envFilePath: '.env',
         }),
+
+        // Rate limiting - 100 requests per minute per IP
+        ThrottlerModule.forRoot([{
+            name: 'default',
+            ttl: 60000, // 1 minute in milliseconds
+            limit: 100, // 100 requests per minute
+        }]),
 
         // Prisma ORM Module (global)
         PrismaModule,
@@ -70,5 +82,25 @@ import { FormSubmissionsModule } from './form-submissions/form-submissions.modul
         AnalyticsModule,
         FormSubmissionsModule,
     ],
+    providers: [
+        // Apply ThrottlerGuard globally to all routes
+        {
+            provide: APP_GUARD,
+            useClass: ThrottlerGuard,
+        },
+    ],
 })
-export class AppModule { }
+export class AppModule implements NestModule {
+    constructor(private configService: ConfigService) {}
+
+    configure(consumer: MiddlewareConsumer) {
+        const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+        
+        // Only apply delay middleware in development mode
+        if (nodeEnv !== 'production') {
+            consumer
+                .apply(DevDelayMiddleware)
+                .forRoutes('*');
+        }
+    }
+}

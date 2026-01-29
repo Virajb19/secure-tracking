@@ -7,6 +7,7 @@ import {
     Param,
     UseGuards,
     Ip,
+    ParseUUIDPipe,
 } from '@nestjs/common';
 import { User, UserRole, ApprovalStatus } from '@prisma/client';
 import { JwtAuthGuard, RolesGuard } from '../shared/guards';
@@ -17,6 +18,74 @@ import { Form6Service } from './form-6.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class Form6Controller {
     constructor(private readonly form6Service: Form6Service) {}
+
+    // ===========================
+    // ADMIN ENDPOINTS
+    // ===========================
+
+    /**
+     * GET /form-6/admin/6a/:schoolId
+     * Get Form 6A details for a school (Admin only).
+     */
+    @Get('admin/6a/:schoolId')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    async getForm6ABySchool(
+        @Param('schoolId', new ParseUUIDPipe({ version: '4' })) schoolId: string,
+    ) {
+        return this.form6Service.getForm6ABySchool(schoolId);
+    }
+
+    /**
+     * GET /form-6/admin/6b/:schoolId
+     * Get Form 6B details for a school (Admin only).
+     */
+    @Get('admin/6b/:schoolId')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    async getForm6BBySchool(
+        @Param('schoolId', new ParseUUIDPipe({ version: '4' })) schoolId: string,
+    ) {
+        return this.form6Service.getForm6BBySchool(schoolId);
+    }
+
+    /**
+     * GET /form-6/admin/6c-lower/:schoolId
+     * Get Form 6C Lower details for a school (Admin only).
+     */
+    @Get('admin/6c-lower/:schoolId')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    async getForm6CLowerBySchool(
+        @Param('schoolId', new ParseUUIDPipe({ version: '4' })) schoolId: string,
+    ) {
+        return this.form6Service.getForm6CLowerBySchool(schoolId);
+    }
+
+    /**
+     * GET /form-6/admin/6c-higher/:schoolId
+     * Get Form 6C Higher details for a school (Admin only).
+     */
+    @Get('admin/6c-higher/:schoolId')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    async getForm6CHigherBySchool(
+        @Param('schoolId', new ParseUUIDPipe({ version: '4' })) schoolId: string,
+    ) {
+        return this.form6Service.getForm6CHigherBySchool(schoolId);
+    }
+
+    /**
+     * GET /form-6/admin/6d/:schoolId
+     * Get Form 6D details for a school (Admin only).
+     */
+    @Get('admin/6d/:schoolId')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    async getForm6DBySchool(
+        @Param('schoolId', new ParseUUIDPipe({ version: '4' })) schoolId: string,
+    ) {
+        return this.form6Service.getForm6DBySchool(schoolId);
+    }
+
+    // ===========================
+    // HEADMASTER ENDPOINTS
+    // ===========================
 
     /**
      * GET /form-6/teaching-staff-lower

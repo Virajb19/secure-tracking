@@ -27,7 +27,7 @@
  * - 100 Form Submissions
  */
 
-import { PrismaClient, UserRole, Gender, TaskStatus, EventType, FacultyType, ApprovalStatus, InvitationStatus, SelectionStatus, FormSubmissionStatus } from '@prisma/client';
+import { PrismaClient, UserRole, Gender, TaskStatus, EventType, FacultyType, ApprovalStatus, InvitationStatus, SelectionStatus, FormSubmissionStatus, NoticeType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -103,7 +103,14 @@ const locations = [
 
 const eventTypes = ['EXAM', 'MEETING', 'HOLIDAY', 'SPORTS', 'CULTURAL', 'WORKSHOP', 'SEMINAR', 'TRAINING', 'OTHER'];
 
-const noticeTypes = ['General', 'Paper Setter', 'Paper Checker', 'Invitation', 'Push Notification'];
+const noticeTypes: NoticeType[] = [
+  NoticeType.GENERAL,
+  NoticeType.PAPER_SETTER,
+  NoticeType.PAPER_CHECKER,
+  NoticeType.INVITATION,
+  NoticeType.PUSH_NOTIFICATION,
+];
+    
 
 const formTypes = ['6A', '6B', '6C_LOWER', '6C_HIGHER', '6D'];
 
@@ -164,7 +171,7 @@ async function main() {
     const plainPassword = '12345678';
 
     console.log('Creating Admin');
-    await prisma.user.create({data: {name: 'admin', email: 'admin@example.com', password: plainPassword, role: 'ADMIN', is_active: true, phone: '1234567890', gender: 'MALE'}});
+    await prisma.user.create({data: {name: 'admin', email: 'admin@gmail.com', password: plainPassword, role: 'ADMIN', is_active: true, phone: '1234567890', gender: 'MALE'}});
 
     // ==================== USERS (1500 records) ====================
     console.log('👥 Creating 1500 users...');
@@ -480,10 +487,10 @@ async function main() {
                 title: `${type} Notice ${i + 1} - ${randomElement(['Exam', 'Holiday', 'Meeting', 'Training'])}`,
                 content: `This is an important ${type.toLowerCase()} notice for all stakeholders.`,
                 type: type,
-                subject: (type === 'Paper Setter' || type === 'Paper Checker') ? randomElement(subjects) : null,
-                venue: type === 'Invitation' ? randomElement(locations) : null,
-                event_time: type === 'Invitation' ? `${randomInt(9, 16)}:00` : null,
-                event_date: type === 'Invitation' ? generateFutureDate(60) : null,
+                subject: (type === NoticeType.PAPER_SETTER || type === NoticeType.PAPER_CHECKER) ? randomElement(subjects) : null,
+                venue: type === NoticeType.INVITATION ? randomElement(locations) : null,
+                event_time: type === NoticeType.INVITATION ? `${randomInt(9, 16)}:00` : null,
+                event_date: type === NoticeType.INVITATION ? generateFutureDate(60) : null,
                 published_at: new Date(),
                 expires_at: randomBoolean(0.8) ? generateFutureDate(90) : null,
                 is_active: randomBoolean(0.95),

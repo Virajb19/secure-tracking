@@ -211,19 +211,75 @@ export class FormSubmissionsService {
     }
 
     /**
+     * Get all form submissions with optional filters (for admin)
+     */
+    async findAll(
+        formType?: string,
+        page: number = 1,
+        limit: number = 20,
+        districtId?: string,
+        status?: FormSubmissionStatus,
+    ): Promise<{ data: any[]; total: number }> {
+        const skip = (page - 1) * limit;
+
+        const where: any = {
+            ...(formType && { form_type: formType }),
+            ...(status && { status }),
+        };
+
+        // Add district filter if provided
+        if (districtId) {
+            where.school = {
+                is: {
+                    district_id: districtId,
+                },
+            };
+        }
+
+        const [data, total] = await Promise.all([
+            this.db.formSubmission.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { submitted_at: 'desc' },
+                include: {
+                    school: {
+                        include: {
+                            district: true,
+                        },
+                    },
+                },
+            }),
+            this.db.formSubmission.count({ where }),
+        ]);
+
+        return { data, total };
+    }
+
+    /**
      * Get all pending form submissions (for admin)
      */
     async findPending(
         formType?: string,
         page: number = 1,
         limit: number = 20,
-    ): Promise<{ data: FormSubmission[]; total: number }> {
+        districtId?: string,
+    ): Promise<{ data: any[]; total: number }> {
         const skip = (page - 1) * limit;
 
-        const where = {
+        const where: any = {
             status: FormSubmissionStatus.SUBMITTED,
             ...(formType && { form_type: formType }),
         };
+
+        // Add district filter if provided
+        if (districtId) {
+            where.school = {
+                is: {
+                    district_id: districtId,
+                },
+            };
+        }
 
         const [data, total] = await Promise.all([
             this.db.formSubmission.findMany({
@@ -231,6 +287,13 @@ export class FormSubmissionsService {
                 skip,
                 take: limit,
                 orderBy: { submitted_at: 'asc' }, // FIFO order
+                include: {
+                    school: {
+                        include: {
+                            district: true,
+                        },
+                    },
+                },
             }),
             this.db.formSubmission.count({ where }),
         ]);

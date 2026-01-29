@@ -40,6 +40,8 @@ import { UserStatusToggle } from '@/components/UserStatusToggle';
 import { DownloadXlsxButton } from '@/components/DownLoadXlxsButton';
 import { StarButton } from '@/components/StarButton';
 import { SendNotificationDialog } from '@/components/SendNotificationDialog';
+import { RetryButton } from '@/components/RetryButton';
+import { RefreshTableButton } from '@/components/RefreshTableButton';
 
 // Animation variants
 const containerVariants = {
@@ -99,7 +101,7 @@ const displayRoles = [
 ];
 
 export default function UsersPage() {
-  const { data: users = [], isLoading, isError, error } = useGetUsers();
+  const { data: users = [], isLoading, isRefetching, isFetching, isError, error } = useGetUsers();
   const { data: districts = [] } = useGetDistricts();
   const { data: schools = [] } = useGetSchools();
   const { data: classes = [] } = useGetClasses();
@@ -269,7 +271,7 @@ export default function UsersPage() {
 
   // Define table loading/error content
   const tableContent = () => {
-    if (isLoading) {
+    if (isLoading || isRefetching) {
       return (
         <tr>
           <td colSpan={7} className="py-16">
@@ -291,12 +293,11 @@ export default function UsersPage() {
       return (
         <tr>
           <td colSpan={7} className="py-16">
-            <div className="text-center">
-              <p className="text-red-400 text-lg">Failed to load users</p>
-              <p className="text-slate-500 text-sm mt-2">
-                 {typeof error?.message === 'string' ? error.message : 'An error occurred'}
-              </p>
-            </div>
+            <RetryButton 
+              queryKey={['users']} 
+              message="Failed to load users" 
+              subMessage={typeof error?.message === 'string' ? error.message : undefined}
+            />
           </td>
         </tr>
       );
@@ -412,7 +413,11 @@ export default function UsersPage() {
             </Badge>
           </div>
           <div className="flex items-center gap-3">
-            <DownloadXlsxButton onDownload={() => exportUsersAsCSV(filteredUsers)}/>
+            <RefreshTableButton queryKey={['users']} isFetching={isFetching} />
+            <DownloadXlsxButton 
+              onDownload={() => exportUsersAsCSV(filteredUsers)} 
+              disabled={filteredUsers.length === 0}
+            />
           </div>
         </div>
       </motion.div>
@@ -645,7 +650,7 @@ export default function UsersPage() {
                       onClick={() => setCurrentPage(pageNum)}
                       disabled={isLoading || pageNum > (totalPages || 1)}
                       className={currentPage === pageNum 
-                        ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white border-0 min-w-[36px]" 
+                        ? "bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white border-0 min-w-[36px]" 
                         : "bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white min-w-[36px]"
                       }
                     >

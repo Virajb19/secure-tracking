@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma';
 import { CreateNoticeDto, UpdateNoticeDto, SendNoticeDto } from './dto/notice.dto';
+import { NoticeType } from '@prisma/client';
 
 // Max file size: 5MB
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -10,12 +11,15 @@ export class AdminNoticesService {
     constructor(private readonly db: PrismaService) {}
 
     /**
-     * Get all notices with optional filters.
+     * Get all notices with optional filters and pagination.
      */
     async getAllNotices(filters: {
         priority?: string;
         isActive?: boolean;
         schoolId?: string;
+        type?: string;
+        limit?: number;
+        offset?: number;
     }) {
         const where: any = {};
 
@@ -31,35 +35,46 @@ export class AdminNoticesService {
             where.school_id = filters.schoolId;
         }
 
-        const notices = await this.db.notice.findMany({
-            where,
-            include: {
-                school: {
-                    select: {
-                        id: true,
-                        name: true,
-                        district: {
-                            select: {
-                                id: true,
-                                name: true,
+        if (filters.type) {
+            where.type = filters.type;
+        }
+
+        const [notices, total] = await Promise.all([
+            this.db.notice.findMany({
+                where,
+                include: {
+                    school: {
+                        select: {
+                            id: true,
+                            name: true,
+                            district: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                },
                             },
                         },
                     },
-                },
-                creator: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
+                    creator: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        },
                     },
                 },
-            },
-            orderBy: [
-                { created_at: 'desc' },
-            ],
-        });
+                orderBy: [
+                    { created_at: 'desc' },
+                ],
+                ...(filters.limit && { take: filters.limit }),
+                ...(filters.offset && { skip: filters.offset }),
+            }),
+            this.db.notice.count({ where }),
+        ]);
 
-        return notices;
+        console.log('Total notices found:', total);
+
+        return { data: notices, total };
     }
 
     /**
@@ -221,7 +236,7 @@ export class AdminNoticesService {
             data: {
                 title: dto.title,
                 content: dto.message,
-                type: dto.type || 'General',
+                type: dto.type ?? NoticeType.GENERAL,
                 subject: dto.subject,
                 venue: dto.venue,
                 event_time: dto.event_time,

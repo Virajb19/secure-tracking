@@ -32,6 +32,8 @@ interface NonTeachingStaff {
     phone: string;
 }
 
+type FormStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'NOT_SUBMITTED';
+
 export default function Form6BScreen() {
     const insets = useSafeAreaInsets();
     const [fullName, setFullName] = useState('');
@@ -40,7 +42,8 @@ export default function Form6BScreen() {
     const [natureOfWork, setNatureOfWork] = useState('');
     const [phone, setPhone] = useState('');
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [isSubmitted, setIsSubmitted] = useState(false);
+    const [formStatus, setFormStatus] = useState<FormStatus>('NOT_SUBMITTED');
+    const [rejectionReason, setRejectionReason] = useState<string | null>(null);
     const queryClient = useQueryClient();
 
     // Fetch existing non-teaching staff
@@ -66,7 +69,6 @@ export default function Form6BScreen() {
         : 'Your School';
 
     const existingStaff: NonTeachingStaff | null = staffData?.staff || null;
-    const formStatus = staffData?.form_status || 'NOT_SUBMITTED';
 
     useFocusEffect(
         useCallback(() => {
@@ -79,13 +81,18 @@ export default function Form6BScreen() {
         if (existingStaff) {
             setFullName(existingStaff.full_name);
             setQualification(existingStaff.qualification);
-            setYearsOfService(existingStaff.years_of_service.toString());
+            setYearsOfService((existingStaff.years_of_service ?? 0).toString());
             setNatureOfWork(existingStaff.nature_of_work);
             setPhone(existingStaff.phone);
             setEditingId(existingStaff.id);
-            setIsSubmitted(formStatus === 'SUBMITTED' || formStatus === 'APPROVED');
         }
-    }, [existingStaff, formStatus]);
+        if (staffData?.form_status) {
+            setFormStatus(staffData.form_status);
+            if (staffData.rejection_reason) {
+                setRejectionReason(staffData.rejection_reason);
+            }
+        }
+    }, [existingStaff, staffData]);
 
     // Save non-teaching staff
     const saveMutation = useMutation({
@@ -120,7 +127,7 @@ export default function Form6BScreen() {
             return response.data;
         },
         onSuccess: () => {
-            setIsSubmitted(true);
+            setFormStatus('SUBMITTED');
             Alert.alert('Success', 'Form 6B submitted successfully!');
         },
         onError: (error: any) => {
@@ -200,76 +207,128 @@ export default function Form6BScreen() {
                 >
                     <Text style={styles.sectionTitle}>Non-Teaching Staff</Text>
 
-                    {/* Full Name */}
-                    <View style={styles.fieldContainer}>
-                        <Text style={styles.label}>Full Name *</Text>
-                        <TextInput
-                            style={[styles.input, isSubmitted && styles.inputDisabled]}
-                            value={fullName}
-                            onChangeText={setFullName}
-                            placeholder="Enter full name"
-                            editable={!isSubmitted}
-                        />
-                    </View>
+                    {(() => {
+                        const isEditable = formStatus !== 'SUBMITTED' && formStatus !== 'APPROVED';
+                        return (
+                            <>
+                                {/* Full Name */}
+                                <View style={styles.fieldContainer}>
+                                    <Text style={styles.label}>Full Name *</Text>
+                                    <TextInput
+                                        style={[styles.input, !isEditable && styles.inputDisabled]}
+                                        value={fullName}
+                                        onChangeText={setFullName}
+                                        placeholder="Enter full name"
+                                        editable={isEditable}
+                                    />
+                                </View>
 
-                    {/* Two-column row */}
-                    <View style={styles.row}>
-                        <View style={styles.halfField}>
-                            <Text style={styles.label}>Highest Qualification *</Text>
-                            <TextInput
-                                style={[styles.input, isSubmitted && styles.inputDisabled]}
-                                value={qualification}
-                                onChangeText={setQualification}
-                                placeholder="e.g. PU, BA"
-                                editable={!isSubmitted}
-                            />
-                        </View>
-                        <View style={styles.halfField}>
-                            <Text style={styles.label}>Length of Service *</Text>
-                            <TextInput
-                                style={[styles.input, isSubmitted && styles.inputDisabled]}
-                                value={yearsOfService}
-                                onChangeText={setYearsOfService}
-                                placeholder="Years"
-                                keyboardType="numeric"
-                                editable={!isSubmitted}
-                            />
-                        </View>
-                    </View>
+                                {/* Two-column row */}
+                                <View style={styles.row}>
+                                    <View style={styles.halfField}>
+                                        <Text style={styles.label}>Highest Qualification *</Text>
+                                        <TextInput
+                                            style={[styles.input, !isEditable && styles.inputDisabled]}
+                                            value={qualification}
+                                            onChangeText={setQualification}
+                                            placeholder="e.g. PU, BA"
+                                            editable={isEditable}
+                                        />
+                                    </View>
+                                    <View style={styles.halfField}>
+                                        <Text style={styles.label}>Length of Service *</Text>
+                                        <TextInput
+                                            style={[styles.input, !isEditable && styles.inputDisabled]}
+                                            value={yearsOfService}
+                                            onChangeText={setYearsOfService}
+                                            placeholder="Years"
+                                            keyboardType="numeric"
+                                            editable={isEditable}
+                                        />
+                                    </View>
+                                </View>
 
-                    {/* Nature of Work & Phone */}
-                    <View style={styles.row}>
-                        <View style={styles.halfField}>
-                            <Text style={styles.label}>Nature of Work *</Text>
-                            <TextInput
-                                style={[styles.input, isSubmitted && styles.inputDisabled]}
-                                value={natureOfWork}
-                                onChangeText={setNatureOfWork}
-                                placeholder="e.g. UDA, Peon"
-                                editable={!isSubmitted}
-                            />
-                        </View>
-                        <View style={styles.halfField}>
-                            <Text style={styles.label}>Phone Number *</Text>
-                            <TextInput
-                                style={[styles.input, isSubmitted && styles.inputDisabled]}
-                                value={phone}
-                                onChangeText={setPhone}
-                                placeholder="Phone number"
-                                keyboardType="phone-pad"
-                                editable={!isSubmitted}
-                            />
-                        </View>
-                    </View>
+                                {/* Nature of Work & Phone */}
+                                <View style={styles.row}>
+                                    <View style={styles.halfField}>
+                                        <Text style={styles.label}>Nature of Work *</Text>
+                                        <TextInput
+                                            style={[styles.input, !isEditable && styles.inputDisabled]}
+                                            value={natureOfWork}
+                                            onChangeText={setNatureOfWork}
+                                            placeholder="e.g. UDA, Peon"
+                                            editable={isEditable}
+                                        />
+                                    </View>
+                                    <View style={styles.halfField}>
+                                        <Text style={styles.label}>Phone Number *</Text>
+                                        <TextInput
+                                            style={[styles.input, !isEditable && styles.inputDisabled]}
+                                            value={phone}
+                                            onChangeText={setPhone}
+                                            placeholder="Phone number"
+                                            keyboardType="phone-pad"
+                                            editable={isEditable}
+                                        />
+                                    </View>
+                                </View>
+                            </>
+                        );
+                    })()}
 
-                    {/* Submit Button */}
-                    {isSubmitted ? (
+                    {/* Status Display based on form status */}
+                    {formStatus === 'APPROVED' ? (
                         <>
                             <TouchableOpacity style={styles.submittedButton} disabled>
                                 <Text style={styles.submittedButtonText}>Form 6B Submitted</Text>
                             </TouchableOpacity>
                             <View style={styles.acceptedBanner}>
-                                <Text style={styles.acceptedText}>Your Form 6B Submission is accepted</Text>
+                                <Text style={styles.acceptedText}>Your Form 6B Submission is approved</Text>
+                            </View>
+                        </>
+                    ) : formStatus === 'REJECTED' ? (
+                        <>
+                            <View style={styles.rejectedBanner}>
+                                <Ionicons name="alert-circle" size={20} color="#dc2626" />
+                                <Text style={styles.rejectedText}>Your Form 6B Submission was rejected</Text>
+                            </View>
+                            {rejectionReason && (
+                                <View style={styles.rejectionReasonBox}>
+                                    <Text style={styles.rejectionReasonLabel}>Reason:</Text>
+                                    <Text style={styles.rejectionReasonText}>{rejectionReason}</Text>
+                                </View>
+                            )}
+                            <TouchableOpacity 
+                                style={styles.saveButton}
+                                onPress={handleSave}
+                                disabled={saveMutation.isPending}
+                            >
+                                {saveMutation.isPending ? (
+                                    <ActivityIndicator size="small" color="#ffffff" />
+                                ) : (
+                                    <Text style={styles.saveButtonText}>Save Details</Text>
+                                )}
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={styles.submitButton}
+                                onPress={handleSubmit}
+                                disabled={submitMutation.isPending}
+                            >
+                                {submitMutation.isPending ? (
+                                    <ActivityIndicator size="small" color="#ffffff" />
+                                ) : (
+                                    <Text style={styles.submitButtonText}>Resubmit Form 6B</Text>
+                                )}
+                            </TouchableOpacity>
+                        </>
+                    ) : formStatus === 'SUBMITTED' ? (
+                        <>
+                            <TouchableOpacity style={styles.pendingButton} disabled>
+                                <Text style={styles.pendingButtonText}>Form 6B Submitted</Text>
+                            </TouchableOpacity>
+                            <View style={styles.pendingBanner}>
+                                <Ionicons name="time-outline" size={18} color="#d97706" />
+                                <Text style={styles.pendingText}>Your Form 6B Submission is pending approval</Text>
                             </View>
                         </>
                     ) : (
@@ -438,6 +497,72 @@ const styles = StyleSheet.create({
         color: '#16a34a',
         fontSize: 14,
         fontWeight: '600',
+    },
+    rejectedBanner: {
+        backgroundColor: '#fee2e2',
+        borderWidth: 1,
+        borderColor: '#dc2626',
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginTop: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    rejectedText: {
+        color: '#dc2626',
+        fontSize: 14,
+        fontWeight: '600',
+        flex: 1,
+    },
+    rejectionReasonBox: {
+        backgroundColor: '#fef2f2',
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginTop: 8,
+    },
+    rejectionReasonLabel: {
+        color: '#991b1b',
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    rejectionReasonText: {
+        color: '#7f1d1d',
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    pendingButton: {
+        backgroundColor: '#fbbf24',
+        borderRadius: 8,
+        paddingVertical: 16,
+        alignItems: 'center',
+        marginTop: 16,
+    },
+    pendingButtonText: {
+        color: '#78350f',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    pendingBanner: {
+        backgroundColor: '#fef3c7',
+        borderWidth: 1,
+        borderColor: '#d97706',
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    pendingText: {
+        color: '#b45309',
+        fontSize: 14,
+        fontWeight: '600',
+        flex: 1,
     },
     loadingContainer: {
         flex: 1,

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { formSubmissionsApi } from '@/services/paper-setter.service';
 import { toast } from 'sonner';
+import { showErrorToast, showSuccessToast } from './ui/custom-toast';
 
 interface ApproveFormButtonProps {
   submissionId: string;
@@ -29,10 +30,10 @@ export function ApproveFormButton({ submissionId, formType }: ApproveFormButtonP
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['form-submissions'] });
       setDialogOpen(false);
-      toast.success('Form approved successfully');
+      showSuccessToast('Form approved successfully');
     },
     onError: () => {
-      toast.error('Failed to approve form');
+      showErrorToast('Failed to approve form');
     },
   });
 
@@ -73,7 +74,10 @@ export function ApproveFormButton({ submissionId, formType }: ApproveFormButtonP
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               {approveMutation.isPending ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Approving...</>
+                <>
+                  <div className='size-4 border-2 border-t-[3px] border-white/20 border-t-emerald-400 rounded-full animate-spin mr-2'/>
+                  Approving...
+                </>
               ) : (
                 <>
                   <Check className="h-4 w-4 mr-2" /> Confirm Approve

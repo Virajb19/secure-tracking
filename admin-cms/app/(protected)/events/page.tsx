@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RetryButton } from '@/components/RetryButton';
 import {
   Select,
   SelectContent,
@@ -35,6 +36,7 @@ import { Calendar, MapPin, Users, Eye, Trash2, Loader2, Check, X, Clock, Calenda
 import { useGetEvents, useDeleteEvent, useGetEventById, useGetInvitableUsers, useInviteUsersToEvent } from '@/services/events.service';
 import { useGetDistricts } from '@/services/user.service';
 import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
+import { RefreshTableButton } from '@/components/RefreshTableButton';
 
 // Animation variants
 const containerVariants = {
@@ -94,7 +96,7 @@ const eventTypeColors: Record<EventType, string> = {
 };
 
 export default function EventsPage() {
-  const { data: events = [], isLoading, isError } = useGetEvents();
+  const { data: events = [], isLoading, isError, isFetching } = useGetEvents();
   const { data: districts = [] } = useGetDistricts();
   const deleteEventMutation = useDeleteEvent();
   const inviteUsersMutation = useInviteUsersToEvent();
@@ -229,8 +231,7 @@ export default function EventsPage() {
           className="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 text-center"
           variants={cardVariants}
         >
-          <p className="text-red-400 text-lg">Failed to load events</p>
-          <p className="text-slate-500 text-sm mt-2">Please try again later</p>
+          <RetryButton queryKey={['events']} message="Failed to load events" />
         </motion.div>
       </motion.div>
     );
@@ -272,6 +273,7 @@ export default function EventsPage() {
             <Badge className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/20 px-3 py-1">
               {events.length} Total
             </Badge>
+            <RefreshTableButton queryKey={['events']} isFetching={isFetching} />
           </div>
         </div>
       </motion.div>

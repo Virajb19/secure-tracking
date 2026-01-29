@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { DeleteTicketButton } from '@/components/DeleteTicketButton';
 import { ExpandableText } from '@/components/ExpandableText';
 import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
+import { RetryButton } from '@/components/RetryButton';
+import { RefreshTableButton } from '@/components/RefreshTableButton';
 
 // Animation variants
 const containerVariants = {
@@ -72,10 +74,10 @@ export default function HelpdeskPage() {
   const [showPendingOnly, setShowPendingOnly] = useState(false);
 
   // Fetch all helpdesk tickets
-  const { data: tickets, isLoading, error } = useQuery<HelpdeskTicket[]>({
+  const { data: tickets, isLoading, isFetching, error } = useQuery<HelpdeskTicket[]>({
     queryKey: ['helpdesk-tickets'],
     queryFn: helpdeskApi.getAll,
-    refetchOnMount: 'always',
+    // refetchOnMount: 'always',
   });
 
   // Resolve mutation
@@ -136,7 +138,7 @@ export default function HelpdeskPage() {
   const pendingCount = tickets?.filter(t => !t.is_resolved).length || 0;
   const resolvedCount = tickets?.filter(t => t.is_resolved).length || 0;
 
-  if (isLoading) {
+  if (isLoading || !tickets) {
     return (
       <motion.div 
         className="space-y-8 p-2"
@@ -186,11 +188,10 @@ export default function HelpdeskPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          <div className="text-center">
-            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <p className="text-red-400 text-lg">Failed to load tickets</p>
-            <p className="text-slate-500 text-sm mt-2">Please try again later</p>
-          </div>
+          <RetryButton 
+            queryKey={['helpdesk-tickets']} 
+            message="Failed to load tickets" 
+          />
         </motion.div>
       </motion.div>
     );
@@ -229,6 +230,7 @@ export default function HelpdeskPage() {
             <Badge className="bg-slate-700/50 text-slate-300 hover:bg-slate-700/50 px-3 py-1">
               {tickets?.length || 0} Total
             </Badge>
+            <RefreshTableButton queryKey={['helpdesk-tickets']} isFetching={isFetching} />
           </div>
         </div>
       </motion.div>
@@ -276,9 +278,18 @@ export default function HelpdeskPage() {
 
       {/* Tickets Table */}
       <motion.div 
-        className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
+        className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl relative"
         variants={cardVariants}
       >
+        {/* Loading overlay when refetching */}
+        {isFetching && tickets && tickets.length > 0 && (
+          <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 z-10 flex items-center justify-center">
+            <div className="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
+              <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+              <span className="text-slate-600 dark:text-slate-300 text-sm">Refreshing...</span>
+            </div>
+          </div>
+        )}
         {filteredTickets && filteredTickets.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">

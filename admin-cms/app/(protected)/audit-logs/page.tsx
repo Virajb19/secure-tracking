@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Loader2, Shield, Clock, User, Activity, Globe } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { auditLogsApi } from '@/services/api';
 import { AuditLog } from '@/types';
 import { Badge } from '@/components/ui/badge';
+import { RefreshTableButton } from '@/components/RefreshTableButton';
 
 // Animation variants
 const containerVariants = {
@@ -60,47 +62,47 @@ const actionColors: Record<string, { bg: string; text: string }> = {
 };
 
 export default function AuditLogsPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState('');
+  const [allLogs, setAllLogs] = useState<AuditLog[]>([]);
   const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
   const [previousLength, setPreviousLength] = useState(0);
   const pageSize = 50;
 
-  const fetchLogs = async (offset: number, isLoadMore = false) => {
-    try {
-      if (isLoadMore) {
-        setLoadingMore(true);
-        setPreviousLength(logs.length);
-      } else {
-        setLoading(true);
-        setPreviousLength(0);
-      }
-      const data = await auditLogsApi.getAll(pageSize, offset);
-      if (offset === 0) {
-        setLogs(data);
-      } else {
-        setLogs(prev => [...prev, ...data]);
-      }
-      setHasMore(data.length === pageSize);
-    } catch {
-      setError('Failed to load audit logs');
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
+  const queryClient = useQueryClient();
 
+  // useQuery for fetching audit logs
+  const { 
+    data: logsData, 
+    isLoading, 
+    isFetching,
+    isError, 
+    error 
+  } = useQuery({
+    queryKey: ['auditLogs', pageSize, page * pageSize],
+    queryFn: () => auditLogsApi.getAll(pageSize, page * pageSize),
+  });
+
+  // Update allLogs when data changes
   useEffect(() => {
-    fetchLogs(0);
-  }, []);
+    if (logsData) {
+      if (page === 0) {
+        setAllLogs(logsData);
+        setPreviousLength(0);
+      } else {
+        setPreviousLength(allLogs.length);
+        setAllLogs(prev => {
+          // Check if we already have this data (avoid duplicates)
+          const existingIds = new Set(prev.map(l => l.id));
+          const newLogs = logsData.filter(l => !existingIds.has(l.id));
+          return [...prev, ...newLogs];
+        });
+      }
+    }
+  }, [logsData, page]);
+
+  const hasMore = logsData?.length === pageSize;
 
   const loadMore = () => {
-    const newPage = page + 1;
-    setPage(newPage);
-    fetchLogs(newPage * pageSize, true);
+    setPage(prev => prev + 1);
   };
 
   const formatDate = (dateString: string) => {
@@ -144,8 +146,9 @@ export default function AuditLogsPage() {
           <div className="flex items-center gap-3">
             <Badge className="bg-amber-500/20 text-amber-400 text-lg hover:bg-amber-500/20 px-3 py-1">
               <FileText className="h-6 w-6 mr-1" />
-              {logs.length} Records
+              {allLogs.length} Records
             </Badge>
+            <RefreshTableButton queryKey={['auditLogs', pageSize, page * pageSize]} isFetching={isFetching} />
           </div>
         </div>
       </motion.div>
@@ -155,7 +158,7 @@ export default function AuditLogsPage() {
         className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
         variants={cardVariants}
       >
-        {logs.length === 0 && !loading ? (
+        {allLogs.length === 0 && !isLoading ? (
           <motion.div 
             className="text-center py-16"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -195,7 +198,7 @@ export default function AuditLogsPage() {
               </thead>
               <tbody>
                 <AnimatePresence>
-                  {logs.map((log, index) => {
+                  {allLogs.map((log, index) => {
                     const actionStyle = getActionStyle(log.action);
                     const isNew = index >= previousLength;
                     return (
@@ -243,7 +246,7 @@ export default function AuditLogsPage() {
 
         {/* Loading / Load More */}
         <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50">
-          {loading && logs.length === 0 ? (
+          {isLoading && allLogs.length === 0 ? (
             <div className="flex items-center justify-center gap-3">
               <motion.div
                 animate={{ rotate: 360 }}
@@ -253,17 +256,17 @@ export default function AuditLogsPage() {
               </motion.div>
               <span className="text-slate-500 dark:text-slate-400 text-sm">Loading logs...</span>
             </div>
-          ) : error ? (
-            <p className="text-red-500 dark:text-red-400 text-center text-sm">{error}</p>
+          ) : isError ? (
+            <p className="text-red-500 dark:text-red-400 text-center text-sm">{(error as Error)?.message || 'Failed to load audit logs'}</p>
           ) : hasMore ? (
             <motion.button
               onClick={loadMore}
-              disabled={loadingMore}
+              disabled={isFetching}
               className="w-full py-2.5 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-all font-medium disabled:opacity-50"
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
             >
-              {loadingMore ? (
+              {isFetching ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading...
@@ -274,7 +277,7 @@ export default function AuditLogsPage() {
             </motion.button>
           ) : (
             <p className="text-center text-sm text-slate-500">
-              Showing all {logs.length} records
+              Showing all {allLogs.length} records
             </p>
           )}
         </div>

@@ -12,6 +12,188 @@ export class Form6Service {
         private readonly notificationsService: NotificationsService,
     ) {}
 
+    // ===========================
+    // ADMIN ENDPOINTS
+    // ===========================
+
+    /**
+     * Get Form 6A details for a school (Admin only).
+     * Returns teaching staff for Pre-Primary to Class 10.
+     */
+    async getForm6ABySchool(schoolId: string) {
+        const school = await this.db.school.findUnique({
+            where: { id: schoolId },
+            include: { district: true },
+        });
+
+        if (!school) {
+            throw new NotFoundException('School not found');
+        }
+
+        const staffList = await this.db.faculty.findMany({
+            where: {
+                school_id: schoolId,
+                faculty_type: 'TEACHING',
+                teaching_assignments: {
+                    some: {
+                        class_level: { lte: 10 },
+                    },
+                },
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        phone: true,
+                        profile_image_url: true,
+                    },
+                },
+                teaching_assignments: {
+                    where: {
+                        class_level: { lte: 10 },
+                    },
+                },
+            },
+        });
+
+        return {
+            school,
+            staff: staffList,
+        };
+    }
+
+    /**
+     * Get Form 6B details for a school (Admin only).
+     * Returns non-teaching staff.
+     */
+    async getForm6BBySchool(schoolId: string) {
+        const school = await this.db.school.findUnique({
+            where: { id: schoolId },
+            include: { district: true },
+        });
+
+        if (!school) {
+            throw new NotFoundException('School not found');
+        }
+
+        const staffList = await this.db.nonTeachingStaff.findMany({
+            where: { school_id: schoolId },
+        });
+
+        return {
+            school,
+            staff: staffList,
+        };
+    }
+
+    /**
+     * Get Form 6C Lower details for a school (Admin only).
+     * Returns student strength for classes <= 10.
+     */
+    async getForm6CLowerBySchool(schoolId: string) {
+        const school = await this.db.school.findUnique({
+            where: { id: schoolId },
+            include: { district: true },
+        });
+
+        if (!school) {
+            throw new NotFoundException('School not found');
+        }
+
+        const strengths = await this.db.studentStrength.findMany({
+            where: {
+                school_id: schoolId,
+                class_level: { lte: 10 },
+            },
+            orderBy: { class_level: 'asc' },
+        });
+
+        return {
+            school,
+            strengths,
+        };
+    }
+
+    /**
+     * Get Form 6C Higher details for a school (Admin only).
+     * Returns student strength for classes >= 11.
+     */
+    async getForm6CHigherBySchool(schoolId: string) {
+        const school = await this.db.school.findUnique({
+            where: { id: schoolId },
+            include: { district: true },
+        });
+
+        if (!school) {
+            throw new NotFoundException('School not found');
+        }
+
+        const strengths = await this.db.studentStrength.findMany({
+            where: {
+                school_id: schoolId,
+                class_level: { gte: 11 },
+            },
+            orderBy: { class_level: 'asc' },
+        });
+
+        return {
+            school,
+            strengths,
+        };
+    }
+
+    /**
+     * Get Form 6D details for a school (Admin only).
+     * Returns teaching staff for Class 11 & 12.
+     */
+    async getForm6DBySchool(schoolId: string) {
+        const school = await this.db.school.findUnique({
+            where: { id: schoolId },
+            include: { district: true },
+        });
+
+        if (!school) {
+            throw new NotFoundException('School not found');
+        }
+
+        const staffList = await this.db.faculty.findMany({
+            where: {
+                school_id: schoolId,
+                faculty_type: 'TEACHING',
+                teaching_assignments: {
+                    some: {
+                        class_level: { gte: 11 },
+                    },
+                },
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        phone: true,
+                        profile_image_url: true,
+                    },
+                },
+                teaching_assignments: {
+                    where: {
+                        class_level: { gte: 11 },
+                    },
+                },
+            },
+        });
+
+        return {
+            school,
+            staff: staffList,
+        };
+    }
+
+    // ===========================
+    // HEADMASTER ENDPOINTS
+    // ===========================
+
     /**
      * Get teaching staff for Pre-Primary to Class 10 (Form 6A).
      */
@@ -140,15 +322,26 @@ export class Form6Service {
     async getNonTeachingStaff(userId: string) {
         const faculty = await this.getUserFaculty(userId);
         
-        const staff = await this.db.nonTeachingStaff.findFirst({
+        const staffList = await this.db.nonTeachingStaff.findMany({
             where: {
                 school_id: faculty.school_id,
             },
         });
 
+        // Get the actual form submission status
+        const formSubmission = await this.db.formSubmission.findUnique({
+            where: {
+                school_id_form_type: {
+                    school_id: faculty.school_id,
+                    form_type: '6B',
+                },
+            },
+        });
+
         return {
-            staff,
-            form_status: staff ? 'SUBMITTED' : 'NOT_SUBMITTED',
+            staff: staffList,
+            form_status: formSubmission?.status || (staffList.length > 0 ? 'DRAFT' : 'NOT_SUBMITTED'),
+            rejection_reason: formSubmission?.rejection_reason,
         };
     }
 
@@ -251,9 +444,20 @@ export class Form6Service {
             orderBy: { class_level: 'asc' },
         });
 
+        // Get the actual form submission status
+        const formSubmission = await this.db.formSubmission.findUnique({
+            where: {
+                school_id_form_type: {
+                    school_id: faculty.school_id,
+                    form_type: '6C_LOWER',
+                },
+            },
+        });
+
         return {
             strengths,
-            form_status: strengths.length > 0 ? 'SUBMITTED' : 'NOT_SUBMITTED',
+            form_status: formSubmission?.status || (strengths.length > 0 ? 'DRAFT' : 'NOT_SUBMITTED'),
+            rejection_reason: formSubmission?.rejection_reason,
         };
     }
 
@@ -272,9 +476,20 @@ export class Form6Service {
             orderBy: { class_level: 'asc' },
         });
 
+        // Get the actual form submission status
+        const formSubmission = await this.db.formSubmission.findUnique({
+            where: {
+                school_id_form_type: {
+                    school_id: faculty.school_id,
+                    form_type: '6C_HIGHER',
+                },
+            },
+        });
+
         return {
             strengths,
-            form_status: strengths.length > 0 ? 'SUBMITTED' : 'NOT_SUBMITTED',
+            form_status: formSubmission?.status || (strengths.length > 0 ? 'DRAFT' : 'NOT_SUBMITTED'),
+            rejection_reason: formSubmission?.rejection_reason,
         };
     }
 

@@ -32,6 +32,8 @@ interface ClassStrength {
     sections: string;
 }
 
+type FormStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | null;
+
 const HIGHER_CLASSES = [
     { level: 11, stream: 'Arts', name: 'Class 11 (Arts)' },
     { level: 11, stream: 'Science', name: 'Class 11 (Science)' },
@@ -54,7 +56,8 @@ export default function Form6CHigherScreen() {
         }))
     );
     const [confirmed, setConfirmed] = useState(false);
-    const [isSubmitted, setIsSubmitted] = useState(false);
+    const [formStatus, setFormStatus] = useState<FormStatus>(null);
+    const [rejectionReason, setRejectionReason] = useState<string | null>(null);
     const queryClient = useQueryClient();
 
     // Fetch existing data
@@ -96,14 +99,20 @@ export default function Form6CHigherScreen() {
                 if (index !== -1) {
                     updatedData[index] = {
                         ...updatedData[index],
-                        boys: s.boys.toString(),
-                        girls: s.girls.toString(),
-                        sections: s.sections.toString(),
+                        boys: (s.boys ?? 0).toString(),
+                        girls: (s.girls ?? 0).toString(),
+                        sections: (s.sections ?? 0).toString(),
                     };
                 }
             });
             setClassData(updatedData);
-            setIsSubmitted(existingData.form_status === 'SUBMITTED' || existingData.form_status === 'APPROVED');
+        }
+        // Set form status
+        if (existingData?.form_status) {
+            setFormStatus(existingData.form_status);
+            if (existingData.rejection_reason) {
+                setRejectionReason(existingData.rejection_reason);
+            }
         }
     }, [existingData]);
 
@@ -121,7 +130,7 @@ export default function Form6CHigherScreen() {
             return response.data;
         },
         onSuccess: () => {
-            setIsSubmitted(true);
+            setFormStatus('SUBMITTED');
             Alert.alert('Success', 'Form 6C (Class 11 & 12) submitted successfully!');
         },
         onError: (error: any) => {
@@ -191,7 +200,9 @@ export default function Form6CHigherScreen() {
                     contentContainerStyle={styles.scrollContent}
                     keyboardShouldPersistTaps="handled"
                 >
-                    {classData.map((classItem, index) => (
+                    {classData.map((classItem, index) => {
+                        const isEditable = formStatus !== 'SUBMITTED' && formStatus !== 'APPROVED';
+                        return (
                         <View key={`${classItem.class_level}-${classItem.stream}`} style={styles.classSection}>
                             <Text style={styles.className}>{classItem.class_name}</Text>
                             
@@ -199,38 +210,39 @@ export default function Form6CHigherScreen() {
                                 <View style={styles.inputColumn}>
                                     <Text style={styles.inputLabel}>Boys *</Text>
                                     <TextInput
-                                        style={[styles.input, isSubmitted && styles.inputDisabled]}
+                                        style={[styles.input, !isEditable && styles.inputDisabled]}
                                         value={classItem.boys}
                                         onChangeText={(v) => updateClassData(index, 'boys', v)}
                                         keyboardType="numeric"
-                                        editable={!isSubmitted}
+                                        editable={isEditable}
                                     />
                                 </View>
                                 <View style={styles.inputColumn}>
                                     <Text style={styles.inputLabel}>Girls *</Text>
                                     <TextInput
-                                        style={[styles.input, isSubmitted && styles.inputDisabled]}
+                                        style={[styles.input, !isEditable && styles.inputDisabled]}
                                         value={classItem.girls}
                                         onChangeText={(v) => updateClassData(index, 'girls', v)}
                                         keyboardType="numeric"
-                                        editable={!isSubmitted}
+                                        editable={isEditable}
                                     />
                                 </View>
                                 <View style={styles.inputColumn}>
                                     <Text style={styles.inputLabel}>Sections *</Text>
                                     <TextInput
-                                        style={[styles.input, isSubmitted && styles.inputDisabled]}
+                                        style={[styles.input, !isEditable && styles.inputDisabled]}
                                         value={classItem.sections}
                                         onChangeText={(v) => updateClassData(index, 'sections', v)}
                                         keyboardType="numeric"
-                                        editable={!isSubmitted}
+                                        editable={isEditable}
                                     />
                                 </View>
                             </View>
                             
                             <View style={styles.divider} />
                         </View>
-                    ))}
+                    );
+                    })}
 
                     {/* Totals Table */}
                     <View style={styles.totalsTable}>
@@ -246,14 +258,48 @@ export default function Form6CHigherScreen() {
                         </View>
                     </View>
 
-                    {/* Confirmation & Submit */}
-                    {isSubmitted ? (
+                    {/* Status Display based on form status */}
+                    {formStatus === 'APPROVED' ? (
                         <>
                             <TouchableOpacity style={styles.submittedButton} disabled>
                                 <Text style={styles.submittedButtonText}>Form 6C Submitted</Text>
                             </TouchableOpacity>
                             <View style={styles.acceptedBanner}>
-                                <Text style={styles.acceptedText}>Your Form 6C Submission is accepted</Text>
+                                <Text style={styles.acceptedText}>Your Form 6C Submission is approved</Text>
+                            </View>
+                        </>
+                    ) : formStatus === 'REJECTED' ? (
+                        <>
+                            <View style={styles.rejectedBanner}>
+                                <Ionicons name="alert-circle" size={20} color="#dc2626" />
+                                <Text style={styles.rejectedText}>Your Form 6C Submission was rejected</Text>
+                            </View>
+                            {rejectionReason && (
+                                <View style={styles.rejectionReasonBox}>
+                                    <Text style={styles.rejectionReasonLabel}>Reason:</Text>
+                                    <Text style={styles.rejectionReasonText}>{rejectionReason}</Text>
+                                </View>
+                            )}
+                            <TouchableOpacity 
+                                style={styles.submitButton}
+                                onPress={handleSubmit}
+                                disabled={submitMutation.isPending}
+                            >
+                                {submitMutation.isPending ? (
+                                    <ActivityIndicator size="small" color="#ffffff" />
+                                ) : (
+                                    <Text style={styles.submitButtonText}>Resubmit Form 6C</Text>
+                                )}
+                            </TouchableOpacity>
+                        </>
+                    ) : formStatus === 'SUBMITTED' ? (
+                        <>
+                            <TouchableOpacity style={styles.pendingButton} disabled>
+                                <Text style={styles.pendingButtonText}>Form 6C Submitted</Text>
+                            </TouchableOpacity>
+                            <View style={styles.pendingBanner}>
+                                <Ionicons name="time-outline" size={18} color="#d97706" />
+                                <Text style={styles.pendingText}>Your Form 6C Submission is pending approval</Text>
                             </View>
                         </>
                     ) : (
@@ -477,6 +523,72 @@ const styles = StyleSheet.create({
         color: '#16a34a',
         fontSize: 14,
         fontWeight: '600',
+    },
+    rejectedBanner: {
+        backgroundColor: '#fee2e2',
+        borderWidth: 1,
+        borderColor: '#dc2626',
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginTop: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    rejectedText: {
+        color: '#dc2626',
+        fontSize: 14,
+        fontWeight: '600',
+        flex: 1,
+    },
+    rejectionReasonBox: {
+        backgroundColor: '#fef2f2',
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginTop: 8,
+    },
+    rejectionReasonLabel: {
+        color: '#991b1b',
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    rejectionReasonText: {
+        color: '#7f1d1d',
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    pendingButton: {
+        backgroundColor: '#fbbf24',
+        borderRadius: 8,
+        paddingVertical: 16,
+        alignItems: 'center',
+        marginTop: 16,
+    },
+    pendingButtonText: {
+        color: '#78350f',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    pendingBanner: {
+        backgroundColor: '#fef3c7',
+        borderWidth: 1,
+        borderColor: '#d97706',
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    pendingText: {
+        color: '#b45309',
+        fontSize: 14,
+        fontWeight: '600',
+        flex: 1,
     },
     loadingContainer: {
         flex: 1,

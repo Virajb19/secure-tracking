@@ -23,18 +23,24 @@ export class AdminNoticesController {
 
     /**
      * GET /admin/notices
-     * Get all notices with optional filters.
+     * Get all notices with optional filters and pagination.
      */
     @Get()
     async getAllNotices(
         @Query('priority') priority?: string,
         @Query('is_active') isActive?: string,
         @Query('school_id') schoolId?: string,
+        @Query('type') type?: string,
+        @Query('limit') limit?: string,
+        @Query('offset') offset?: string,
     ) {
         return this.adminNoticesService.getAllNotices({
             priority,
             isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
             schoolId,
+            type,
+            limit: limit ? parseInt(limit, 10) : undefined,
+            offset: offset ? parseInt(offset, 10) : undefined,
         });
     }
 

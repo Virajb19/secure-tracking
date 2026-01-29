@@ -137,8 +137,10 @@ export interface FormSubmission {
   approved_at?: string;
   created_at: string;
   school?: {
+    id: string;
     name: string;
-    district?: { name: string };
+    registration_code: string;
+    district?: { id: string; name: string };
   };
   submitter?: {
     name: string;
@@ -147,13 +149,30 @@ export interface FormSubmission {
 }
 
 export const formSubmissionsApi = {
-  // Get pending submissions (admin)
-  getPending: async (formType?: string, page = 1, limit = 20): Promise<{
+  // Get all submissions (admin) with optional filters
+  getAll: async (formType?: string, page = 1, limit = 20, districtId?: string, status?: string): Promise<{
     data: FormSubmission[];
     total: number;
   }> => {
     const params = new URLSearchParams();
     if (formType) params.append('formType', formType);
+    if (districtId) params.append('districtId', districtId);
+    if (status && status !== 'all') params.append('status', status);
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    
+    const response = await api.get(`/form-submissions/admin/all?${params}`);
+    return response.data;
+  },
+
+  // Get pending submissions (admin)
+  getPending: async (formType?: string, page = 1, limit = 20, districtId?: string): Promise<{
+    data: FormSubmission[];
+    total: number;
+  }> => {
+    const params = new URLSearchParams();
+    if (formType) params.append('formType', formType);
+    if (districtId) params.append('districtId', districtId);
     params.append('page', page.toString());
     params.append('limit', limit.toString());
     
@@ -182,6 +201,84 @@ export const formSubmissionsApi = {
   // Get submissions by school
   getBySchool: async (schoolId: string): Promise<FormSubmission[]> => {
     const response = await api.get(`/form-submissions/school/${schoolId}`);
+    return response.data;
+  },
+
+  // Get Form 6A details for a school
+  getForm6ADetails: async (schoolId: string): Promise<{
+    school: { name: string; registration_code: string; district?: { name: string } };
+    staff: Array<{
+      id: string;
+      designation: string;
+      highest_qualification: string;
+      years_of_experience: number;
+      user: { id: string; name: string; phone: string };
+      teaching_assignments: Array<{ class_level: number; subject: string }>;
+    }>;
+  }> => {
+    const response = await api.get(`/form-6/admin/6a/${schoolId}`);
+    return response.data;
+  },
+
+  // Get Form 6B details for a school (non-teaching staff)
+  getForm6BDetails: async (schoolId: string): Promise<{
+    school: { name: string; registration_code: string; district?: { name: string } };
+    staff: Array<{
+      id: string;
+      full_name: string;
+      qualification: string;
+      nature_of_work: string;
+      years_of_service: number;
+      phone: string;
+    }>;
+  }> => {
+    const response = await api.get(`/form-6/admin/6b/${schoolId}`);
+    return response.data;
+  },
+
+  // Get Form 6C Lower details for a school (student strength <= 10)
+  getForm6CLowerDetails: async (schoolId: string): Promise<{
+    school: { name: string; registration_code: string; district?: { name: string } };
+    strengths: Array<{
+      id: string;
+      class_level: number;
+      boys: number;
+      girls: number;
+      sections: number;
+    }>;
+  }> => {
+    const response = await api.get(`/form-6/admin/6c-lower/${schoolId}`);
+    return response.data;
+  },
+
+  // Get Form 6C Higher details for a school (student strength >= 11)
+  getForm6CHigherDetails: async (schoolId: string): Promise<{
+    school: { name: string; registration_code: string; district?: { name: string } };
+    strengths: Array<{
+      id: string;
+      class_level: number;
+      boys: number;
+      girls: number;
+      sections: number;
+    }>;
+  }> => {
+    const response = await api.get(`/form-6/admin/6c-higher/${schoolId}`);
+    return response.data;
+  },
+
+  // Get Form 6D details for a school (teaching staff 11-12)
+  getForm6DDetails: async (schoolId: string): Promise<{
+    school: { name: string; registration_code: string; district?: { name: string } };
+    staff: Array<{
+      id: string;
+      designation: string;
+      highest_qualification: string;
+      years_of_experience: number;
+      user: { id: string; name: string; phone: string };
+      teaching_assignments: Array<{ class_level: number; subject: string }>;
+    }>;
+  }> => {
+    const response = await api.get(`/form-6/admin/6d/${schoolId}`);
     return response.data;
   },
 };

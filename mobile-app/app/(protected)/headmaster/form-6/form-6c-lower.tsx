@@ -45,6 +45,8 @@ const LOWER_CLASSES = [
     { level: 10, name: 'Class 10' },
 ];
 
+type FormStatus = 'NOT_SUBMITTED' | 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+
 export default function Form6CLowerScreen() {
     const insets = useSafeAreaInsets();
     const [classData, setClassData] = useState<ClassStrength[]>(
@@ -57,7 +59,8 @@ export default function Form6CLowerScreen() {
         }))
     );
     const [confirmed, setConfirmed] = useState(false);
-    const [isSubmitted, setIsSubmitted] = useState(false);
+    const [formStatus, setFormStatus] = useState<FormStatus>('NOT_SUBMITTED');
+    const [rejectionReason, setRejectionReason] = useState<string | null>(null);
     const queryClient = useQueryClient();
 
     // Fetch existing student strength data
@@ -97,14 +100,15 @@ export default function Form6CLowerScreen() {
                 if (index !== -1) {
                     updatedData[index] = {
                         ...updatedData[index],
-                        boys: s.boys.toString(),
-                        girls: s.girls.toString(),
-                        sections: s.sections.toString(),
+                        boys: (s.boys ?? 0).toString(),
+                        girls: (s.girls ?? 0).toString(),
+                        sections: (s.sections ?? 0).toString(),
                     };
                 }
             });
             setClassData(updatedData);
-            setIsSubmitted(existingData.form_status === 'SUBMITTED' || existingData.form_status === 'APPROVED');
+            setFormStatus(existingData.form_status as FormStatus || 'NOT_SUBMITTED');
+            setRejectionReason(existingData.rejection_reason || null);
         }
     }, [existingData]);
 
@@ -121,7 +125,7 @@ export default function Form6CLowerScreen() {
             return response.data;
         },
         onSuccess: () => {
-            setIsSubmitted(true);
+            setFormStatus('SUBMITTED');
             Alert.alert('Success', 'Form 6C submitted successfully!');
         },
         onError: (error: any) => {
@@ -191,46 +195,49 @@ export default function Form6CLowerScreen() {
                     contentContainerStyle={styles.scrollContent}
                     keyboardShouldPersistTaps="handled"
                 >
-                    {classData.map((classItem, index) => (
-                        <View key={classItem.class_level} style={styles.classSection}>
-                            <Text style={styles.className}>{classItem.class_name}</Text>
+                    {classData.map((classItem, index) => {
+                        const isEditable = formStatus === 'NOT_SUBMITTED' || formStatus === 'DRAFT' || formStatus === 'REJECTED';
+                        return (
+                            <View key={classItem.class_level} style={styles.classSection}>
+                                <Text style={styles.className}>{classItem.class_name}</Text>
+                                
+                                <View style={styles.inputRow}>
+                                    <View style={styles.inputColumn}>
+                                        <Text style={styles.inputLabel}>Boys *</Text>
+                                        <TextInput
+                                            style={[styles.input, !isEditable && styles.inputDisabled]}
+                                            value={classItem.boys}
+                                            onChangeText={(v) => updateClassData(index, 'boys', v)}
+                                            keyboardType="numeric"
+                                            editable={isEditable}
+                                        />
+                                    </View>
+                                    <View style={styles.inputColumn}>
+                                        <Text style={styles.inputLabel}>Girls *</Text>
+                                        <TextInput
+                                            style={[styles.input, !isEditable && styles.inputDisabled]}
+                                            value={classItem.girls}
+                                            onChangeText={(v) => updateClassData(index, 'girls', v)}
+                                            keyboardType="numeric"
+                                            editable={isEditable}
+                                        />
+                                    </View>
+                                    <View style={styles.inputColumn}>
+                                        <Text style={styles.inputLabel}>Sections *</Text>
+                                        <TextInput
+                                            style={[styles.input, !isEditable && styles.inputDisabled]}
+                                            value={classItem.sections}
+                                            onChangeText={(v) => updateClassData(index, 'sections', v)}
+                                            keyboardType="numeric"
+                                            editable={isEditable}
+                                        />
+                                    </View>
+                                </View>
                             
-                            <View style={styles.inputRow}>
-                                <View style={styles.inputColumn}>
-                                    <Text style={styles.inputLabel}>Boys *</Text>
-                                    <TextInput
-                                        style={[styles.input, isSubmitted && styles.inputDisabled]}
-                                        value={classItem.boys}
-                                        onChangeText={(v) => updateClassData(index, 'boys', v)}
-                                        keyboardType="numeric"
-                                        editable={!isSubmitted}
-                                    />
-                                </View>
-                                <View style={styles.inputColumn}>
-                                    <Text style={styles.inputLabel}>Girls *</Text>
-                                    <TextInput
-                                        style={[styles.input, isSubmitted && styles.inputDisabled]}
-                                        value={classItem.girls}
-                                        onChangeText={(v) => updateClassData(index, 'girls', v)}
-                                        keyboardType="numeric"
-                                        editable={!isSubmitted}
-                                    />
-                                </View>
-                                <View style={styles.inputColumn}>
-                                    <Text style={styles.inputLabel}>Sections *</Text>
-                                    <TextInput
-                                        style={[styles.input, isSubmitted && styles.inputDisabled]}
-                                        value={classItem.sections}
-                                        onChangeText={(v) => updateClassData(index, 'sections', v)}
-                                        keyboardType="numeric"
-                                        editable={!isSubmitted}
-                                    />
-                                </View>
+                                <View style={styles.divider} />
                             </View>
-                            
-                            <View style={styles.divider} />
-                        </View>
-                    ))}
+                        );
+                    })}
 
                     {/* Totals Table */}
                     <View style={styles.totalsTable}>
@@ -246,14 +253,48 @@ export default function Form6CLowerScreen() {
                         </View>
                     </View>
 
-                    {/* Confirmation & Submit */}
-                    {isSubmitted ? (
+                    {/* Status Display based on form status */}
+                    {formStatus === 'APPROVED' ? (
                         <>
                             <TouchableOpacity style={styles.submittedButton} disabled>
                                 <Text style={styles.submittedButtonText}>Form 6C Submitted</Text>
                             </TouchableOpacity>
                             <View style={styles.acceptedBanner}>
-                                <Text style={styles.acceptedText}>Your Form 6C Submission is accepted</Text>
+                                <Text style={styles.acceptedText}>Your Form 6C Submission is approved</Text>
+                            </View>
+                        </>
+                    ) : formStatus === 'REJECTED' ? (
+                        <>
+                            <View style={styles.rejectedBanner}>
+                                <Ionicons name="alert-circle" size={20} color="#dc2626" />
+                                <Text style={styles.rejectedText}>Your Form 6C Submission was rejected</Text>
+                            </View>
+                            {rejectionReason && (
+                                <View style={styles.rejectionReasonBox}>
+                                    <Text style={styles.rejectionReasonLabel}>Reason:</Text>
+                                    <Text style={styles.rejectionReasonText}>{rejectionReason}</Text>
+                                </View>
+                            )}
+                            <TouchableOpacity 
+                                style={styles.submitButton}
+                                onPress={handleSubmit}
+                                disabled={submitMutation.isPending}
+                            >
+                                {submitMutation.isPending ? (
+                                    <ActivityIndicator size="small" color="#ffffff" />
+                                ) : (
+                                    <Text style={styles.submitButtonText}>Resubmit Form 6C</Text>
+                                )}
+                            </TouchableOpacity>
+                        </>
+                    ) : formStatus === 'SUBMITTED' ? (
+                        <>
+                            <TouchableOpacity style={styles.pendingButton} disabled>
+                                <Text style={styles.pendingButtonText}>Form 6C Submitted</Text>
+                            </TouchableOpacity>
+                            <View style={styles.pendingBanner}>
+                                <Ionicons name="time-outline" size={18} color="#d97706" />
+                                <Text style={styles.pendingText}>Your Form 6C Submission is pending approval</Text>
                             </View>
                         </>
                     ) : (
@@ -477,6 +518,72 @@ const styles = StyleSheet.create({
         color: '#16a34a',
         fontSize: 14,
         fontWeight: '600',
+    },
+    rejectedBanner: {
+        backgroundColor: '#fee2e2',
+        borderWidth: 1,
+        borderColor: '#dc2626',
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginTop: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    rejectedText: {
+        color: '#dc2626',
+        fontSize: 14,
+        fontWeight: '600',
+        flex: 1,
+    },
+    rejectionReasonBox: {
+        backgroundColor: '#fef2f2',
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginTop: 8,
+    },
+    rejectionReasonLabel: {
+        color: '#991b1b',
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    rejectionReasonText: {
+        color: '#7f1d1d',
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    pendingButton: {
+        backgroundColor: '#fbbf24',
+        borderRadius: 8,
+        paddingVertical: 16,
+        alignItems: 'center',
+        marginTop: 16,
+    },
+    pendingButtonText: {
+        color: '#78350f',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    pendingBanner: {
+        backgroundColor: '#fef3c7',
+        borderWidth: 1,
+        borderColor: '#d97706',
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    pendingText: {
+        color: '#b45309',
+        fontSize: 14,
+        fontWeight: '600',
+        flex: 1,
     },
     loadingContainer: {
         flex: 1,

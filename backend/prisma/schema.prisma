@@ -2,6 +2,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// generator erd {
+//   provider = "prisma-erd-generator"
+//   output   = "./erd.svg"
+// }
+
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -72,6 +78,15 @@ enum Gender {
   MALE
   FEMALE
 }
+
+enum NoticeType {
+  GENERAL
+  PAPER_SETTER
+  PAPER_CHECKER
+  INVITATION
+  PUSH_NOTIFICATION
+}
+
 
 model User {
   id         String   @id @default(uuid()) @db.Uuid
@@ -197,6 +212,7 @@ model School {
   events            Event[]
   notices           Notice[]
   circulars         Circular[]
+  formSubmissions   FormSubmission[]
 
   @@index([district_id])
 }
@@ -316,7 +332,7 @@ model Notice {
   id           String    @id @default(uuid()) @db.Uuid
   title        String    @db.VarChar(255)
   content      String    @db.Text
-  type         String    @db.VarChar(50) @default("General")  // General, Paper Setter, Paper Checker, Invitation, Push Notification
+  type         NoticeType    @default(GENERAL)  // General, Paper Setter, Paper Checker, Invitation, Push Notification
   subject      String?   @db.VarChar(100)  // For Paper Setter/Checker
   venue        String?   @db.VarChar(255)  // For Invitation
   event_time   String?   @db.VarChar(20)   // For Invitation (HH:MM format)
@@ -467,6 +483,8 @@ model FormSubmission {
   submitted_at    DateTime?            @db.Timestamp
   approved_at     DateTime?            @db.Timestamp
   created_at      DateTime             @default(now()) @db.Timestamp
+
+  school          School               @relation(fields: [school_id], references: [id])
 
   @@unique([school_id, form_type])  // One submission per form per school
   @@index([school_id])

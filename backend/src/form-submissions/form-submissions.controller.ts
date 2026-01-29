@@ -137,11 +137,34 @@ export class FormSubmissionsController {
         @Query('formType') formType?: string,
         @Query('page') page?: string,
         @Query('limit') limit?: string,
+        @Query('districtId') districtId?: string,
     ) {
         return this.formSubmissionsService.findPending(
             formType,
             page ? parseInt(page, 10) : 1,
             limit ? parseInt(limit, 10) : 20,
+            districtId,
+        );
+    }
+
+    /**
+     * Get all form submissions with optional filters (admin only)
+     */
+    @Get('admin/all')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    async getAll(
+        @Query('formType') formType?: string,
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('districtId') districtId?: string,
+        @Query('status') status?: string,
+    ) {
+        return this.formSubmissionsService.findAll(
+            formType,
+            page ? parseInt(page, 10) : 1,
+            limit ? parseInt(limit, 10) : 20,
+            districtId,
+            status as FormSubmissionStatus | undefined,
         );
     }
 

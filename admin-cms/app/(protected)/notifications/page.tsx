@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -12,11 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Bell, Loader2, FileText, Calendar, Building2, Tag, Paperclip, MessageSquare } from 'lucide-react';
+import { Search, Bell, Loader2, FileText, Calendar, Building2, Tag, Paperclip, MessageSquare, RefreshCw } from 'lucide-react';
 import { DeleteNoticeButton } from '@/components/DeleteNoticeButton';
 import { ViewNoticeButton } from '@/components/ViewNoticeButton';
 import { ExpandableText } from '@/components/ExpandableText';
-import noticesService, { type Notice, type NoticeType } from '@/services/notices.service';
+import { RefreshTableButton } from '@/components/RefreshTableButton';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import noticesService, { type Notice, type NoticeType, noticeTypeLabels, NOTICES_QUERY_KEY } from '@/services/notices.service';
+import { toast } from 'sonner';
 
 // Animation variants
 const containerVariants = {
@@ -57,50 +59,105 @@ const cardVariants = {
 
 const typeOptions = [
   { value: 'all', label: 'All Types' },
-  { value: 'General', label: 'General' },
-  { value: 'Paper Setter', label: 'Paper Setter' },
-  { value: 'Paper Checker', label: 'Paper Checker' },
-  { value: 'Invitation', label: 'Invitation' },
-  { value: 'Push Notification', label: 'Push Notification' },
+  { value: 'GENERAL', label: 'General' },
+  { value: 'PAPER_SETTER', label: 'Paper Setter' },
+  { value: 'PAPER_CHECKER', label: 'Paper Checker' },
+  { value: 'INVITATION', label: 'Invitation' },
+  { value: 'PUSH_NOTIFICATION', label: 'Push Notification' },
 ];
 
+
 const typeStyles: Record<string, string> = {
-  'General': 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400',
-  'Paper Setter': 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400',
-  'Paper Checker': 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400',
-  'Invitation': 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400',
-  'Push Notification': 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400',
+  'GENERAL': 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400',
+  'PAPER_SETTER': 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400',
+  'PAPER_CHECKER': 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400',
+  'INVITATION': 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400',
+  'PUSH_NOTIFICATION': 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400',
 };
 
 export default function NotificationsPage() {
   const [selectedType, setSelectedType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Fetch notices from API
-  const { data: notices = [], isLoading, isError, error } = useQuery({
-    queryKey: ['notices'],
-    queryFn: () => noticesService.getAll(),
+  
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [allNotices, setAllNotices] = useState<Notice[]>([]);
+  const [previousLength, setPreviousLength] = useState(0);
+  const pageSize = 50;
+  
+  // Track previous filter to detect changes
+  const prevTypeRef = useRef(selectedType);
+  
+  const queryClient = useQueryClient();
+  
+  // Build the type filter - only pass to API if not 'all'
+  const typeFilter = selectedType === 'all' ? undefined : selectedType;
+  
+  // useQuery for fetching notices
+  const { 
+    data: noticesData, 
+    isLoading, 
+    isFetching,
+    isError, 
+    error 
+  } = useQuery({
+    queryKey: [NOTICES_QUERY_KEY, typeFilter, pageSize, page * pageSize],
+    queryFn: () => noticesService.getAll({ type: typeFilter }, pageSize, page * pageSize),
   });
 
-  // Filter notices based on selections
+  // toast.success(JSON.stringify(noticesData));
+
+  // Reset page when filter changes
+  useEffect(() => {
+    if (prevTypeRef.current !== selectedType) {
+      setPage(0);
+      // setAllNotices([]);
+      // setPreviousLength(0);
+      prevTypeRef.current = selectedType;
+    }
+  }, [selectedType]);
+
+  // Update allNotices when data changes
+  useEffect(() => {
+    if (noticesData?.data) {
+      if (page === 0) {
+        setAllNotices(noticesData.data);
+        setPreviousLength(0);
+      } else {
+        setPreviousLength(allNotices.length);
+        setAllNotices(prev => {
+          // Check if we already have this data (avoid duplicates)
+          const existingIds = new Set(prev.map(n => n.id));
+          const newNotices = noticesData.data.filter(n => !existingIds.has(n.id));
+          return [...prev, ...newNotices];
+        });
+      }
+    }
+  }, [noticesData, page]);
+
+  const hasMore = noticesData?.data?.length === pageSize;
+
+  const loadMore = () => {
+    setPage(prev => prev + 1);
+  };
+
+  // Filter notices based on search (client-side)
   const filteredNotices = useMemo(() => {
-    return notices.filter((notice: Notice) => {
-      const matchesType = selectedType === 'all' || notice.type === selectedType;
+    return allNotices.filter((notice: Notice) => {
       const matchesSearch = searchQuery === '' || 
         notice.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         notice.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (notice.school?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-      return matchesType && matchesSearch;
+      return matchesSearch;
     });
-  }, [notices, selectedType, searchQuery]);
+  }, [allNotices, searchQuery]);
 
   // Stats
-  const totalCount = notices.length;
-  const withFileCount = notices.filter((n: Notice) => n.file_url).length;
+  const withFileCount = allNotices.filter((n: Notice) => n.file_url).length;
   const typeCounts = {
-    general: notices.filter((n: Notice) => n.type === 'General').length,
-    paperSetter: notices.filter((n: Notice) => n.type === 'Paper Setter').length,
-    invitation: notices.filter((n: Notice) => n.type === 'Invitation').length,
+    general: allNotices.filter((n: Notice) => n.type === 'GENERAL').length,
+    paperSetter: allNotices.filter((n: Notice) => n.type === 'PAPER_SETTER').length,
+    invitation: allNotices.filter((n: Notice) => n.type === 'INVITATION').length,
   };
 
   const formatDate = (dateString: string) => {
@@ -111,7 +168,7 @@ export default function NotificationsPage() {
     });
   };
 
-  if (isLoading) {
+  if (isLoading && allNotices.length === 0) {
     return (
       <motion.div 
         className="space-y-8 p-2"
@@ -140,7 +197,7 @@ export default function NotificationsPage() {
     );
   }
 
-  if (isError) {
+  if (isError && allNotices.length === 0) {
     return (
       <motion.div 
         className="space-y-8 p-2"
@@ -157,8 +214,19 @@ export default function NotificationsPage() {
           </div>
         </motion.div>
         <div className="flex flex-col items-center justify-center h-96 gap-4">
-          <div className="text-red-500 text-lg">Failed to load notices</div>
-          <p className="text-slate-500 dark:text-slate-400">{(error as Error)?.message || 'Unknown error occurred'}</p>
+          <div className="flex flex-col items-center justify-center py-12 text-red-400">
+            <Bell className="h-12 w-12 mb-4" />
+            <p className="text-lg font-medium">Failed to load notices</p>
+            <p className="text-sm text-slate-500 mt-1">{(error as Error)?.message || 'Unknown error'}</p>
+            <button
+              className="mt-4 px-4 py-2 text-sm text-blue-400 border border-blue-400 rounded-lg hover:bg-blue-400/10"
+              onClick={() => queryClient.invalidateQueries({ queryKey: [NOTICES_QUERY_KEY] })}
+            >
+              <span className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4" /> Retry
+              </span>
+            </button>
+          </div>
         </div>
       </motion.div>
     );
@@ -195,8 +263,9 @@ export default function NotificationsPage() {
               {withFileCount} With Files
             </Badge>
             <Badge className="bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-500/20 px-3 py-1">
-              {totalCount} Total
+              {allNotices.length} Total
             </Badge>
+            <RefreshTableButton queryKey={[NOTICES_QUERY_KEY, typeFilter, pageSize, page * pageSize]} isFetching={isFetching} />
           </div>
         </div>
       </motion.div>
@@ -240,10 +309,20 @@ export default function NotificationsPage() {
 
       {/* Notices Table */}
       <motion.div 
-        className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-lg dark:shadow-xl"
+        className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-lg dark:shadow-xl relative"
         variants={cardVariants}
       >
-        {filteredNotices.length === 0 ? (
+        {/* Loading overlay when refetching */}
+        {isFetching && allNotices.length > 0 && (
+          <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 z-10 flex items-center justify-center">
+            <div className="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
+              <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+              <span className="text-slate-600 dark:text-slate-300 text-sm">Refreshing...</span>
+            </div>
+          </div>
+        )}
+        
+        {filteredNotices.length === 0 && !isLoading && !isFetching ? (
           <motion.div 
             className="text-center py-16"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -253,6 +332,16 @@ export default function NotificationsPage() {
             <div className="text-slate-500 dark:text-slate-400 text-lg">No notices found</div>
             <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Try adjusting your filters</p>
           </motion.div>
+        ) : filteredNotices.length === 0 && (isLoading || isFetching) ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            >
+              <Loader2 className="h-10 w-10 text-blue-500" />
+            </motion.div>
+            <span className="text-slate-500 dark:text-slate-400">Loading notices...</span>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -291,9 +380,9 @@ export default function NotificationsPage() {
                   {filteredNotices.map((notice: Notice, index: number) => (
                     <motion.tr 
                       key={notice.id}
-                      custom={index}
+                      custom={index >= previousLength ? index - previousLength : 0}
                       variants={tableRowVariants}
-                      initial="hidden"
+                      initial={index >= previousLength ? "hidden" : false}
                       animate="visible"
                       className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30"
                     >
@@ -304,8 +393,8 @@ export default function NotificationsPage() {
                         </span>
                       </td>
                       <td className="py-4 px-5">
-                        <Badge className={typeStyles[notice.type] || typeStyles['General']}>
-                          {notice.type || 'General'}
+                        <Badge className={typeStyles[notice.type] || typeStyles['GENERAL']}>
+                          {noticeTypeLabels[notice.type as NoticeType] || 'General'}
                         </Badge>
                       </td>
                       <td className="py-4 px-5 max-w-[300px]">
@@ -340,8 +429,45 @@ export default function NotificationsPage() {
             </table>
           </div>
         )}
+
+        {/* Load More Section */}
+        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50">
+          {isLoading && allNotices.length === 0 ? (
+            <div className="flex items-center justify-center gap-3">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              >
+                <Loader2 className="h-5 w-5 text-blue-500" />
+              </motion.div>
+              <span className="text-slate-500 dark:text-slate-400 text-sm">Loading notices...</span>
+            </div>
+          ) : isError ? (
+            <p className="text-red-500 dark:text-red-400 text-center text-sm">{(error as Error)?.message || 'Failed to load notices'}</p>
+          ) : hasMore ? (
+            <motion.button
+              onClick={loadMore}
+              disabled={isFetching}
+              className="w-full py-2.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-all font-medium disabled:opacity-50"
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+            >
+              {isFetching ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading...
+                </span>
+              ) : (
+                'Load More'
+              )}
+            </motion.button>
+          ) : (
+            <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+              Showing all {allNotices.length} records
+            </p>
+          )}
+        </div>
       </motion.div>
     </motion.div>
   );
 }
-

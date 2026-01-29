@@ -23,6 +23,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Search, Trash2, Plus, FileText, Loader2, AlertTriangle } from 'lucide-react';
 import { paperSetterApi, PaperSetterSelection, TeacherSearchResult } from '@/services/paper-setter.service';
 import { toast } from 'sonner';
+import { RetryButton } from '@/components/RetryButton';
+import { RefreshTableButton } from '@/components/RefreshTableButton';
 
 const subjects = ['Science', 'Mathematics', 'English', 'Social Science', 'Hindi', 'Alternative English'];
 const classLevels = ['10', '12'];
@@ -35,7 +37,7 @@ export default function PaperSettersPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
 
   // Fetch all selections
-  const { data: selections = [], isLoading, error } = useQuery({
+  const { data: selections = [], isLoading, isFetching, error } = useQuery({
     queryKey: ['paper-setter-selections', subjectFilter, statusFilter],
     queryFn: () => paperSetterApi.getAllSelections({
       subject: subjectFilter !== 'all' ? subjectFilter : undefined,
@@ -75,8 +77,11 @@ export default function PaperSettersPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64 text-red-400">
-        <AlertTriangle className="mr-2" /> Failed to load data
+      <div className="flex items-center justify-center h-64">
+        <RetryButton 
+          queryKey={['paper-setter-selections']} 
+          message="Failed to load data" 
+        />
       </div>
     );
   }
@@ -86,22 +91,25 @@ export default function PaperSettersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">Paper Setters & Examiners</h1>
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" /> Add Selection
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-slate-900 border-slate-700 max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-white">Select Paper Setter / Examiner</DialogTitle>
-            </DialogHeader>
-            <AddSelectionForm onSuccess={() => {
-              setShowAddDialog(false);
-              queryClient.invalidateQueries({ queryKey: ['paper-setter-selections'] });
-            }} />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-3">
+          <RefreshTableButton queryKey={['paper-setter-selections', subjectFilter, statusFilter]} isFetching={isFetching} />
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" /> Add Selection
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-slate-900 border-slate-700 max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-white">Select Paper Setter / Examiner</DialogTitle>
+              </DialogHeader>
+              <AddSelectionForm onSuccess={() => {
+                setShowAddDialog(false);
+                queryClient.invalidateQueries({ queryKey: ['paper-setter-selections'] });
+              }} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Filters */}

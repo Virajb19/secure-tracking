@@ -117,3 +117,10 @@ export type PaperSetterNotificationSchema = z.infer<typeof paperSetterNotificati
 export type PaperCheckerNotificationSchema = z.infer<typeof paperCheckerNotificationSchema>;
 export type InvitationNotificationSchema = z.infer<typeof invitationNotificationSchema>;
 export type PushNotificationSchema = z.infer<typeof pushNotificationSchema>;
+
+// Form rejection schema - reason max length 500 characters
+export const rejectFormSchema = z.object({
+  reason: z.string()
+    .min(1, 'Rejection reason is required')
+    .max(500, 'Rejection reason cannot exceed 500 characters'),
+});
