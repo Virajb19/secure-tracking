@@ -1,5 +1,5 @@
 import api from './api';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation, useInfiniteQuery } from '@tanstack/react-query';
 
 // NoticeType enum values match the backend Prisma enum
 export type NoticeType = 'GENERAL' | 'PAPER_SETTER' | 'PAPER_CHECKER' | 'INVITATION' | 'PUSH_NOTIFICATION';
@@ -85,7 +85,7 @@ const noticesApi = {
   /**
    * Get all notices with optional filters and pagination
    */
-  getAll: async (filters?: NoticesFilters, limit = 50, offset = 0): Promise<{ data: Notice[]; total: number }> => {
+  getAll: async (filters?: NoticesFilters, limit = 50, offset = 0): Promise<{ data: Notice[]; total: number; hasMore: boolean }> => {
     const params = new URLSearchParams();
     if (filters?.type) params.append('type', filters.type);
     if (filters?.school_id) params.append('school_id', filters.school_id);
@@ -98,9 +98,15 @@ const noticesApi = {
     const response = await api.get(url);
     // If backend returns array directly (old format), wrap it
     if (Array.isArray(response.data)) {
-      return { data: response.data, total: response.data.length };
+      return { data: response.data, total: response.data.length, hasMore: response.data.length === limit };
     }
-    return response.data;
+    // Add hasMore field based on data length and total
+    const data = response.data;
+    return { 
+      data: data.data, 
+      total: data.total, 
+      hasMore: offset + data.data.length < data.total 
+    };
   },
 
   /**
@@ -165,10 +171,28 @@ export default noticesApi;
 // React Query Hooks
 export const NOTICES_QUERY_KEY = 'notices';
 
+export interface NoticesResponse {
+  data: Notice[];
+  total: number;
+  hasMore: boolean;
+}
+
 export function useGetNotices(filters?: NoticesFilters, limit = 50, offset = 0) {
   return useQuery({
     queryKey: [NOTICES_QUERY_KEY, filters, limit, offset],
     queryFn: () => noticesApi.getAll(filters, limit, offset),
+  });
+}
+
+export function useGetNoticesInfinite(filters?: NoticesFilters, pageSize = 50) {
+  return useInfiniteQuery<NoticesResponse>({
+    queryKey: [NOTICES_QUERY_KEY, 'infinite', filters],
+    queryFn: ({ pageParam = 0 }) => noticesApi.getAll(filters, pageSize, pageParam as number),
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined;
+      return allPages.length * pageSize;
+    },
+    initialPageParam: 0,
   });
 }
 

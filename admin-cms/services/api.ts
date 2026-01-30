@@ -159,9 +159,15 @@ export const tasksApi = {
 // ============================
 // AUDIT LOGS API
 // ============================
+export interface AuditLogsResponse {
+  data: AuditLog[];
+  total: number;
+  hasMore: boolean;
+}
+
 export const auditLogsApi = {
-  getAll: async (limit = 100, offset = 0): Promise<AuditLog[]> => {
-    const response = await api.get<AuditLog[]>('/admin/audit-logs', {
+  getAll: async (limit = 50, offset = 0): Promise<AuditLogsResponse> => {
+    const response = await api.get<AuditLogsResponse>('/admin/audit-logs', {
       params: { limit, offset },
     });
     return response.data;

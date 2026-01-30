@@ -30,7 +30,7 @@ let AuditLogsController = class AuditLogsController {
 exports.AuditLogsController = AuditLogsController;
 __decorate([
     (0, common_1.Get)(),
-    __param(0, (0, common_1.Query)('limit', new common_1.DefaultValuePipe(100), common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Query)('limit', new common_1.DefaultValuePipe(50), common_1.ParseIntPipe)),
     __param(1, (0, common_1.Query)('offset', new common_1.DefaultValuePipe(0), common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, Number]),

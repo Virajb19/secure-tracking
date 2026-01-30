@@ -31,7 +31,11 @@ export declare class AuditLogsService {
     constructor(db: PrismaService);
     create(params: CreateAuditLogParams): Promise<AuditLog>;
     log(action: AuditAction | string, entityType: string, entityId: string | null, userId: string | null, ipAddress: string | null): Promise<AuditLog>;
-    findAll(limit?: number, offset?: number): Promise<AuditLog[]>;
+    findAll(limit?: number, offset?: number): Promise<{
+        data: AuditLog[];
+        total: number;
+        hasMore: boolean;
+    }>;
     findByEntity(entityType: string, entityId: string): Promise<AuditLog[]>;
     findByUser(userId: string): Promise<AuditLog[]>;
 }

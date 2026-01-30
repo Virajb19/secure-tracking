@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Loader2, Shield, Clock, User, Activity, Globe } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { auditLogsApi } from '@/services/api';
+import { FileText, Shield, Clock, User, Activity, Globe } from 'lucide-react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { auditLogsApi, AuditLogsResponse } from '@/services/api';
 import { AuditLog } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
+import { RetryButton } from '@/components/RetryButton';
 
 // Animation variants
 const containerVariants = {
@@ -101,63 +102,50 @@ const actionColors: Record<string, { bg: string; text: string }> = {
 };
 
 export default function AuditLogsPage() {
-  const [allLogs, setAllLogs] = useState<AuditLog[]>([]);
-  const [page, setPage] = useState(0);
-  const [previousLength, setPreviousLength] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const pageSize = 50;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const pageSize = 50;
 
-  const queryClient = useQueryClient();
-
-  // useQuery for fetching audit logs
-  const { 
-    data: logsData, 
-    isLoading, 
+  // Fetch audit logs with infinite query
+  const {
+    data,
+    isLoading,
     isFetching,
-    isError, 
-    error 
-  } = useQuery({
-    queryKey: ['auditLogs', pageSize, page * pageSize],
-    queryFn: () => auditLogsApi.getAll(pageSize, page * pageSize),
+    isFetchingNextPage,
+    error,
+    isError,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery<AuditLogsResponse>({
+    queryKey: ['auditLogs'],
+    queryFn: ({ pageParam = 0 }) => auditLogsApi.getAll(pageSize, pageParam as number),
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined;
+      return allPages.length * pageSize;
+    },
+    initialPageParam: 0,
   });
 
-  // Update allLogs when data changes
-  useEffect(() => {
-    if (logsData) {
-      // Update hasMore based on returned data length
-      setHasMore(logsData.length === pageSize);
-      
-      if (page === 0) {
-        setAllLogs(logsData);
-        setPreviousLength(0);
-      } else {
-        setAllLogs(prev => {
-          setPreviousLength(prev.length);
-          const existingIds = new Set(prev.map(l => l.id));
-          const newLogs = logsData.filter(l => !existingIds.has(l.id));
-          return [...prev, ...newLogs];
-        });
-      }
-      setIsLoadingMore(false);
-    }
-  }, [logsData, page, pageSize]);
+  // Flatten all pages into single array
+  const allLogs = useMemo(() => {
+    return data?.pages.flatMap(page => page.data) ?? [];
+  }, [data]);
 
-  // Use a ref to track state for scroll handlers (avoids stale closure issues)
-  const stateRef = useRef({ hasMore, isFetching, isLoadingMore, hasData: allLogs.length > 0 });
+  // Get total from first page
+  const total = data?.pages[0]?.total ?? 0;
+
+  // Track previous length for animations
+  const [previousLength, setPreviousLength] = useState(0);
   useEffect(() => {
-    stateRef.current = { hasMore, isFetching, isLoadingMore, hasData: allLogs.length > 0 };
-  }, [hasMore, isFetching, isLoadingMore, allLogs.length]);
+    if (allLogs.length > previousLength) {
+      setPreviousLength(allLogs.length);
+    }
+  }, [allLogs.length, previousLength]);
 
   const loadMore = useCallback(() => {
-    const { hasMore: currentHasMore, isFetching: currentFetching, isLoadingMore: currentLoadingMore, hasData } = stateRef.current;
-    // Only load more if we have initial data, not fetching, not already loading more, and there's more to load
-    if (hasData && !currentFetching && !currentLoadingMore && currentHasMore) {
-      setIsLoadingMore(true);
-      setPage(prev => prev + 1);
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
-  }, []);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Infinite scroll handler
   useEffect(() => {
@@ -176,45 +164,22 @@ export default function AuditLogsPage() {
     return () => container.removeEventListener('scroll', handleScroll);
   }, [loadMore]);
 
-  // Edge-case handler: if user scrolls to bottom while data
-  // is still loading, the scroll event is lost.
-  // This effect re-triggers pagination after data arrives.
+  // Auto-load next page if content does not overflow the container
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || allLogs.length === 0) return;
 
-    // Small delay to ensure DOM has updated
-    const timer = setTimeout(() => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
-
-      if (isAtBottom && hasMore && !isFetching && !isLoadingMore) {
-        loadMore();
-      }
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [logsData, hasMore, isFetching, isLoadingMore, loadMore, allLogs.length]);
-
-  // Auto-load next page if content does not overflow the container.
-  // This handles the initial render where scroll events never fire
-  // because the content is shorter than the scroll container.
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container || allLogs.length === 0) return;
-
-    // Small delay to ensure DOM has updated after render
     const timer = setTimeout(() => {
       const { scrollHeight, clientHeight } = container;
       const isNotScrollable = scrollHeight <= clientHeight;
 
-      if (isNotScrollable && hasMore && !isFetching && !isLoadingMore) {
+      if (isNotScrollable && hasNextPage && !isFetchingNextPage) {
         loadMore();
       }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [logsData, hasMore, isFetching, isLoadingMore, loadMore, allLogs.length]);
+  }, [data, hasNextPage, isFetchingNextPage, loadMore, allLogs.length]);
 
 
 
@@ -259,9 +224,9 @@ export default function AuditLogsPage() {
           <div className="flex items-center gap-3">
             <Badge className="bg-amber-500/20 text-amber-400 text-lg hover:bg-amber-500/20 px-3 py-1">
               <FileText className="h-6 w-6 mr-1" />
-              {allLogs.length} Records
+              {total} Records
             </Badge>
-            <RefreshTableButton queryKey={['auditLogs', pageSize, page * pageSize]} isFetching={isFetching} />
+            <RefreshTableButton queryKey={['auditLogs']} isFetching={isFetching && !isFetchingNextPage} />
           </div>
         </div>
       </motion.div>
@@ -282,7 +247,16 @@ export default function AuditLogsPage() {
             <p className="text-slate-500 text-sm mt-2">System activity will appear here</p>
           </motion.div>
         ) : (
-          <div ref={scrollContainerRef} className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+          <div ref={scrollContainerRef} className="overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+            {/* Inline loader when refetching with existing data */}
+            {isFetching && !isFetchingNextPage && allLogs.length > 0 && (
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                <div className="flex items-center gap-3 bg-slate-800 px-4 py-3 rounded-xl shadow-xl border border-slate-700">
+                  <div className='size-5 border-2 border-t-[3px] border-white/20 border-t-amber-400 rounded-full animate-spin' />
+                  <span className="text-slate-300 text-sm font-medium">Refreshing...</span>
+                </div>
+              </div>
+            )}
             <table className="w-full">
               <thead className="sticky top-0 z-10 backdrop-blur-md bg-slate-800/80">
                 <tr className="bg-slate-800/50 border-b border-slate-700">
@@ -361,17 +335,17 @@ export default function AuditLogsPage() {
         <div className="px-6 py-4 border-t border-slate-700/50">
           {isLoading && allLogs.length === 0 ? (
             <div className="flex items-center justify-center gap-3">
-              <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+              <div className='size-5 border-2 border-t-[3px] border-white/20 border-t-amber-400 rounded-full animate-spin' />
               <span className="text-slate-400 text-sm">Loading logs...</span>
             </div>
           ) : isError ? (
-            <p className="text-red-400 text-center text-sm">{(error as Error)?.message || 'Failed to load audit logs'}</p>
-          ) : (isFetching || isLoadingMore) ? (
+            <RetryButton queryKey={['auditLogs']} message={(error as Error)?.message || 'Failed to load audit logs'} />
+          ) : isFetchingNextPage ? (
             <div className="flex items-center justify-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+              <div className='size-4 border-2 border-t-[3px] border-white/20 border-t-amber-400 rounded-full animate-spin' />
               <span className="text-slate-400 text-sm">Loading more...</span>
             </div>
-          ) : hasMore ? (
+          ) : hasNextPage ? (
             <p className="text-center text-sm text-slate-500">Scroll down to load more</p>
           ) : (
             <p className="text-center text-sm text-slate-500">

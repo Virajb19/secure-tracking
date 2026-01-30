@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -11,14 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Bell, Loader2, FileText, Calendar, Building2, Tag, Paperclip, MessageSquare, RefreshCw } from 'lucide-react';
+import { Search, Bell, FileText, Calendar, Building2, Tag, Paperclip, MessageSquare, RefreshCw, Loader2 } from 'lucide-react';
 import { DeleteNoticeButton } from '@/components/DeleteNoticeButton';
 import { ViewNoticeButton } from '@/components/ViewNoticeButton';
 import { ExpandableText } from '@/components/ExpandableText';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import noticesService, { type Notice, type NoticeType, noticeTypeLabels, NOTICES_QUERY_KEY } from '@/services/notices.service';
-import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import noticesApi, { type Notice, type NoticeType, noticeTypeLabels, NOTICES_QUERY_KEY, useGetNoticesInfinite } from '@/services/notices.service';
 import { useDebounceCallback } from 'usehooks-ts';
 
 // Animation variants
@@ -94,66 +93,37 @@ export default function NotificationsPage() {
   // Debounce the search
   const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
   
-  // Pagination state
-  const [page, setPage] = useState(0);
-  const [allNotices, setAllNotices] = useState<Notice[]>([]);
-  const [previousLength, setPreviousLength] = useState(0);
   const pageSize = 50;
-  
-  // Track previous filter to detect changes
-  const prevTypeRef = useRef(selectedType);
   
   const queryClient = useQueryClient();
   
   // Build the type filter - only pass to API if not 'all'
   const typeFilter = selectedType === 'all' ? undefined : selectedType;
   
-  // useQuery for fetching notices
+  // useInfiniteQuery for fetching notices
   const { 
-    data: noticesData, 
+    data,
     isLoading, 
     isFetching,
+    isFetchingNextPage,
     isError, 
-    error 
-  } = useQuery({
-    queryKey: [NOTICES_QUERY_KEY, typeFilter, pageSize, page * pageSize],
-    queryFn: () => noticesService.getAll({ type: typeFilter }, pageSize, page * pageSize),
-  });
+    error,
+    hasNextPage,
+    fetchNextPage,
+  } = useGetNoticesInfinite({ type: typeFilter }, pageSize);
 
-  // toast.success(JSON.stringify(noticesData));
+  // Flatten all pages into single array
+  const allNotices = useMemo(() => {
+    return data?.pages.flatMap(page => page.data) ?? [];
+  }, [data]);
 
-  // Reset page when filter changes
-  useEffect(() => {
-    if (prevTypeRef.current !== selectedType) {
-      setPage(0);
-      // setAllNotices([]);
-      // setPreviousLength(0);
-      prevTypeRef.current = selectedType;
-    }
-  }, [selectedType]);
-
-  // Update allNotices when data changes
-  useEffect(() => {
-    if (noticesData?.data) {
-      if (page === 0) {
-        setAllNotices(noticesData.data);
-        setPreviousLength(0);
-      } else {
-        setPreviousLength(allNotices.length);
-        setAllNotices(prev => {
-          // Check if we already have this data (avoid duplicates)
-          const existingIds = new Set(prev.map(n => n.id));
-          const newNotices = noticesData.data.filter(n => !existingIds.has(n.id));
-          return [...prev, ...newNotices];
-        });
-      }
-    }
-  }, [noticesData, page]);
-
-  const hasMore = noticesData?.data?.length === pageSize;
+  // Get total from first page
+  const total = data?.pages[0]?.total ?? 0;
 
   const loadMore = () => {
-    setPage(prev => prev + 1);
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
   };
 
   // Filter notices based on search (client-side)
@@ -200,12 +170,7 @@ export default function NotificationsPage() {
           </div>
         </motion.div>
         <div className="flex flex-col items-center justify-center h-96 gap-4">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          >
-            <Loader2 className="h-10 w-10 text-blue-500" />
-          </motion.div>
+          <Loader2 className='size-10 text-blue-500 animate-spin' />
           <span className="text-slate-500 dark:text-slate-400">Loading notices...</span>
         </div>
       </motion.div>
@@ -278,9 +243,9 @@ export default function NotificationsPage() {
               {withFileCount} With Files
             </Badge>
             <Badge className="bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-500/20 px-3 py-1">
-              {allNotices.length} Total
+              {total} Total
             </Badge>
-            <RefreshTableButton queryKey={[NOTICES_QUERY_KEY, typeFilter, pageSize, page * pageSize]} isFetching={isFetching} />
+            <RefreshTableButton queryKey={[NOTICES_QUERY_KEY, 'infinite', { type: typeFilter }]} isFetching={isFetching && !isFetchingNextPage} />
           </div>
         </div>
       </motion.div>
@@ -333,12 +298,7 @@ export default function NotificationsPage() {
         {/* Show loading state when fetching with no data or filter changed */}
         {(isFetching || isLoading) && allNotices.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            >
-              <Loader2 className="h-10 w-10 text-blue-500" />
-            </motion.div>
+            <Loader2 className='size-10 text-blue-500 animate-spin' />
             <span className="text-slate-500 dark:text-slate-400">Loading notices...</span>
           </div>
         ) : filteredNotices.length === 0 && !isLoading && !isFetching ? (
@@ -353,12 +313,12 @@ export default function NotificationsPage() {
           </motion.div>
         ) : (
           <div className="overflow-x-auto relative">
-            {/* Inline loader when refetching with existing data */}
-            {isFetching && allNotices.length > 0 && (
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                <div className="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-3 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700">
+            {/* Loading overlay when refetching */}
+            {isFetching && !isFetchingNextPage && allNotices.length > 0 && (
+              <div className="absolute inset-0 bg-slate-900/50 z-10 flex items-center justify-center">
+                <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
                   <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                  <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">Refreshing...</span>
+                  <span className="text-slate-300 text-sm">Refreshing...</span>
                 </div>
               </div>
             )}
@@ -398,9 +358,9 @@ export default function NotificationsPage() {
                   {filteredNotices.map((notice: Notice, index: number) => (
                     <motion.tr 
                       key={notice.id}
-                      custom={index >= previousLength ? index - previousLength : 0}
+                      custom={index}
                       variants={tableRowVariants}
-                      initial={index >= previousLength ? "hidden" : false}
+                      initial="hidden"
                       animate="visible"
                       exit="exit"
                       whileHover="hover"
@@ -455,32 +415,25 @@ export default function NotificationsPage() {
         <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50">
           {isLoading && allNotices.length === 0 ? (
             <div className="flex items-center justify-center gap-3">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-              >
-                <Loader2 className="h-5 w-5 text-blue-500" />
-              </motion.div>
+              <Loader2 className='size-5 text-blue-500 animate-spin' />
               <span className="text-slate-500 dark:text-slate-400 text-sm">Loading notices...</span>
             </div>
           ) : isError ? (
             <p className="text-red-500 dark:text-red-400 text-center text-sm">{(error as Error)?.message || 'Failed to load notices'}</p>
-          ) : hasMore ? (
+          ) : isFetchingNextPage ? (
+            <div className="flex items-center justify-center gap-2">
+              <Loader2 className='size-4 text-blue-500 animate-spin' />
+              <span className="text-slate-500 dark:text-slate-400 text-sm">Loading more...</span>
+            </div>
+          ) : hasNextPage ? (
             <motion.button
               onClick={loadMore}
-              disabled={isFetching}
+              disabled={isFetchingNextPage}
               className="w-full py-3 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-500/5 hover:bg-blue-100 dark:hover:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg transition-all font-medium disabled:opacity-70"
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
             >
-              {isFetching ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-                  <span className="text-blue-600 dark:text-blue-300">Loading more notices...</span>
-                </span>
-              ) : (
-                'Load More'
-              )}
+              Load More ({total - allNotices.length} remaining)
             </motion.button>
           ) : (
             <p className="text-center text-sm text-slate-500 dark:text-slate-400">

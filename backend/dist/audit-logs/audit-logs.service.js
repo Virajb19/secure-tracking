@@ -57,11 +57,19 @@ let AuditLogsService = class AuditLogsService {
         });
     }
     async findAll(limit = 100, offset = 0) {
-        return this.db.auditLog.findMany({
-            orderBy: { created_at: 'desc' },
-            take: limit,
-            skip: offset,
-        });
+        const [data, total] = await Promise.all([
+            this.db.auditLog.findMany({
+                orderBy: { created_at: 'desc' },
+                take: limit,
+                skip: offset,
+            }),
+            this.db.auditLog.count(),
+        ]);
+        return {
+            data,
+            total,
+            hasMore: offset + data.length < total,
+        };
     }
     async findByEntity(entityType, entityId) {
         return this.db.auditLog.findMany({

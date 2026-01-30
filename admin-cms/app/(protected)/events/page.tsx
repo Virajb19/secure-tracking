@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Calendar, MapPin, Users, Eye, Trash2, Loader2, Check, X, Clock, CalendarDays, Search, Download, FileText, User } from 'lucide-react';
-import { useGetEvents, useDeleteEvent, useGetEventById } from '@/services/events.service';
+import { useGetEventsInfinite, useDeleteEvent, useGetEventById } from '@/services/events.service';
 import { useGetDistricts } from '@/services/user.service';
 import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
@@ -128,10 +128,6 @@ export default function EventsPage() {
   const [districtFilter, setDistrictFilter] = useState<string>('all');
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
   
-  // Pagination state
-  const [allEvents, setAllEvents] = useState<EventWithStats[]>([]);
-  const [offset, setOffset] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const pageSize = 20;
 
   const [isDownloading, setIsDownloading] = useState(false);
@@ -146,34 +142,28 @@ export default function EventsPage() {
     return filters;
   }, [fromDate, toDate, districtFilter, eventTypeFilter]);
 
-  const { data, isLoading, isError, isFetching } = useGetEvents(apiFilters, pageSize, offset);
+  // Fetch events with infinite query
+  const {
+    data,
+    isLoading,
+    isError,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useGetEventsInfinite(apiFilters, pageSize);
 
-  // Update allEvents when data changes
-  useEffect(() => {
-    if (data) {
-      if (offset === 0) {
-        setAllEvents(data.data);
-      } else {
-        setAllEvents(prev => {
-          const existingIds = new Set(prev.map(e => e.id));
-          const newEvents = data.data.filter(e => !existingIds.has(e.id));
-          return [...prev, ...newEvents];
-        });
-      }
-      setIsLoadingMore(false);
-    }
-  }, [data, offset]);
+  // Flatten all pages into single array
+  const allEvents = useMemo(() => {
+    return data?.pages.flatMap(page => page.data) ?? [];
+  }, [data]);
 
-  // Reset when filters change
-  useEffect(() => {
-    setOffset(0);
-    setAllEvents([]);
-  }, [fromDate, toDate, districtFilter, eventTypeFilter]);
+  // Get total from first page
+  const total = data?.pages[0]?.total ?? 0;
 
   const loadMore = () => {
-    if (!isFetching && !isLoadingMore && data?.hasMore) {
-      setIsLoadingMore(true);
-      setOffset(prev => prev + pageSize);
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
   };
 
@@ -306,12 +296,7 @@ export default function EventsPage() {
           </div>
         </motion.div>
         <div className="flex flex-col items-center justify-center h-96 gap-4">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          >
-            <Loader2 className="h-10 w-10 text-blue-500" />
-          </motion.div>
+          <Loader2 className='size-10 text-blue-500 animate-spin' />
           <span className="text-slate-400">Loading events...</span>
         </div>
       </motion.div>
@@ -338,7 +323,7 @@ export default function EventsPage() {
           className="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 text-center"
           variants={cardVariants}
         >
-          <RetryButton queryKey={['events', apiFilters, pageSize, offset]} message="Failed to load events" />
+          <RetryButton queryKey={['events-infinite', apiFilters]} message="Failed to load events" />
         </motion.div>
       </motion.div>
     );
@@ -378,9 +363,9 @@ export default function EventsPage() {
               {pastCount} Past
             </Badge>
             <Badge className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/20 px-3 py-1">
-              {data?.total || allEvents.length} Total
+              {total} Total
             </Badge>
-            <RefreshTableButton queryKey={['events', apiFilters, pageSize, offset]} isFetching={isFetching} />
+            <RefreshTableButton queryKey={['events-infinite', apiFilters]} isFetching={isFetching && !isFetchingNextPage} />
           </div>
         </div>
       </motion.div>
@@ -469,7 +454,7 @@ export default function EventsPage() {
           >
              {isDownloading ? (
                    <>
-                      <div className='size-5 border-2 border-white/30 border-t-[3px] border-t-white animate-spin rounded-full disabled:opacity-80'/>
+                      <Loader2 className='size-5 text-white animate-spin'/>
                       Downloading...
                    </>              
             ) : (
@@ -488,12 +473,12 @@ export default function EventsPage() {
         variants={cardVariants}
       >
         <div className="overflow-x-auto relative">
-          {/* Inline loader when refetching with existing data */}
-          {isFetching && allEvents.length > 0 && !isLoadingMore && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-              <div className="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-3 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700">
+          {/* Loading overlay when refetching */}
+          {isFetching && !isFetchingNextPage && allEvents.length > 0 && (
+            <div className="absolute inset-0 bg-slate-900/50 z-10 flex items-center justify-center">
+              <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
                 <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">Refreshing...</span>
+                <span className="text-slate-300 text-sm">Refreshing...</span>
               </div>
             </div>
           )}
@@ -520,12 +505,7 @@ export default function EventsPage() {
                 <tr>
                   <td colSpan={7} className="py-16">
                     <div className="flex flex-col items-center justify-center gap-4">
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                      >
-                        <Loader2 className="h-10 w-10 text-blue-500" />
-                      </motion.div>
+                      <Loader2 className='size-10 text-blue-500 animate-spin' />
                       <span className="text-slate-400">Loading events...</span>
                     </div>
                   </td>
@@ -648,27 +628,20 @@ export default function EventsPage() {
         {/* Load More / Status */}
         {allEvents.length > 0 && (
           <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50">
-            {(isFetching || isLoadingMore) && offset > 0 ? (
+            {isFetchingNextPage ? (
               <div className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                <Loader2 className='size-4 text-blue-500 animate-spin' />
                 <span className="text-slate-400 text-sm">Loading more...</span>
               </div>
-            ) : data?.hasMore ? (
+            ) : hasNextPage ? (
               <div className="flex justify-center">
                 <Button
                   onClick={loadMore}
-                  disabled={isLoadingMore}
+                  disabled={isFetchingNextPage}
                   variant="outline"
                   className="bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 min-w-[150px]"
                 >
-                  {isLoadingMore ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading...
-                    </span>
-                  ) : (
-                    'Load More'
-                  )}
+                  Load More ({total - allEvents.length} remaining)
                 </Button>
               </div>
             ) : (
@@ -689,7 +662,7 @@ export default function EventsPage() {
 
           {isLoadingDetails ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              <div className='size-8 border-2 border-t-[3px] border-white/20 border-t-indigo-400 rounded-full animate-spin' />
             </div>
           ) : eventDetails ? (
             <div className="space-y-4">

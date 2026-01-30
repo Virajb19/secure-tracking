@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Trash2, CheckCircle, Loader2, Headphones, Hash, User, MessageSquare, Phone, Calendar, RotateCcw, HelpCircle, Search, Filter, X } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { helpdeskApi, HelpdeskResponse } from '@/services/helpdesk.service';
-import { HelpdeskTicket } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { DeleteTicketButton } from '@/components/DeleteTicketButton';
+import { ResolveTicketButton } from '@/components/ResolveTicketButton';
+import { SetBackToPendingButton } from '@/components/SetBackToPendingButton';
 import { ExpandableText } from '@/components/ExpandableText';
-import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
 import { RetryButton } from '@/components/RetryButton';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
 import { useDebounceCallback } from 'usehooks-ts';
@@ -66,103 +66,61 @@ function formatDate(dateString: string): string {
   return `${day}${ordinal} ${month}, ${year}`;
 }
 
+const PAGE_SIZE = 20;
+
 export default function HelpdeskPage() {
-  const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  const [allTickets, setAllTickets] = useState<HelpdeskTicket[]>([]);
-  const [offset, setOffset] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const pageSize = 20;
 
   // Debounce the search
   const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
 
-  // Handler for status filter change - handles clicking same filter
-  const handleStatusFilterChange = (newFilter: string | undefined) => {  
-      setStatusFilter(newFilter);
-  };
-
-  // Fetch helpdesk tickets with pagination
-  const { data, isLoading, isFetching, error } = useQuery<HelpdeskResponse>({
-    queryKey: ['helpdesk-tickets', pageSize, offset, statusFilter],
-    queryFn: () => helpdeskApi.getAll(pageSize, offset, statusFilter),
+  // Fetch helpdesk tickets with infinite query
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    error,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery<HelpdeskResponse>({
+    queryKey: ['helpdesk-tickets', statusFilter],
+    queryFn: ({ pageParam = 0 }) => helpdeskApi.getAll(PAGE_SIZE, pageParam as number, statusFilter),
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined;
+      return allPages.length * PAGE_SIZE;
+    },
+    initialPageParam: 0,
   });
 
-  // Update allTickets when data changes
-  useEffect(() => {
-    if (data) {
-      if (offset === 0) {
-        setAllTickets(data.data);
-      } else {
-        setAllTickets(prev => {
-          const existingIds = new Set(prev.map(t => t.id));
-          const newTickets = data.data.filter(t => !existingIds.has(t.id));
-          return [...prev, ...newTickets];
-        });
-      }
-      setIsLoadingMore(false);
-    }
-  }, [data, offset]);
+  // Flatten all pages into single array
+  const allTickets = useMemo(() => {
+    return data?.pages.flatMap(page => page.data) ?? [];
+  }, [data]);
 
-  // Reset when filter changes (different filter selected)
-  useEffect(() => {
-    setOffset(0);
-    setAllTickets([]);
-  }, [statusFilter]);
-
-  const loadMore = () => {
-    if (!isFetching && !isLoadingMore && data?.hasMore) {
-      setIsLoadingMore(true);
-      setOffset(prev => prev + pageSize);
-    }
-  };
-
-  // Resolve mutation
-  const resolveMutation = useMutation({
-    mutationFn: helpdeskApi.resolve,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['helpdesk-tickets'] });
-      showSuccessToast('Ticket marked as resolved!', 3000);
-    },
-    onError: () => {
-      showErrorToast('Failed to resolve ticket. Please try again.');
-    },
-  });
-
-  // Toggle status mutation
-  const toggleStatusMutation = useMutation({
-    mutationFn: helpdeskApi.toggleStatus,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['helpdesk-tickets'] });
-      showSuccessToast(
-        data.is_resolved ? 'Ticket marked as resolved!' : 'Ticket set back to pending!',
-        3000
-      );
-    },
-    onError: () => {
-      showErrorToast('Failed to update ticket status. Please try again.');
-    },
-  });
-
-  const handleResolve = (id: string) => {
-    resolveMutation.mutate(id);
-  };
+  // Get total from first page (it's the same across all pages)
+  const total = data?.pages[0]?.total ?? 0;
 
   // Filter tickets by search (client-side for loaded tickets)
   const filteredTickets = useMemo(() => {
-        if (!searchQuery) return allTickets;
-        const q = searchQuery.toLowerCase();
-        return allTickets.filter(ticket =>
-          ticket.full_name.toLowerCase().includes(q) ||
-          ticket.phone.toLowerCase().includes(q) ||
-          ticket.message.toLowerCase().includes(q)
-        );
-}, [allTickets, searchQuery]);
-  
+    if (!searchQuery) return allTickets;
+    const q = searchQuery.toLowerCase();
+    return allTickets.filter(ticket =>
+      ticket.full_name.toLowerCase().includes(q) ||
+      ticket.phone.toLowerCase().includes(q) ||
+      ticket.message.toLowerCase().includes(q)
+    );
+  }, [allTickets, searchQuery]);
 
-  if (isLoading && allTickets.length === 0) {
+  const handleLoadMore = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
+
+  if (isLoading) {
     return (
       <motion.div 
         className="space-y-8 p-2"
@@ -179,12 +137,7 @@ export default function HelpdeskPage() {
           </div>
         </motion.div>
         <div className="flex flex-col items-center justify-center h-96 gap-4">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          >
-            <Loader2 className="h-10 w-10 text-blue-500" />
-          </motion.div>
+          <Loader2 className='size-10 text-blue-500 animate-spin' />
           <span className="text-slate-400">Loading tickets...</span>
         </div>
       </motion.div>
@@ -213,7 +166,7 @@ export default function HelpdeskPage() {
           animate={{ opacity: 1 }}
         >
           <RetryButton 
-            queryKey={['helpdesk-tickets', pageSize, offset, statusFilter]} 
+            queryKey={['helpdesk-tickets', statusFilter]} 
             message="Failed to load tickets" 
           />
         </motion.div>
@@ -246,9 +199,9 @@ export default function HelpdeskPage() {
           </div>
           <div className="flex items-center gap-3">
             <Badge className="bg-slate-700/50 text-slate-300 hover:bg-slate-700/50 px-3 py-1">
-              {data?.total || 0} Total
+              {total} Total
             </Badge>
-            <RefreshTableButton queryKey={['helpdesk-tickets', pageSize, offset, statusFilter]} isFetching={isFetching} />
+            <RefreshTableButton queryKey={['helpdesk-tickets', statusFilter]} isFetching={isFetching && !isFetchingNextPage} />
           </div>
         </div>
       </motion.div>
@@ -287,7 +240,7 @@ export default function HelpdeskPage() {
         {/* Status Filter Buttons */}
         <div className="flex gap-2">
           <motion.button
-            onClick={() => handleStatusFilterChange(undefined)}
+            onClick={() => setStatusFilter(undefined)}
             className={`px-4 py-2.5 rounded-xl font-medium transition-all ${
               statusFilter === undefined
                 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
@@ -299,7 +252,7 @@ export default function HelpdeskPage() {
             All
           </motion.button>
           <motion.button
-            onClick={() => handleStatusFilterChange('pending')}
+            onClick={() => setStatusFilter('pending')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
               statusFilter === 'pending'
                 ? 'bg-yellow-500 text-white shadow-lg shadow-yellow-500/25'
@@ -312,7 +265,7 @@ export default function HelpdeskPage() {
             Pending
           </motion.button>
           <motion.button
-            onClick={() => handleStatusFilterChange('resolved')}
+            onClick={() => setStatusFilter('resolved')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
               statusFilter === 'resolved'
                 ? 'bg-green-500 text-white shadow-lg shadow-green-500/25'
@@ -333,25 +286,20 @@ export default function HelpdeskPage() {
         variants={cardVariants}
       >
         {/* Show loading state when fetching with no data (e.g., after filter change) */}
-        {(isFetching || isLoading) && allTickets.length === 0 ? (
+        {(isLoading || (isFetching && !isFetchingNextPage)) && allTickets.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            >
-              <Loader2 className="h-10 w-10 text-blue-500" />
-            </motion.div>
+            <Loader2 className='size-10 text-blue-500 animate-spin' />
             <span className="text-slate-400">Loading tickets...</span>
           </div>
         ) : filteredTickets.length > 0 ? (
           <>
             <div className="overflow-x-auto relative">
-              {/* Inline loader when refetching with existing data */}
-              {isFetching && allTickets.length > 0 && !isLoadingMore && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                  <div className="flex items-center gap-3 bg-slate-800 px-4 py-3 rounded-xl shadow-xl border border-slate-700">
+              {/* Loading overlay when refetching */}
+              {isFetching && !isFetchingNextPage && allTickets.length > 0 && (
+                <div className="absolute inset-0 bg-slate-900/50 z-10 flex items-center justify-center">
+                  <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
                     <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                    <span className="text-slate-300 text-sm font-medium">Refreshing...</span>
+                    <span className="text-slate-300 text-sm">Refreshing...</span>
                   </div>
                 </div>
               )}
@@ -433,35 +381,9 @@ export default function HelpdeskPage() {
                         <td className="py-4 px-5">
                           <div className="flex items-center gap-2">
                             {!ticket.is_resolved ? (
-                              <motion.button
-                                onClick={() => handleResolve(ticket.id)}
-                                disabled={resolveMutation.isPending}
-                                className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all disabled:opacity-50"
-                                title="Mark as Resolved"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                              >
-                                {resolveMutation.isPending ? (
-                                  <Loader2 className="h-5 w-5 animate-spin" />
-                                ) : (
-                                  <CheckCircle className="h-5 w-5" />
-                                )}
-                              </motion.button>
+                              <ResolveTicketButton ticketId={ticket.id} />
                             ) : (
-                              <motion.button
-                                onClick={() => toggleStatusMutation.mutate(ticket.id)}
-                                disabled={toggleStatusMutation.isPending}
-                                className="p-2 text-slate-400 hover:text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-all disabled:opacity-50"
-                                title="Set back to Pending"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                              >
-                                {toggleStatusMutation.isPending ? (
-                                  <Loader2 className="h-5 w-5 animate-spin" />
-                                ) : (
-                                  <RotateCcw className="h-5 w-5" />
-                                )}
-                              </motion.button>
+                              <SetBackToPendingButton ticketId={ticket.id} />
                             )}
                             <DeleteTicketButton ticketId={ticket.id} />
                           </div>
@@ -475,26 +397,26 @@ export default function HelpdeskPage() {
 
             {/* Load More / Record count */}
             <div className="px-6 py-4 border-t border-slate-700/50">
-              {data?.hasMore ? (
+              {hasNextPage ? (
                 <motion.button
-                  onClick={loadMore}
-                  disabled={isFetching || isLoadingMore}
+                  onClick={handleLoadMore}
+                  disabled={isFetchingNextPage}
                   className="w-full py-3 text-sm text-blue-400 hover:text-blue-300 bg-blue-500/5 hover:bg-blue-500/10 rounded-lg transition-all font-medium disabled:opacity-70 border border-blue-500/20"
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
                 >
-                  {isLoadingMore ? (
+                  {isFetchingNextPage ? (
                     <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
+                      <Loader2 className='size-5 text-blue-500 animate-spin' />
                       <span className="text-blue-300">Loading more tickets...</span>
                     </span>
                   ) : (
-                    `Load More (${(data?.total || 0) - allTickets.length} remaining)`
+                    `Load More (${total - allTickets.length} remaining)`
                   )}
                 </motion.button>
               ) : (
                 <p className="text-center text-sm text-slate-500">
-                  Showing all {filteredTickets.length} records
+                  Showing all {allTickets.length} records
                 </p>
               )}
             </div>

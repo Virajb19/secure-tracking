@@ -14,14 +14,14 @@ export declare class JwtStrategy extends JwtStrategy_base {
     private readonly usersService;
     constructor(configService: ConfigService, usersService: UsersService);
     validate(payload: JwtPayload): Promise<{
-        email: string | null;
-        name: string;
-        phone: string;
-        password: string;
-        role: import("@prisma/client").$Enums.UserRole;
-        is_active: boolean;
         id: string;
+        is_active: boolean;
         created_at: Date;
+        name: string;
+        email: string | null;
+        password: string;
+        phone: string;
+        role: import("@prisma/client").$Enums.UserRole;
         gender: import("@prisma/client").$Enums.Gender | null;
         profile_image_url: string | null;
         device_id: string | null;

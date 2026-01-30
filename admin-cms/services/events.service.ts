@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { eventsApi, EventWithStats, EventDetails, InvitableUser, CreateEventPayload, EventFilterParams, EventsResponse } from './api';
 
 /* =========================
@@ -12,6 +12,20 @@ export const useGetEvents = (filters?: EventFilterParams, limit = 20, offset = 0
   return useQuery<EventsResponse>({
     queryKey: ['events', filters, limit, offset],
     queryFn: () => eventsApi.getAll(filters, limit, offset),
+    refetchOnMount: 'always',
+  });
+};
+
+// Get all events with infinite query for pagination
+export const useGetEventsInfinite = (filters?: EventFilterParams, pageSize = 20) => {
+  return useInfiniteQuery<EventsResponse>({
+    queryKey: ['events-infinite', filters],
+    queryFn: ({ pageParam = 0 }) => eventsApi.getAll(filters, pageSize, pageParam as number),
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined;
+      return allPages.length * pageSize;
+    },
+    initialPageParam: 0,
     refetchOnMount: 'always',
   });
 };

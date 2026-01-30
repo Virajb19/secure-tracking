@@ -102,12 +102,21 @@ export class AuditLogsService {
      * @param limit - Maximum number of records to return
      * @param offset - Number of records to skip for pagination
      */
-    async findAll(limit = 100, offset = 0): Promise<AuditLog[]> {
-        return this.db.auditLog.findMany({
-            orderBy: { created_at: 'desc' },
-            take: limit,
-            skip: offset,
-        });
+    async findAll(limit = 100, offset = 0): Promise<{ data: AuditLog[]; total: number; hasMore: boolean }> {
+        const [data, total] = await Promise.all([
+            this.db.auditLog.findMany({
+                orderBy: { created_at: 'desc' },
+                take: limit,
+                skip: offset,
+            }),
+            this.db.auditLog.count(),
+        ]);
+        
+        return {
+            data,
+            total,
+            hasMore: offset + data.length < total,
+        };
     }
 
     /**

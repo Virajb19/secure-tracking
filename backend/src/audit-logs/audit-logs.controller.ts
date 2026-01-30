@@ -4,6 +4,12 @@ import { AuditLogsService } from './audit-logs.service';
 import { JwtAuthGuard, RolesGuard } from '../shared/guards';
 import { Roles } from '../shared/decorators';
 
+interface AuditLogsResponse {
+    data: AuditLog[];
+    total: number;
+    hasMore: boolean;
+}
+
 /**
  * Audit Logs Controller.
  * Provides read-only access to audit logs for ADMIN users only.
@@ -21,15 +27,15 @@ export class AuditLogsController {
      * Get all audit logs with pagination.
      * Admin only endpoint.
      * 
-     * @param limit - Maximum number of records (default: 100, max: 1000)
+     * @param limit - Maximum number of records (default: 50, max: 1000)
      * @param offset - Records to skip for pagination (default: 0)
-     * @returns Array of audit log entries, newest first
+     * @returns Paginated audit log entries with total count, newest first
      */
     @Get()
     async findAll(
-        @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
+        @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
         @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
-    ): Promise<AuditLog[]> {
+    ): Promise<AuditLogsResponse> {
         // Enforce maximum limit to prevent excessive data retrieval
         const safeLimit = Math.min(limit, 1000);
         return this.auditLogsService.findAll(safeLimit, offset);
