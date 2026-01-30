@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -43,7 +43,7 @@ import {
   Search
 } from 'lucide-react';
 import { circularsApi, masterDataApi, CircularsResponse } from '@/services/api';
-import { Circular, District, School } from '@/types';
+import { District, School } from '@/types';
 import { DeleteCircularButton } from '@/components/DeleteCircularButton';
 import { CircularFormSchema, circularFormSchema } from '@/lib/zod';
 import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
@@ -97,9 +97,6 @@ export default function CircularsPage() {
   const [isSchoolListExpanded, setIsSchoolListExpanded] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [allCirculars, setAllCirculars] = useState<Circular[]>([]);
-  const [offset, setOffset] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const pageSize = 20;
   const queryClient = useQueryClient();
 
@@ -122,38 +119,36 @@ export default function CircularsPage() {
 
   const selectedDistrictId = form.watch('district_id');
 
-  // Fetch circulars with pagination
-  const { data, isLoading: circularsLoading, isFetching: circularsFetching, error: circularsError } = useQuery<CircularsResponse>({
-    queryKey: ['circulars', pageSize, offset, searchQuery],
-    queryFn: () => circularsApi.getAll(pageSize, offset, searchQuery || undefined),
+  // Fetch circulars with infinite query
+  const {
+    data,
+    isLoading: circularsLoading,
+    isFetching: circularsFetching,
+    isFetchingNextPage,
+    error: circularsError,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery<CircularsResponse>({
+    queryKey: ['circulars', searchQuery],
+    queryFn: ({ pageParam = 0 }) => circularsApi.getAll(pageSize, pageParam as number, searchQuery || undefined),
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined;
+      return allPages.length * pageSize;
+    },
+    initialPageParam: 0,
   });
 
-  // Update allCirculars when data changes
-  useEffect(() => {
-    if (data) {
-      if (offset === 0) {
-        setAllCirculars(data.data);
-      } else {
-        setAllCirculars(prev => {
-          const existingIds = new Set(prev.map(c => c.id));
-          const newCirculars = data.data.filter(c => !existingIds.has(c.id));
-          return [...prev, ...newCirculars];
-        });
-      }
-      setIsLoadingMore(false);
-    }
-  }, [data, offset]);
+  // Flatten all pages into single array
+  const allCirculars = useMemo(() => {
+    return data?.pages.flatMap(page => page.data) ?? [];
+  }, [data]);
 
-  // Reset when search changes
-  useEffect(() => {
-    setOffset(0);
-    setAllCirculars([]);
-  }, [searchQuery]);
+  // Get total from first page
+  const total = data?.pages[0]?.total ?? 0;
 
   const loadMore = () => {
-    if (!circularsFetching && !isLoadingMore && data?.hasMore) {
-      setIsLoadingMore(true);
-      setOffset(prev => prev + pageSize);
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
   };
 
@@ -648,9 +643,9 @@ export default function CircularsPage() {
             </motion.div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">All Circulars</h2>
             <span className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 rounded-full text-sm">
-              {data?.total || allCirculars.length} total
+              {total} total
             </span>
-            <RefreshTableButton queryKey={['circulars', pageSize, offset, searchQuery]} isFetching={circularsFetching} />
+            <RefreshTableButton queryKey={['circulars', searchQuery]} isFetching={circularsFetching && !isFetchingNextPage} />
           </div>
           
           {/* Search Input */}
@@ -673,7 +668,7 @@ export default function CircularsPage() {
           variants={cardVariants}
         >
           {/* Loading overlay when refetching */}
-          {circularsFetching && allCirculars.length > 0 && !isLoadingMore && (
+          {circularsFetching && allCirculars.length > 0 && !isFetchingNextPage && (
             <div className="absolute inset-0 bg-slate-900/50 z-10 flex items-center justify-center">
               <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
                 <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
@@ -698,7 +693,7 @@ export default function CircularsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <RetryButton queryKey={['circulars', pageSize, offset, searchQuery]} message="Failed to load circulars" />
+              <RetryButton queryKey={['circulars', searchQuery]} message="Failed to load circulars" />
             </motion.div>
           ) : allCirculars.length === 0 ? (
             <motion.div 
@@ -793,19 +788,19 @@ export default function CircularsPage() {
           {/* Load More / Status */}
           {allCirculars.length > 0 && (
             <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50">
-              {(circularsFetching || isLoadingMore) ? (
+              {isFetchingNextPage ? (
                 <div className="flex items-center justify-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
                   <span className="text-slate-400 text-sm">Loading more...</span>
                 </div>
-              ) : data?.hasMore ? (
+              ) : hasNextPage ? (
                 <div className="flex justify-center">
                   <Button
                     onClick={loadMore}
                     variant="outline"
                     className="bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                   >
-                    Load More
+                    Load More ({total - allCirculars.length} remaining)
                   </Button>
                 </div>
               ) : (

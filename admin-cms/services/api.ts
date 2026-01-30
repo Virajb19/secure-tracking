@@ -257,6 +257,7 @@ export interface EventFilterParams {
   to_date?: string;
   district_id?: string;
   event_type?: SchoolEventType;
+  search?: string;
 }
 
 export interface EventWithStats {
@@ -331,6 +332,7 @@ export const eventsApi = {
     if (filters?.to_date) params.to_date = filters.to_date;
     if (filters?.district_id) params.district_id = filters.district_id;
     if (filters?.event_type) params.event_type = filters.event_type;
+    if (filters?.search) params.search = filters.search;
     params.limit = limit.toString();
     params.offset = offset.toString();
     

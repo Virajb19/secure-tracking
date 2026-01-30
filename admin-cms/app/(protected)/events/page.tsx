@@ -128,19 +128,27 @@ export default function EventsPage() {
   const [districtFilter, setDistrictFilter] = useState<string>('all');
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
   
+  // Search filter (server-side)
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Debounce the search
+  const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
+  
   const pageSize = 20;
 
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Build filters for API
+  // Build filters for API (including search)
   const apiFilters: EventFilterParams = useMemo(() => {
     const filters: EventFilterParams = {};
     if (fromDate) filters.from_date = fromDate;
     if (toDate) filters.to_date = toDate;
     if (districtFilter && districtFilter !== 'all') filters.district_id = districtFilter;
     if (eventTypeFilter && eventTypeFilter !== 'all') filters.event_type = eventTypeFilter as SchoolEventType;
+    if (searchQuery) filters.search = searchQuery;
     return filters;
-  }, [fromDate, toDate, districtFilter, eventTypeFilter]);
+  }, [fromDate, toDate, districtFilter, eventTypeFilter, searchQuery]);
 
   // Fetch events with infinite query
   const {
@@ -167,29 +175,12 @@ export default function EventsPage() {
     }
   };
 
-  // Search filter (client-side)
-  const [searchInput, setSearchInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Debounce the search
-  const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
-
   // Modals
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   // Get event details when viewing
   const { data: eventDetails, isLoading: isLoadingDetails } = useGetEventById(selectedEventId || undefined);
-
-  // Filter events by search (client-side)
-  const filteredEvents = useMemo(() => {
-    if (!searchQuery) return allEvents;
-    return allEvents.filter(event => {
-      return event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.creator?.name.toLowerCase().includes(searchQuery.toLowerCase());
-    });
-  }, [allEvents, searchQuery]);
 
   const handleDeleteEvent = async (eventId: string) => {
     try {
@@ -249,7 +240,7 @@ export default function EventsPage() {
       doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 14, 36);
       
       // Table
-      const tableData = filteredEvents.map((event, index) => [
+      const tableData = allEvents.map((event, index) => [
         index + 1,
         event.title,
         eventTypeLabels[event.event_type as SchoolEventType] || event.event_type,
@@ -450,7 +441,7 @@ export default function EventsPage() {
           <Button
             onClick={handleDownloadPDF}
             className="bg-green-600 group hover:bg-green-700 text-white flex items-center gap-2"
-            disabled={isDownloading || filteredEvents.length === 0}
+            disabled={isDownloading || allEvents.length === 0}
           >
              {isDownloading ? (
                    <>
@@ -510,7 +501,7 @@ export default function EventsPage() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredEvents.length === 0 ? (
+              ) : allEvents.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-16">
                     <motion.div 
@@ -526,7 +517,7 @@ export default function EventsPage() {
                 </tr>
               ) : (
                 <AnimatePresence mode="popLayout">
-                  {filteredEvents.map((event, index) => (
+                  {allEvents.map((event, index) => (
                     <motion.tr 
                       key={event.id}
                       custom={index}

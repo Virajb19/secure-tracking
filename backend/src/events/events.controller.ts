@@ -31,7 +31,7 @@ export class AdminEventsController {
     /**
      * GET /admin/events
      * Get all events with invitation stats (Admin only).
-     * Supports filtering by date range, district, event type, and pagination.
+     * Supports filtering by date range, district, event type, search, and pagination.
      */
     @Get()
     async getAllEvents(
@@ -39,6 +39,7 @@ export class AdminEventsController {
         @Query('to_date') toDate?: string,
         @Query('district_id') districtId?: string,
         @Query('event_type') eventType?: SchoolEventType,
+        @Query('search') search?: string,
         @Query('limit') limit?: string,
         @Query('offset') offset?: string,
     ) {
@@ -47,6 +48,7 @@ export class AdminEventsController {
             to_date: toDate,
             district_id: districtId,
             event_type: eventType,
+            search: search,
         };
         return this.eventsService.getAllEventsAdmin(
             filters,

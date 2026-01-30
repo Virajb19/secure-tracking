@@ -42,6 +42,7 @@ export interface EventFilterDto {
     to_date?: string;
     district_id?: string;
     event_type?: SchoolEventType;
+    search?: string;
 }
 
 export interface RespondToInvitationDto {
@@ -74,7 +75,7 @@ export class EventsService {
 
     /**
      * Get all events (Admin view - all events with invitation stats).
-     * Supports filtering by date range, district, event type, and pagination.
+     * Supports filtering by date range, district, event type, search, and pagination.
      */
     async getAllEventsAdmin(filters?: EventFilterDto, limit = 20, offset = 0) {
         const whereClause: any = { is_active: true };
@@ -98,6 +99,15 @@ export class EventsService {
         // Apply event type filter
         if (filters?.event_type) {
             whereClause.event_type = filters.event_type;
+        }
+
+        // Apply search filter (search in title, location, creator name)
+        if (filters?.search) {
+            whereClause.OR = [
+                { title: { contains: filters.search, mode: 'insensitive' } },
+                { location: { contains: filters.search, mode: 'insensitive' } },
+                { creator: { name: { contains: filters.search, mode: 'insensitive' } } },
+            ];
         }
 
         const [events, total] = await Promise.all([

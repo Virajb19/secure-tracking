@@ -136,6 +136,31 @@ export default function UsersPage() {
     return filters;
   }, [currentPage, roleFilter, districtFilter, schoolFilter, classFilter, subjectFilter, debouncedSearch, showOnlyInactive]);
 
+  
+  // ❌ Never use useInfiniteQuery for textbook-style paginated tables
+  //    (Page numbers: 1, 2, 3, jump to page N)
+  //
+  // ✅ useQuery → classic pagination
+  //    - Server-side pagination (page, limit)
+  //    - Direct page jumps
+  //    - Predictable cache per page
+  //
+  // ✅ useInfiniteQuery → infinite scroll / "Load more"
+  //    - Sequential data loading
+  //    - Cursor-based pagination
+  //    - Appends data instead of replacing
+  //
+  // Rule of thumb:
+  // If users can jump to a specific page → useQuery
+  // If users only scroll forward → useInfiniteQuery
+
+  // Never use useInfiniteQuery for textbook paginated tables
+  // useQuery -> textbook paginated tables
+  // useInfiniteQuery -> infinite scroll / load more -> sequential data loading
+  // Infinite scroll -> audit logs,( load more button OR auto load on scroll )
+
+  // Never do overfetching Fetch what frontend needs
+  
   // Fetch data with server-side pagination
   const { data: usersResponse, isLoading, isFetching, isError, error } = useGetUsers(apiFilters);
   const users = usersResponse?.data || [];
