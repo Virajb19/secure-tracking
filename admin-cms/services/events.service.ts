@@ -1,17 +1,17 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { eventsApi, EventWithStats, EventDetails, InvitableUser, CreateEventPayload } from './api';
+import { eventsApi, EventWithStats, EventDetails, InvitableUser, CreateEventPayload, EventFilterParams, EventsResponse } from './api';
 
 /* =========================
    Event Queries
 ========================= */
 
-// Get all events with stats (Admin)
-export const useGetEvents = () => {
-  return useQuery<EventWithStats[]>({
-    queryKey: ['events'],
-    queryFn: eventsApi.getAll,
+// Get all events with stats (Admin) - supports filtering and pagination
+export const useGetEvents = (filters?: EventFilterParams, limit = 20, offset = 0) => {
+  return useQuery<EventsResponse>({
+    queryKey: ['events', filters, limit, offset],
+    queryFn: () => eventsApi.getAll(filters, limit, offset),
     refetchOnMount: 'always',
   });
 };

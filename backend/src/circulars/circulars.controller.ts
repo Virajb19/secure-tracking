@@ -26,13 +26,23 @@ export class CircularsController {
 
     /**
      * GET /circulars
-     * Get all active circulars.
+     * Get all active circulars with pagination.
      * Anyone authenticated can view circulars.
      */
     @Get()
     @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SEBA_OFFICER, UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT)
-    async getCirculars(@CurrentUser() user: User) {
-        return this.circularsService.getCirculars(user.id);
+    async getCirculars(
+        @CurrentUser() user: User,
+        @Query('limit') limit?: string,
+        @Query('offset') offset?: string,
+        @Query('search') search?: string,
+    ) {
+        return this.circularsService.getCirculars(
+            user.id,
+            limit ? parseInt(limit, 10) : 20,
+            offset ? parseInt(offset, 10) : 0,
+            search,
+        );
     }
 
     /**

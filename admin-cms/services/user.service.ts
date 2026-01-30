@@ -1,12 +1,12 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { usersApi, masterDataApi } from "./api";
+import { usersApi, masterDataApi, UserFilterParams } from "./api";
 
-export const useGetUsers = () => {
+export const useGetUsers = (filters?: UserFilterParams) => {
   return useQuery({
-    queryKey: ["users"],
-    queryFn: usersApi.getAll,
+    queryKey: ["users", filters],
+    queryFn: () => usersApi.getAll(filters),
   })
 }
 

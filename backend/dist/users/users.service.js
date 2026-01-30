@@ -44,6 +44,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersService = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
 const prisma_1 = require("../prisma");
 const audit_logs_service_1 = require("../audit-logs/audit-logs.service");
 const notifications_service_1 = require("../notifications/notifications.service");
@@ -91,6 +92,91 @@ let UsersService = class UsersService {
             },
             orderBy: { created_at: 'desc' },
         });
+    }
+    async findAllPaginated(params) {
+        const { page, limit, role, district_id, school_id, class_level, subject, search, is_active } = params;
+        const where = {
+            role: {
+                notIn: [client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN],
+            },
+        };
+        if (role) {
+            where.role = role;
+        }
+        if (is_active !== undefined) {
+            where.is_active = is_active;
+        }
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { phone: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+        if (district_id) {
+            where.faculty = {
+                ...where.faculty,
+                school: {
+                    district_id,
+                },
+            };
+        }
+        if (school_id) {
+            where.faculty = {
+                ...where.faculty,
+                school_id,
+            };
+        }
+        if (class_level) {
+            where.faculty = {
+                ...where.faculty,
+                teaching_assignments: {
+                    some: {
+                        class_level,
+                    },
+                },
+            };
+        }
+        if (subject) {
+            where.faculty = {
+                ...where.faculty,
+                teaching_assignments: {
+                    some: {
+                        subject: { equals: subject, mode: 'insensitive' },
+                    },
+                },
+            };
+        }
+        const total = await this.db.user.count({ where });
+        const skip = (page - 1) * limit;
+        const data = await this.db.user.findMany({
+            where,
+            include: {
+                faculty: {
+                    include: {
+                        school: {
+                            include: {
+                                district: true,
+                            },
+                        },
+                        teaching_assignments: true,
+                    },
+                },
+            },
+            orderBy: [
+                { is_active: 'desc' },
+                { created_at: 'desc' },
+            ],
+            skip,
+            take: limit,
+        });
+        return {
+            data,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
     }
     async findById(id) {
         const user = await this.db.user.findUnique({ where: { id } });

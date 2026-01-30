@@ -315,6 +315,23 @@ export interface DistrictUserStats {
   user_count: number;
 }
 
+export interface RoleStats {
+  role: string;
+  count: number;
+}
+
+export interface ActiveUsersStats {
+  active: number;
+  total: number;
+  inactive: number;
+}
+
+export interface HelpdeskSummary {
+  total: number;
+  pending: number;
+  resolved: number;
+}
+
 export const analyticsApi = {
   // Get overall teacher-student ratio
   getTeacherStudentRatio: async (): Promise<TeacherStudentRatio> => {
@@ -349,6 +366,24 @@ export const analyticsApi = {
   // Get district-wise user statistics
   getDistrictUserStats: async (): Promise<DistrictUserStats[]> => {
     const response = await api.get('/admin/analytics/district-user-stats');
+    return response.data;
+  },
+
+  // Get role-wise user statistics
+  getRoleStats: async (): Promise<RoleStats[]> => {
+    const response = await api.get('/admin/analytics/role-stats');
+    return response.data;
+  },
+
+  // Get active users count
+  getActiveUsersCount: async (): Promise<ActiveUsersStats> => {
+    const response = await api.get('/admin/analytics/active-users');
+    return response.data;
+  },
+
+  // Get helpdesk summary
+  getHelpdeskSummary: async (): Promise<HelpdeskSummary> => {
+    const response = await api.get('/admin/analytics/helpdesk-summary');
     return response.data;
   },
 };

@@ -6,6 +6,7 @@ import {
     Patch,
     Param,
     Body,
+    Query,
     UseGuards,
 } from '@nestjs/common';
 import { User, UserRole } from '@prisma/client';
@@ -42,12 +43,20 @@ export class HelpdeskController {
 
     /**
      * GET /helpdesk
-     * Get all helpdesk tickets (Admin only).
+     * Get all helpdesk tickets with pagination (Admin only).
      */
     @Get()
     @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-    async getAllTickets() {
-        return this.helpdeskService.getAllTickets();
+    async getAllTickets(
+        @Query('limit') limit?: string,
+        @Query('offset') offset?: string,
+        @Query('status') status?: string,
+    ) {
+        return this.helpdeskService.getAllTickets(
+            limit ? parseInt(limit, 10) : 20,
+            offset ? parseInt(offset, 10) : 0,
+            status,
+        );
     }
 
     /**

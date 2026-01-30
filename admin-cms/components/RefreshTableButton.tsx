@@ -4,9 +4,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
+import type { QueryKey } from '@tanstack/react-query';
 
 interface RefreshTableButtonProps {
-  queryKey: unknown[];
+  queryKey: QueryKey;
   isFetching?: boolean;
   size?: 'sm' | 'default' | 'lg' | 'icon';
   variant?: 'default' | 'outline' | 'ghost' | 'secondary' | 'destructive' | 'link';

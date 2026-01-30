@@ -1,7 +1,8 @@
 /**
  * Create Event Screen
  * 
- * Form for headmaster to create a new school event.
+ * Form for headmaster to create a new school event with photo upload.
+ * Photos are uploaded to Appwrite bucket.
  */
 
 import React, { useState } from 'react';
@@ -16,20 +17,40 @@ import {
     ActivityIndicator,
     Modal,
     Platform,
+    Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../../../../src/api/client';
 
-type EventType = 'MEETING' | 'EXAM' | 'HOLIDAY' | 'OTHER';
+type EventType = 'MEETING' | 'EXAM' | 'HOLIDAY' | 'SEMINAR' | 'WORKSHOP' | 'SPORTS' | 'CULTURAL' | 'OTHER';
 
 const EVENT_TYPES: { label: string; value: EventType }[] = [
     { label: 'Meeting', value: 'MEETING' },
     { label: 'Exam', value: 'EXAM' },
     { label: 'Holiday', value: 'HOLIDAY' },
+    { label: 'Seminar', value: 'SEMINAR' },
+    { label: 'Workshop', value: 'WORKSHOP' },
+    { label: 'Sports', value: 'SPORTS' },
+    { label: 'Cultural', value: 'CULTURAL' },
     { label: 'Other', value: 'OTHER' },
+];
+
+const ACTIVITY_TYPES = [
+    'Teachers Training Program',
+    'Parent-Teacher Meeting',
+    'Annual Day Celebration',
+    'Sports Day',
+    'Science Exhibition',
+    'Cultural Festival',
+    'Workshop on NEP 2020',
+    'Orientation Program',
+    'Career Guidance Seminar',
+    'Health Camp',
+    'Other',
 ];
 
 export default function CreateEventScreen() {
@@ -40,25 +61,29 @@ export default function CreateEventScreen() {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [eventType, setEventType] = useState<EventType>('OTHER');
+    const [activityType, setActivityType] = useState('');
     const [eventDate, setEventDate] = useState(new Date());
+    const [eventEndDate, setEventEndDate] = useState<Date | null>(null);
     const [eventTime, setEventTime] = useState('');
     const [location, setLocation] = useState('');
+    const [maleParticipants, setMaleParticipants] = useState('');
+    const [femaleParticipants, setFemaleParticipants] = useState('');
+    const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
 
     // UI state
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showEndDatePicker, setShowEndDatePicker] = useState(false);
     const [showTypePicker, setShowTypePicker] = useState(false);
+    const [showActivityPicker, setShowActivityPicker] = useState(false);
 
-    // Submit mutation
+    // Submit mutation with FormData for photo upload
     const submitMutation = useMutation({
-        mutationFn: async (data: {
-            title: string;
-            description: string;
-            type: EventType;
-            event_date: string;
-            event_time?: string;
-            location?: string;
-        }) => {
-            const response = await apiClient.post('/events', data);
+        mutationFn: async (formData: FormData) => {
+            const response = await apiClient.post('/events', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
             return response.data;
         },
         onSuccess: () => {
@@ -73,6 +98,57 @@ export default function CreateEventScreen() {
         },
     });
 
+    const pickImage = async () => {
+        // Request permission
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission Required', 'Please grant camera roll permissions to upload photos.');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [16, 9],
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            setPhoto(result.assets[0]);
+        }
+    };
+
+    const takePhoto = async () => {
+        // Request permission
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission Required', 'Please grant camera permissions to take photos.');
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [16, 9],
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            setPhoto(result.assets[0]);
+        }
+    };
+
+    const showImageOptions = () => {
+        Alert.alert(
+            'Add Photo',
+            'Choose how you want to add a photo',
+            [
+                { text: 'Take Photo', onPress: takePhoto },
+                { text: 'Choose from Gallery', onPress: pickImage },
+                { text: 'Cancel', style: 'cancel' },
+            ]
+        );
+    };
+
     const handleSubmit = () => {
         // Validation
         if (!title.trim()) {
@@ -84,20 +160,60 @@ export default function CreateEventScreen() {
             return;
         }
 
-        submitMutation.mutate({
-            title: title.trim(),
-            description: description.trim(),
-            type: eventType,
-            event_date: eventDate.toISOString().split('T')[0],
-            event_time: eventTime.trim() || undefined,
-            location: location.trim() || undefined,
-        });
+        // Create FormData
+        const formData = new FormData();
+        formData.append('title', title.trim());
+        formData.append('description', description.trim());
+        formData.append('type', eventType);
+        formData.append('event_date', eventDate.toISOString().split('T')[0]);
+        
+        if (eventEndDate) {
+            formData.append('event_end_date', eventEndDate.toISOString().split('T')[0]);
+        }
+        if (eventTime.trim()) {
+            formData.append('event_time', eventTime.trim());
+        }
+        if (location.trim()) {
+            formData.append('location', location.trim());
+        }
+        if (activityType.trim()) {
+            formData.append('activity_type', activityType.trim());
+        }
+        if (maleParticipants.trim()) {
+            formData.append('male_participants', maleParticipants.trim());
+        }
+        if (femaleParticipants.trim()) {
+            formData.append('female_participants', femaleParticipants.trim());
+        }
+
+        // Add photo if selected
+        if (photo) {
+            const uri = photo.uri;
+            const filename = uri.split('/').pop() || 'photo.jpg';
+            const match = /\.(\w+)$/.exec(filename);
+            const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+            formData.append('photo', {
+                uri,
+                name: filename,
+                type,
+            } as any);
+        }
+
+        submitMutation.mutate(formData);
     };
 
     const onDateChange = (event: any, selectedDate?: Date) => {
         setShowDatePicker(Platform.OS === 'ios');
         if (selectedDate) {
             setEventDate(selectedDate);
+        }
+    };
+
+    const onEndDateChange = (event: any, selectedDate?: Date) => {
+        setShowEndDatePicker(Platform.OS === 'ios');
+        if (selectedDate) {
+            setEventEndDate(selectedDate);
         }
     };
 
@@ -124,6 +240,37 @@ export default function CreateEventScreen() {
             </View>
 
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+                {/* Photo Upload Section */}
+                <View style={styles.fieldContainer}>
+                    <Text style={styles.label}>Event Photo (Optional)</Text>
+                    <TouchableOpacity
+                        style={styles.photoUploadButton}
+                        onPress={showImageOptions}
+                    >
+                        {photo ? (
+                            <Image
+                                source={{ uri: photo.uri }}
+                                style={styles.photoPreview}
+                                resizeMode="cover"
+                            />
+                        ) : (
+                            <View style={styles.photoPlaceholder}>
+                                <Ionicons name="camera-outline" size={40} color="#9ca3af" />
+                                <Text style={styles.photoPlaceholderText}>Tap to add photo</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                    {photo && (
+                        <TouchableOpacity
+                            style={styles.removePhotoButton}
+                            onPress={() => setPhoto(null)}
+                        >
+                            <Ionicons name="close-circle" size={24} color="#ef4444" />
+                            <Text style={styles.removePhotoText}>Remove photo</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+
                 {/* Title */}
                 <View style={styles.fieldContainer}>
                     <Text style={styles.label}>Event Title *</Text>
@@ -165,6 +312,20 @@ export default function CreateEventScreen() {
                     </TouchableOpacity>
                 </View>
 
+                {/* Activity Type */}
+                <View style={styles.fieldContainer}>
+                    <Text style={styles.label}>Activity Type (Optional)</Text>
+                    <TouchableOpacity
+                        style={styles.pickerButton}
+                        onPress={() => setShowActivityPicker(true)}
+                    >
+                        <Text style={styles.pickerButtonText}>
+                            {activityType || 'Select Activity Type'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                    </TouchableOpacity>
+                </View>
+
                 {/* Event Date */}
                 <View style={styles.fieldContainer}>
                     <Text style={styles.label}>Event Date *</Text>
@@ -189,6 +350,30 @@ export default function CreateEventScreen() {
                     />
                 )}
 
+                {/* Event End Date (Optional - for multi-day events) */}
+                <View style={styles.fieldContainer}>
+                    <Text style={styles.label}>End Date (Optional - for multi-day events)</Text>
+                    <TouchableOpacity
+                        style={styles.pickerButton}
+                        onPress={() => setShowEndDatePicker(true)}
+                    >
+                        <Text style={[styles.pickerButtonText, !eventEndDate && styles.placeholderText]}>
+                            {eventEndDate ? formatDate(eventEndDate) : 'Same as event date'}
+                        </Text>
+                        <Ionicons name="calendar-outline" size={20} color="#6b7280" />
+                    </TouchableOpacity>
+                </View>
+
+                {showEndDatePicker && (
+                    <DateTimePicker
+                        value={eventEndDate || eventDate}
+                        mode="date"
+                        display="default"
+                        onChange={onEndDateChange}
+                        minimumDate={eventDate}
+                    />
+                )}
+
                 {/* Event Time (Optional) */}
                 <View style={styles.fieldContainer}>
                     <Text style={styles.label}>Event Time (Optional)</Text>
@@ -203,14 +388,40 @@ export default function CreateEventScreen() {
 
                 {/* Location (Optional) */}
                 <View style={styles.fieldContainer}>
-                    <Text style={styles.label}>Location (Optional)</Text>
+                    <Text style={styles.label}>Venue / Location (Optional)</Text>
                     <TextInput
                         style={styles.input}
                         value={location}
                         onChangeText={setLocation}
-                        placeholder="Enter event location"
+                        placeholder="Enter event venue"
                         placeholderTextColor="#9ca3af"
                     />
+                </View>
+
+                {/* Participants Count */}
+                <View style={styles.participantsContainer}>
+                    <View style={[styles.fieldContainer, { flex: 1, marginRight: 8 }]}>
+                        <Text style={styles.label}>Male Participants</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={maleParticipants}
+                            onChangeText={setMaleParticipants}
+                            placeholder="0"
+                            placeholderTextColor="#9ca3af"
+                            keyboardType="numeric"
+                        />
+                    </View>
+                    <View style={[styles.fieldContainer, { flex: 1, marginLeft: 8 }]}>
+                        <Text style={styles.label}>Female Participants</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={femaleParticipants}
+                            onChangeText={setFemaleParticipants}
+                            placeholder="0"
+                            placeholderTextColor="#9ca3af"
+                            keyboardType="numeric"
+                        />
+                    </View>
                 </View>
 
                 {/* Submit Button */}
@@ -237,31 +448,74 @@ export default function CreateEventScreen() {
                                 <Ionicons name="close" size={24} color="#374151" />
                             </TouchableOpacity>
                         </View>
-                        {EVENT_TYPES.map((type) => (
-                            <TouchableOpacity
-                                key={type.value}
-                                style={[
-                                    styles.modalItem,
-                                    eventType === type.value && styles.modalItemSelected,
-                                ]}
-                                onPress={() => {
-                                    setEventType(type.value);
-                                    setShowTypePicker(false);
-                                }}
-                            >
-                                <Text
+                        <ScrollView style={{ maxHeight: 400 }}>
+                            {EVENT_TYPES.map((type) => (
+                                <TouchableOpacity
+                                    key={type.value}
                                     style={[
-                                        styles.modalItemText,
-                                        eventType === type.value && styles.modalItemTextSelected,
+                                        styles.modalItem,
+                                        eventType === type.value && styles.modalItemSelected,
                                     ]}
+                                    onPress={() => {
+                                        setEventType(type.value);
+                                        setShowTypePicker(false);
+                                    }}
                                 >
-                                    {type.label}
-                                </Text>
-                                {eventType === type.value && (
-                                    <Ionicons name="checkmark" size={20} color="#0d9488" />
-                                )}
+                                    <Text
+                                        style={[
+                                            styles.modalItemText,
+                                            eventType === type.value && styles.modalItemTextSelected,
+                                        ]}
+                                    >
+                                        {type.label}
+                                    </Text>
+                                    {eventType === type.value && (
+                                        <Ionicons name="checkmark" size={20} color="#0d9488" />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Activity Type Picker Modal */}
+            <Modal visible={showActivityPicker} transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Activity Type</Text>
+                            <TouchableOpacity onPress={() => setShowActivityPicker(false)}>
+                                <Ionicons name="close" size={24} color="#374151" />
                             </TouchableOpacity>
-                        ))}
+                        </View>
+                        <ScrollView style={{ maxHeight: 400 }}>
+                            {ACTIVITY_TYPES.map((activity) => (
+                                <TouchableOpacity
+                                    key={activity}
+                                    style={[
+                                        styles.modalItem,
+                                        activityType === activity && styles.modalItemSelected,
+                                    ]}
+                                    onPress={() => {
+                                        setActivityType(activity);
+                                        setShowActivityPicker(false);
+                                    }}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.modalItemText,
+                                            activityType === activity && styles.modalItemTextSelected,
+                                        ]}
+                                    >
+                                        {activity}
+                                    </Text>
+                                    {activityType === activity && (
+                                        <Ionicons name="checkmark" size={20} color="#0d9488" />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
                     </View>
                 </View>
             </Modal>
@@ -337,6 +591,47 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#1f2937',
     },
+    placeholderText: {
+        color: '#9ca3af',
+    },
+    participantsContainer: {
+        flexDirection: 'row',
+    },
+    // Photo upload styles
+    photoUploadButton: {
+        backgroundColor: '#ffffff',
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#d1d5db',
+        borderStyle: 'dashed',
+        overflow: 'hidden',
+    },
+    photoPlaceholder: {
+        height: 150,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    photoPlaceholderText: {
+        marginTop: 8,
+        fontSize: 14,
+        color: '#9ca3af',
+    },
+    photoPreview: {
+        width: '100%',
+        height: 200,
+    },
+    removePhotoButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 8,
+        padding: 8,
+    },
+    removePhotoText: {
+        marginLeft: 4,
+        color: '#ef4444',
+        fontSize: 14,
+    },
     submitButton: {
         backgroundColor: '#0d9488',
         borderRadius: 8,
@@ -362,6 +657,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
+        maxHeight: '70%',
     },
     modalHeader: {
         flexDirection: 'row',

@@ -13,10 +13,10 @@ import {
     Ip,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { User, UserRole } from '@prisma/client';
+import { User, UserRole, SchoolEventType } from '@prisma/client';
 import { JwtAuthGuard, RolesGuard } from '../shared/guards';
 import { Roles, CurrentUser } from '../shared/decorators';
-import { EventsService, CreateEventDto, UpdateEventDto, RespondToInvitationDto, CreateSchoolEventDto } from './events.service';
+import { EventsService, CreateEventDto, UpdateEventDto, RespondToInvitationDto, CreateSchoolEventDto, EventFilterDto } from './events.service';
 
 /**
  * Admin Events Controller.
@@ -31,10 +31,28 @@ export class AdminEventsController {
     /**
      * GET /admin/events
      * Get all events with invitation stats (Admin only).
+     * Supports filtering by date range, district, event type, and pagination.
      */
     @Get()
-    async getAllEvents() {
-        return this.eventsService.getAllEventsAdmin();
+    async getAllEvents(
+        @Query('from_date') fromDate?: string,
+        @Query('to_date') toDate?: string,
+        @Query('district_id') districtId?: string,
+        @Query('event_type') eventType?: SchoolEventType,
+        @Query('limit') limit?: string,
+        @Query('offset') offset?: string,
+    ) {
+        const filters: EventFilterDto = {
+            from_date: fromDate,
+            to_date: toDate,
+            district_id: districtId,
+            event_type: eventType,
+        };
+        return this.eventsService.getAllEventsAdmin(
+            filters,
+            limit ? parseInt(limit, 10) : 20,
+            offset ? parseInt(offset, 10) : 0,
+        );
     }
 
     /**
@@ -160,18 +178,20 @@ export class EventsController {
 
     /**
      * POST /events
-     * Create a school event (Headmaster only).
+     * Create a school event (Headmaster only) with optional photo upload.
      * The school_id is automatically set from the headmaster's faculty record.
      * All teachers in the same school will be able to see this event.
      */
     @Post()
     @Roles(UserRole.HEADMASTER)
+    @UseInterceptors(FileInterceptor('photo'))
     async createSchoolEvent(
         @CurrentUser() user: User,
         @Body() body: CreateSchoolEventDto,
+        @UploadedFile() file: Express.Multer.File | undefined,
         @Ip() ip: string | null,
     ) {
-        return this.eventsService.createSchoolEvent(user.id, body, ip);
+        return this.eventsService.createSchoolEventWithPhoto(user.id, body, file, ip);
     }
 
     /**

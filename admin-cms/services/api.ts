@@ -62,9 +62,40 @@ export const authApi = {
       },
 }
 
+export interface UserFilterParams {
+  page?: number;
+  limit?: number;
+  role?: string;
+  district_id?: string;
+  school_id?: string;
+  class_level?: number;
+  subject?: string;
+  search?: string;
+  is_active?: boolean;
+}
+
+export interface PaginatedUsersResponse {
+  data: User[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export const usersApi = {
-  getAll: async (): Promise<User[]> => {
-    const response = await api.get<User[]>('/admin/users');
+  getAll: async (filters?: UserFilterParams): Promise<PaginatedUsersResponse> => {
+    const params: Record<string, string> = {};
+    if (filters?.page) params.page = String(filters.page);
+    if (filters?.limit) params.limit = String(filters.limit);
+    if (filters?.role) params.role = filters.role;
+    if (filters?.district_id) params.district_id = filters.district_id;
+    if (filters?.school_id) params.school_id = filters.school_id;
+    if (filters?.class_level) params.class_level = String(filters.class_level);
+    if (filters?.subject) params.subject = filters.subject;
+    if (filters?.search) params.search = filters.search;
+    if (filters?.is_active !== undefined) params.is_active = String(filters.is_active);
+    
+    const response = await api.get<PaginatedUsersResponse>('/admin/users', { params });
     return response.data;
   },
   toggleStatus: async (userId: string, isActive: boolean): Promise<User> => {
@@ -140,9 +171,20 @@ export const auditLogsApi = {
 // ============================
 // CIRCULARS API
 // ============================
+export interface CircularsResponse {
+  data: Circular[];
+  total: number;
+  hasMore: boolean;
+}
+
 export const circularsApi = {
-  getAll: async (): Promise<Circular[]> => {
-    const response = await api.get<Circular[]>('/circulars');
+  getAll: async (limit = 20, offset = 0, search?: string): Promise<CircularsResponse> => {
+    const params = new URLSearchParams();
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    if (search) params.append('search', search);
+    
+    const response = await api.get<CircularsResponse>(`/circulars?${params}`);
     return response.data;
   },
   getById: async (circularId: string): Promise<Circular> => {
@@ -186,16 +228,29 @@ export const circularsApi = {
 // ============================
 // EVENTS API
 // ============================
+export type SchoolEventType = 'MEETING' | 'EXAM' | 'HOLIDAY' | 'SEMINAR' | 'WORKSHOP' | 'SPORTS' | 'CULTURAL' | 'OTHER';
+
 export interface CreateEventPayload {
   title: string;
   description?: string;
-  event_type: 'MEETING' | 'EXAM' | 'HOLIDAY' | 'OTHER';
+  event_type: SchoolEventType;
   event_date: string;
+  event_end_date?: string;
   event_time?: string;
   location?: string;
+  activity_type?: string;
+  male_participants?: number;
+  female_participants?: number;
   district_id?: string;
   school_id?: string;
   invited_user_ids?: string[];
+}
+
+export interface EventFilterParams {
+  from_date?: string;
+  to_date?: string;
+  district_id?: string;
+  event_type?: SchoolEventType;
 }
 
 export interface EventWithStats {
@@ -203,10 +258,14 @@ export interface EventWithStats {
   title: string;
   description: string | null;
   event_date: string;
+  event_end_date: string | null;
   event_time: string | null;
   location: string | null;
-  event_type: string;
+  event_type: SchoolEventType;
+  activity_type: string | null;
   flyer_url: string | null;
+  male_participants: number | null;
+  female_participants: number | null;
   is_active: boolean;
   created_at: string;
   creator: { id: string; name: string } | null;
@@ -253,9 +312,23 @@ export interface InvitableUser {
   } | null;
 }
 
+export interface EventsResponse {
+  data: EventWithStats[];
+  total: number;
+  hasMore: boolean;
+}
+
 export const eventsApi = {
-  getAll: async (): Promise<EventWithStats[]> => {
-    const response = await api.get<EventWithStats[]>('/admin/events');
+  getAll: async (filters?: EventFilterParams, limit = 20, offset = 0): Promise<EventsResponse> => {
+    const params: Record<string, string> = {};
+    if (filters?.from_date) params.from_date = filters.from_date;
+    if (filters?.to_date) params.to_date = filters.to_date;
+    if (filters?.district_id) params.district_id = filters.district_id;
+    if (filters?.event_type) params.event_type = filters.event_type;
+    params.limit = limit.toString();
+    params.offset = offset.toString();
+    
+    const response = await api.get<EventsResponse>('/admin/events', { params });
     return response.data;
   },
   getById: async (eventId: string): Promise<EventDetails> => {

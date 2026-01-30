@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma';
 import { AppwriteService } from '../appwrite';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { InvitationStatus, UserRole } from '@prisma/client';
+import { InvitationStatus, UserRole, SchoolEventType } from '@prisma/client';
 import * as path from 'path';
 import * as fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,10 +11,14 @@ import { v4 as uuidv4 } from 'uuid';
 export interface CreateEventDto {
     title: string;
     description?: string;
-    event_type: 'MEETING' | 'EXAM' | 'HOLIDAY' | 'OTHER';
+    event_type: SchoolEventType;
     event_date: string;
+    event_end_date?: string;
     event_time?: string;
     location?: string;
+    activity_type?: string;
+    male_participants?: number;
+    female_participants?: number;
     district_id?: string;
     school_id?: string;
     invited_user_ids?: string[];
@@ -23,10 +27,21 @@ export interface CreateEventDto {
 export interface UpdateEventDto {
     title?: string;
     description?: string;
-    event_type?: 'MEETING' | 'EXAM' | 'HOLIDAY' | 'OTHER';
+    event_type?: SchoolEventType;
     event_date?: string;
+    event_end_date?: string;
     event_time?: string;
     location?: string;
+    activity_type?: string;
+    male_participants?: number;
+    female_participants?: number;
+}
+
+export interface EventFilterDto {
+    from_date?: string;
+    to_date?: string;
+    district_id?: string;
+    event_type?: SchoolEventType;
 }
 
 export interface RespondToInvitationDto {
@@ -37,11 +52,15 @@ export interface RespondToInvitationDto {
 export interface CreateSchoolEventDto {
     title: string;
     description?: string;
-    event_type?: 'MEETING' | 'EXAM' | 'HOLIDAY' | 'OTHER';
-    type?: 'MEETING' | 'EXAM' | 'HOLIDAY' | 'OTHER'; // alias for mobile app compatibility
+    event_type?: SchoolEventType;
+    type?: SchoolEventType; // alias for mobile app compatibility
     event_date: string;
+    event_end_date?: string;
     event_time?: string;
     location?: string;
+    activity_type?: string;
+    male_participants?: number;
+    female_participants?: number;
 }
 
 @Injectable()
@@ -55,39 +74,74 @@ export class EventsService {
 
     /**
      * Get all events (Admin view - all events with invitation stats).
+     * Supports filtering by date range, district, event type, and pagination.
      */
-    async getAllEventsAdmin() {
-        const events = await this.db.event.findMany({
-            where: { is_active: true },
-            orderBy: { event_date: 'desc' },
-            include: {
-                creator: { select: { id: true, name: true } },
-                school: { select: { id: true, name: true } },
-                district: { select: { id: true, name: true } },
-                invitations: {
-                    select: { status: true },
+    async getAllEventsAdmin(filters?: EventFilterDto, limit = 20, offset = 0) {
+        const whereClause: any = { is_active: true };
+
+        // Apply date range filter
+        if (filters?.from_date || filters?.to_date) {
+            whereClause.event_date = {};
+            if (filters.from_date) {
+                whereClause.event_date.gte = new Date(filters.from_date);
+            }
+            if (filters.to_date) {
+                whereClause.event_date.lte = new Date(filters.to_date);
+            }
+        }
+
+        // Apply district filter
+        if (filters?.district_id) {
+            whereClause.district_id = filters.district_id;
+        }
+
+        // Apply event type filter
+        if (filters?.event_type) {
+            whereClause.event_type = filters.event_type;
+        }
+
+        const [events, total] = await Promise.all([
+            this.db.event.findMany({
+                where: whereClause,
+                orderBy: { event_date: 'desc' },
+                take: limit,
+                skip: offset,
+                include: {
+                    creator: { select: { id: true, name: true } },
+                    school: { select: { id: true, name: true } },
+                    district: { select: { id: true, name: true } },
+                    invitations: {
+                        select: { status: true },
+                    },
                 },
-            },
-        });
+            }),
+            this.db.event.count({ where: whereClause }),
+        ]);
 
         // Add invitation counts
-        return events.map(event => {
+        const data = events.map(event => {
             const accepted = event.invitations.filter(i => i.status === 'ACCEPTED').length;
             const rejected = event.invitations.filter(i => i.status === 'REJECTED').length;
             const pending = event.invitations.filter(i => i.status === 'PENDING').length;
-            const total = event.invitations.length;
+            const totalInvites = event.invitations.length;
 
             return {
                 ...event,
                 invitations: undefined,
                 invitation_stats: {
-                    total,
+                    total: totalInvites,
                     accepted,
                     rejected,
                     pending,
                 },
             };
         });
+        
+        return {
+            data,
+            total,
+            hasMore: offset + data.length < total,
+        };
     }
 
     /**
@@ -247,8 +301,12 @@ export class EventsService {
                 description: data.description,
                 event_type: data.event_type || 'OTHER',
                 event_date: new Date(data.event_date),
+                event_end_date: data.event_end_date ? new Date(data.event_end_date) : null,
                 event_time: data.event_time,
                 location: data.location,
+                activity_type: data.activity_type,
+                male_participants: data.male_participants ? parseInt(String(data.male_participants)) : null,
+                female_participants: data.female_participants ? parseInt(String(data.female_participants)) : null,
                 flyer_url: flyerUrl,
                 district_id: data.district_id || null,
                 school_id: data.school_id || null,
@@ -326,8 +384,12 @@ export class EventsService {
                 ...(data.description !== undefined && { description: data.description }),
                 ...(data.event_type && { event_type: data.event_type }),
                 ...(data.event_date && { event_date: new Date(data.event_date) }),
+                ...(data.event_end_date !== undefined && { event_end_date: data.event_end_date ? new Date(data.event_end_date) : null }),
                 ...(data.event_time !== undefined && { event_time: data.event_time }),
                 ...(data.location !== undefined && { location: data.location }),
+                ...(data.activity_type !== undefined && { activity_type: data.activity_type }),
+                ...(data.male_participants !== undefined && { male_participants: data.male_participants ? parseInt(String(data.male_participants)) : null }),
+                ...(data.female_participants !== undefined && { female_participants: data.female_participants ? parseInt(String(data.female_participants)) : null }),
                 flyer_url: flyerUrl,
             },
         });
@@ -603,8 +665,108 @@ export class EventsService {
                 description: data.description,
                 event_type: eventType,
                 event_date: new Date(data.event_date),
+                event_end_date: data.event_end_date ? new Date(data.event_end_date) : null,
                 event_time: data.event_time,
                 location: data.location,
+                activity_type: data.activity_type,
+                male_participants: data.male_participants ? parseInt(String(data.male_participants)) : null,
+                female_participants: data.female_participants ? parseInt(String(data.female_participants)) : null,
+                school_id: schoolId,
+                district_id: districtId,
+                created_by: userId,
+            },
+        });
+
+        await this.auditLogsService.log(
+            'EVENT_CREATED',
+            'Event',
+            event.id,
+            userId,
+            ipAddress || null,
+        );
+
+        return this.getEventById(event.id);
+    }
+
+    /**
+     * Create a school event as headmaster with photo upload.
+     * Automatically sets the school_id from headmaster's faculty record.
+     * All teachers in that school will be able to see this event.
+     * Photos are stored in Appwrite bucket.
+     */
+    async createSchoolEventWithPhoto(
+        userId: string,
+        data: CreateSchoolEventDto,
+        file?: Express.Multer.File,
+        ipAddress?: string | null,
+    ) {
+        if (!data.title || !data.event_date) {
+            throw new BadRequestException('Title and event date are required');
+        }
+
+        // Get headmaster's school from faculty record
+        const user = await this.db.user.findUnique({
+            where: { id: userId },
+            include: {
+                faculty: {
+                    select: {
+                        school_id: true,
+                        school: { select: { district_id: true } },
+                    },
+                },
+            },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        if (!user.faculty?.school_id) {
+            throw new ForbiddenException('You must be associated with a school to create events');
+        }
+
+        const schoolId = user.faculty.school_id;
+        const districtId = user.faculty.school?.district_id;
+
+        // Handle photo upload to Appwrite
+        let flyerUrl: string | null = null;
+        if (file) {
+            const appwriteUrl = await this.appwrite.uploadFile(
+                file.buffer,
+                file.originalname,
+                file.mimetype,
+            );
+            if (appwriteUrl) {
+                flyerUrl = appwriteUrl;
+            } else {
+                // Fallback to local storage
+                const uploadDir = path.join(process.cwd(), 'uploads', 'events');
+                if (!fs.existsSync(uploadDir)) {
+                    fs.mkdirSync(uploadDir, { recursive: true });
+                }
+                const fileName = `${uuidv4()}${path.extname(file.originalname)}`;
+                const localPath = path.join(uploadDir, fileName);
+                fs.writeFileSync(localPath, file.buffer);
+                flyerUrl = `/uploads/events/${fileName}`;
+            }
+        }
+
+        // Use event_type or type (mobile app sends 'type')
+        const eventType = data.event_type || data.type || 'OTHER';
+
+        const event = await this.db.event.create({
+            data: {
+                title: data.title,
+                description: data.description,
+                event_type: eventType,
+                event_date: new Date(data.event_date),
+                event_end_date: data.event_end_date ? new Date(data.event_end_date) : null,
+                event_time: data.event_time,
+                location: data.location,
+                activity_type: data.activity_type,
+                male_participants: data.male_participants ? parseInt(String(data.male_participants)) : null,
+                female_participants: data.female_participants ? parseInt(String(data.female_participants)) : null,
+                flyer_url: flyerUrl,
                 school_id: schoolId,
                 district_id: districtId,
                 created_by: userId,

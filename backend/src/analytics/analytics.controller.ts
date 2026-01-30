@@ -74,4 +74,31 @@ export class AnalyticsController {
     async getDistrictUserStats() {
         return this.analyticsService.getDistrictWiseUserStats();
     }
+
+    /**
+     * Get role-wise user statistics
+     * GET /api/admin/analytics/role-stats
+     */
+    @Get('role-stats')
+    async getRoleStats() {
+        return this.analyticsService.getRoleStats();
+    }
+
+    /**
+     * Get active users count
+     * GET /api/admin/analytics/active-users
+     */
+    @Get('active-users')
+    async getActiveUsersCount() {
+        return this.analyticsService.getActiveUsersCount();
+    }
+
+    /**
+     * Get helpdesk summary
+     * GET /api/admin/analytics/helpdesk-summary
+     */
+    @Get('helpdesk-summary')
+    async getHelpdeskSummary() {
+        return this.analyticsService.getHelpdeskSummary();
+    }
 }

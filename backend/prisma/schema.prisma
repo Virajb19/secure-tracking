@@ -87,6 +87,18 @@ enum NoticeType {
   PUSH_NOTIFICATION
 }
 
+// School Event Types for various activities
+enum SchoolEventType {
+  MEETING
+  EXAM
+  HOLIDAY
+  SEMINAR
+  WORKSHOP
+  SPORTS
+  CULTURAL
+  OTHER
+}
+
 
 model User {
   id         String   @id @default(uuid()) @db.Uuid
@@ -281,20 +293,24 @@ model StudentStrength {
 
 // School/District Events (exam dates, holidays, etc.)
 model Event {
-  id          String    @id @default(uuid()) @db.Uuid
-  title       String    @db.VarChar(255)
-  description String?   @db.Text
-  event_date  DateTime  @db.Date
-  event_time  String?   @db.VarChar(20)  // e.g. "10:00 AM"
-  location    String?   @db.VarChar(255)
-  event_type  String    @db.VarChar(50)  // EXAM, MEETING, HOLIDAY, OTHER
-  flyer_url   String?   @db.Text         // Event flyer/poster image URL
-  is_active   Boolean   @default(true)
-  school_id   String?   @db.Uuid
-  district_id String?   @db.Uuid         // For district-wide events
-  created_by  String?   @db.Uuid
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @default(now()) @updatedAt
+  id                  String          @id @default(uuid()) @db.Uuid
+  title               String          @db.VarChar(255)
+  description         String?         @db.Text
+  event_date          DateTime        @db.Date
+  event_end_date      DateTime?       @db.Date         // For multi-day events
+  event_time          String?         @db.VarChar(20)  // e.g. "10:00 AM"
+  location            String?         @db.VarChar(255)
+  event_type          SchoolEventType @default(OTHER)
+  activity_type       String?         @db.VarChar(100) // e.g. "Seminar", "Training Program"
+  flyer_url           String?         @db.Text         // Event flyer/poster image URL
+  male_participants   Int?            // Number of male participants
+  female_participants Int?            // Number of female participants
+  is_active           Boolean         @default(true)
+  school_id           String?         @db.Uuid
+  district_id         String?         @db.Uuid         // For district-wide events
+  created_by          String?         @db.Uuid
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @default(now()) @updatedAt
 
   school      School?   @relation(fields: [school_id], references: [id])
   district    District? @relation(fields: [district_id], references: [id])
@@ -303,6 +319,8 @@ model Event {
 
   @@index([school_id])
   @@index([district_id])
+  @@index([event_type])
+  @@index([event_date])
   @@map("events")
 }
 

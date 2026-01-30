@@ -3,12 +3,23 @@
 import { api } from './api';
 import { HelpdeskTicket } from '@/types';
 
+export interface HelpdeskResponse {
+  data: HelpdeskTicket[];
+  total: number;
+  hasMore: boolean;
+}
+
 export const helpdeskApi = {
   /**
-   * Get all helpdesk tickets (Admin only)
+   * Get helpdesk tickets with pagination (Admin only)
    */
-  getAll: async (): Promise<HelpdeskTicket[]> => {
-    const response = await api.get<HelpdeskTicket[]>('/helpdesk');
+  getAll: async (limit = 20, offset = 0, status?: string): Promise<HelpdeskResponse> => {
+    const params = new URLSearchParams();
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    if (status) params.append('status', status);
+    
+    const response = await api.get<HelpdeskResponse>(`/helpdesk?${params}`);
     return response.data;
   },
 

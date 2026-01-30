@@ -34,23 +34,43 @@ export class HelpdeskService {
     }
 
     /**
-     * Get all helpdesk tickets (Admin only).
+     * Get all helpdesk tickets with pagination (Admin only).
      * Returns tickets sorted by creation date (newest first).
      */
-    async getAllTickets() {
-        return this.db.helpdesk.findMany({
-            orderBy: { created_at: 'desc' },
-            include: {
-                user: {
-                    select: {
-                        name: true,
-                        phone: true,
-                        email: true,
-                        role: true,
+    async getAllTickets(limit = 20, offset = 0, status?: string) {
+        const where: any = {};
+        
+        if (status === 'pending') {
+            where.is_resolved = false;
+        } else if (status === 'resolved') {
+            where.is_resolved = true;
+        }
+
+        const [data, total] = await Promise.all([
+            this.db.helpdesk.findMany({
+                where,
+                orderBy: { created_at: 'desc' },
+                take: limit,
+                skip: offset,
+                include: {
+                    user: {
+                        select: {
+                            name: true,
+                            phone: true,
+                            email: true,
+                            role: true,
+                        },
                     },
                 },
-            },
-        });
+            }),
+            this.db.helpdesk.count({ where }),
+        ]);
+
+        return {
+            data,
+            total,
+            hasMore: offset + data.length < total,
+        };
     }
 
     /**

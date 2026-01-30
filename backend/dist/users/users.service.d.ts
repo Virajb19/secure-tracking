@@ -20,6 +20,23 @@ export declare class UsersService {
     constructor(db: PrismaService, auditLogsService: AuditLogsService, notificationsService: NotificationsService);
     create(createUserDto: CreateUserDto, creatorId: string, ipAddress: string | null): Promise<User>;
     findAll(): Promise<User[]>;
+    findAllPaginated(params: {
+        page: number;
+        limit: number;
+        role?: string;
+        district_id?: string;
+        school_id?: string;
+        class_level?: number;
+        subject?: string;
+        search?: string;
+        is_active?: boolean;
+    }): Promise<{
+        data: User[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }>;
     findById(id: string): Promise<User>;
     findByPhone(phone: string): Promise<User | null>;
     findByEmail(email: string): Promise<User | null>;

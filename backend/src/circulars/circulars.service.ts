@@ -13,11 +13,11 @@ export class CircularsService {
     ) {}
 
     /**
-     * Get all active circulars.
+     * Get all active circulars with pagination.
      * - Admins see all circulars
      * - Other users see: global circulars + district-level + school-level
      */
-    async getCirculars(userId: string) {
+    async getCirculars(userId: string, limit = 20, offset = 0, search?: string) {
         // Get user's school and district if they have a faculty profile
         const faculty = await this.db.faculty.findUnique({
             where: { user_id: userId },
@@ -33,17 +33,39 @@ export class CircularsService {
             select: { role: true },
         });
 
-        // Admins see all circulars
+        // Admins see all circulars with pagination
         if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
-            return this.db.circular.findMany({
-                where: { is_active: true },
-                orderBy: { issued_date: 'desc' },
-                include: {
-                    district: { select: { name: true } },
-                    school: { select: { name: true } },
-                    creator: { select: { name: true } },
-                },
-            });
+            const where: any = { is_active: true };
+            
+            // Add search filter if provided
+            if (search) {
+                where.OR = [
+                    { title: { contains: search, mode: 'insensitive' } },
+                    { circular_no: { contains: search, mode: 'insensitive' } },
+                    { issued_by: { contains: search, mode: 'insensitive' } },
+                ];
+            }
+            
+            const [data, total] = await Promise.all([
+                this.db.circular.findMany({
+                    where,
+                    orderBy: { issued_date: 'desc' },
+                    take: limit,
+                    skip: offset,
+                    include: {
+                        district: { select: { name: true } },
+                        school: { select: { name: true } },
+                        creator: { select: { name: true } },
+                    },
+                }),
+                this.db.circular.count({ where }),
+            ]);
+            
+            return {
+                data,
+                total,
+                hasMore: offset + data.length < total,
+            };
         }
 
         const schoolId = faculty?.school_id;
@@ -65,20 +87,31 @@ export class CircularsService {
             orConditions.push({ school_id: schoolId }); // School-level
         }
 
-        const circulars = await this.db.circular.findMany({
-            where: {
-                is_active: true,
-                OR: orConditions,
-            },
-            orderBy: { issued_date: 'desc' },
-            include: {
-                district: { select: { name: true } },
-                school: { select: { name: true } },
-                creator: { select: { name: true } },
-            },
-        });
+        const where: any = {
+            is_active: true,
+            OR: orConditions,
+        };
 
-        return circulars;
+        const [data, total] = await Promise.all([
+            this.db.circular.findMany({
+                where,
+                orderBy: { issued_date: 'desc' },
+                take: limit,
+                skip: offset,
+                include: {
+                    district: { select: { name: true } },
+                    school: { select: { name: true } },
+                    creator: { select: { name: true } },
+                },
+            }),
+            this.db.circular.count({ where }),
+        ]);
+
+        return {
+            data,
+            total,
+            hasMore: offset + data.length < total,
+        };
     }
 
     /**

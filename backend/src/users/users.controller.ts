@@ -5,6 +5,7 @@ import {
     Patch,
     Param,
     Body,
+    Query,
     UseGuards,
     Req,
     HttpCode,
@@ -53,14 +54,41 @@ export class UsersController {
     }
 
     /**
-     * Get all users.
+     * Get users with pagination and filters.
      * Admin only endpoint.
      * 
-     * @returns Array of all users
+     * @param page - Page number (1-indexed), defaults to 1
+     * @param limit - Items per page, defaults to 25
+     * @param role - Filter by role
+     * @param district_id - Filter by district
+     * @param school_id - Filter by school
+     * @param search - Search by name, phone, email
+     * @param is_active - Filter by active status
+     * @returns Paginated users with total count
      */
     @Get()
-    async findAll(): Promise<User[]> {
-        return this.usersService.findAll();
+    async findAll(
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('role') role?: string,
+        @Query('district_id') district_id?: string,
+        @Query('school_id') school_id?: string,
+        @Query('class_level') class_level?: string,
+        @Query('subject') subject?: string,
+        @Query('search') search?: string,
+        @Query('is_active') is_active?: string,
+    ) {
+        return this.usersService.findAllPaginated({
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 25,
+            role,
+            district_id,
+            school_id,
+            class_level: class_level ? parseInt(class_level, 10) : undefined,
+            subject,
+            search,
+            is_active: is_active === 'true' ? true : is_active === 'false' ? false : undefined,
+        });
     }
 
     /**

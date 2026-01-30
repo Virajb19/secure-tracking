@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDebounceCallback } from 'usehooks-ts';
 import { 
   useGetUsers, 
   useGetDistricts, 
@@ -101,7 +102,46 @@ const displayRoles = [
 ];
 
 export default function UsersPage() {
-  const { data: users = [], isLoading, isRefetching, isFetching, isError, error } = useGetUsers();
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [districtFilter, setDistrictFilter] = useState('all');
+  const [schoolFilter, setSchoolFilter] = useState('all');
+  const [classFilter, setClassFilter] = useState('all');
+  const [subjectFilter, setSubjectFilter] = useState('all');
+  const [showOnlyInactive, setShowOnlyInactive] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
+  
+  // Debounce search input using useDebounceCallback
+  const debouncedSetSearch = useDebounceCallback((value: string) => {
+    setDebouncedSearch(value);
+    setCurrentPage(1); // Reset to page 1 on search
+  }, 500);
+
+  // Build API filters
+  const apiFilters = useMemo(() => {
+    const filters: any = {
+      page: currentPage,
+      limit: itemsPerPage,
+    };
+    if (roleFilter !== 'all') filters.role = roleFilter;
+    if (districtFilter !== 'all') filters.district_id = districtFilter;
+    if (schoolFilter !== 'all') filters.school_id = schoolFilter;
+    if (classFilter !== 'all') filters.class_level = parseInt(classFilter);
+    if (subjectFilter !== 'all') filters.subject = subjectFilter;
+    if (debouncedSearch) filters.search = debouncedSearch;
+    if (showOnlyInactive) filters.is_active = false;
+    return filters;
+  }, [currentPage, roleFilter, districtFilter, schoolFilter, classFilter, subjectFilter, debouncedSearch, showOnlyInactive]);
+
+  // Fetch data with server-side pagination
+  const { data: usersResponse, isLoading, isFetching, isError, error } = useGetUsers(apiFilters);
+  const users = usersResponse?.data || [];
+  const totalPages = usersResponse?.totalPages || 1;
+  const totalUsers = usersResponse?.total || 0;
+
   const { data: districts = [] } = useGetDistricts();
   const { data: schools = [] } = useGetSchools();
   const { data: classes = [] } = useGetClasses();
@@ -113,73 +153,9 @@ export default function UsersPage() {
     queryFn: userStarsApi.getStarredIds,
   });
   
-  const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [districtFilter, setDistrictFilter] = useState('all');
-  const [schoolFilter, setSchoolFilter] = useState('all');
-  const [classFilter, setClassFilter] = useState('all');
-  const [subjectFilter, setSubjectFilter] = useState('all');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [showOnlyInactive, setShowOnlyInactive] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 25;
   const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
   const [currentUserForNotification, setCurrentUserForNotification] = useState<string | null>(null);
-
-  // Filter out admin users and apply filters, sort inactive to end
-  const filteredUsers = useMemo(() => {
-    const filtered = users
-      .filter((user) => {
-        // Exclude ADMIN and SUPER_ADMIN
-        if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
-          return false;
-        }
-        
-        const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-        const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-        
-        // District filter - check faculty's school's district
-        const matchesDistrict = districtFilter === 'all' || 
-          user.faculty?.school?.district_id === districtFilter;
-        
-        // School filter
-        const matchesSchool = schoolFilter === 'all' || 
-          user.faculty?.school_id === schoolFilter;
-        
-        // Class filter - check teaching assignments
-        const matchesClass = classFilter === 'all' || 
-          user.faculty?.teaching_assignments?.some(
-            ta => ta.class_level === parseInt(classFilter)
-          );
-        
-        // Subject filter - check teaching assignments
-        const matchesSubject = subjectFilter === 'all' || 
-          user.faculty?.teaching_assignments?.some(
-            ta => ta.subject.toLowerCase() === subjectFilter.toLowerCase()
-          );
-        
-        // Inactive filter
-        const matchesInactiveFilter = !showOnlyInactive || !user.is_active;
-
-        return matchesSearch && matchesRole && matchesDistrict && matchesSchool && matchesClass && matchesSubject && matchesInactiveFilter;
-      })
-      // Sort: active users first, inactive users last
-      .sort((a, b) => {
-        if (a.is_active === b.is_active) return 0;
-        return a.is_active ? -1 : 1;
-      });
-    
-    return filtered;
-  }, [users, searchQuery, roleFilter, districtFilter, schoolFilter, classFilter, subjectFilter, showOnlyInactive]);
-
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const paginatedUsers = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredUsers.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredUsers, currentPage, itemsPerPage]);
 
   // Reset page when filters change
   const resetPage = () => setCurrentPage(1);
@@ -213,7 +189,7 @@ export default function UsersPage() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedUsers(paginatedUsers.map((user) => user.id));
+      setSelectedUsers(users.map((user) => user.id));
     } else {
       setSelectedUsers([]);
     }
@@ -271,7 +247,7 @@ export default function UsersPage() {
 
   // Define table loading/error content
   const tableContent = () => {
-    if (isLoading || isRefetching) {
+    if (isLoading || isFetching) {
       return (
         <tr>
           <td colSpan={7} className="py-16">
@@ -294,7 +270,7 @@ export default function UsersPage() {
         <tr>
           <td colSpan={7} className="py-16">
             <RetryButton 
-              queryKey={['users']} 
+              queryKey={['users', apiFilters]} 
               message="Failed to load users" 
               subMessage={typeof error?.message === 'string' ? error.message : undefined}
             />
@@ -303,7 +279,7 @@ export default function UsersPage() {
       );
     }
 
-    if (paginatedUsers.length === 0) {
+    if (users.length === 0) {
       return (
         <tr>
           <td colSpan={7} className="py-16">
@@ -323,7 +299,7 @@ export default function UsersPage() {
 
     return (
       <AnimatePresence>
-        {paginatedUsers.map((user, index) => (
+        {users.map((user, index) => (
           <motion.tr 
             key={user.id} 
             custom={index}
@@ -409,14 +385,14 @@ export default function UsersPage() {
               <p className="text-slate-500 dark:text-slate-400 text-sm">Manage all users and their permissions</p>
             </div>
             <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 px-3 py-1 text-sm font-medium">
-              {filteredUsers.length} users
+              {totalUsers} users
             </Badge>
           </div>
           <div className="flex items-center gap-3">
-            <RefreshTableButton queryKey={['users']} isFetching={isFetching} />
+            <RefreshTableButton queryKey={['users', apiFilters]} isFetching={isFetching} />
             <DownloadXlsxButton 
-              onDownload={() => exportUsersAsCSV(filteredUsers)} 
-              disabled={filteredUsers.length === 0}
+              onDownload={() => exportUsersAsCSV(users)} 
+              disabled={users.length === 0}
             />
           </div>
         </div>
@@ -441,7 +417,7 @@ export default function UsersPage() {
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
-                resetPage();
+                debouncedSetSearch(e.target.value);
               }}
               className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 pl-10 focus:border-blue-500 focus:ring-blue-500/20 transition-all"
             />
@@ -580,7 +556,7 @@ export default function UsersPage() {
                 <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                   <div className="flex items-center gap-2">
                     <Checkbox
-                      checked={selectedUsers.length === paginatedUsers.length && paginatedUsers.length > 0}
+                      checked={selectedUsers.length === users.length && users.length > 0}
                       onCheckedChange={handleSelectAll}
                       className="border-slate-500 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                     />
@@ -624,7 +600,7 @@ export default function UsersPage() {
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1 || isLoading}
+              disabled={currentPage === 1 || isFetching}
               className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white disabled:opacity-50"
             >
               ← Prev
@@ -648,7 +624,7 @@ export default function UsersPage() {
                       variant={currentPage === pageNum ? "default" : "outline"}
                       size="sm"
                       onClick={() => setCurrentPage(pageNum)}
-                      disabled={isLoading || pageNum > (totalPages || 1)}
+                      disabled={isFetching || pageNum > (totalPages || 1)}
                       className={currentPage === pageNum 
                         ? "bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white border-0 min-w-[36px]" 
                         : "bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white min-w-[36px]"
@@ -664,7 +640,7 @@ export default function UsersPage() {
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(p => Math.min(totalPages || 1, p + 1))}
-              disabled={currentPage === (totalPages || 1) || isLoading}
+              disabled={currentPage === (totalPages || 1) || isFetching}
               className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white disabled:opacity-50"
             >
               Next →
@@ -673,8 +649,8 @@ export default function UsersPage() {
           <div className="text-sm text-slate-500 dark:text-slate-400">
             Page <span className="text-slate-900 dark:text-white font-medium">{currentPage}</span> of{' '}
             <span className="text-slate-900 dark:text-white font-medium">{totalPages || 1}</span>
-            {' '}• Showing {filteredUsers.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to{' '}
-            {Math.min(currentPage * itemsPerPage, filteredUsers.length)} of {filteredUsers.length} users
+            {' '}• Showing {totalUsers > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to{' '}
+            {Math.min(currentPage * itemsPerPage, totalUsers)} of {totalUsers} users
           </div>
         </motion.div>
       </motion.div>

@@ -211,4 +211,62 @@ export class AnalyticsService {
 
         return districtStats;
     }
+
+    /**
+     * Get role-wise user statistics (excluding ADMIN and SUPER_ADMIN)
+     */
+    async getRoleStats() {
+        const roleCounts = await this.db.user.groupBy({
+            by: ['role'],
+            where: {
+                role: {
+                    notIn: ['ADMIN', 'SUPER_ADMIN'],
+                },
+            },
+            _count: {
+                id: true,
+            },
+        });
+
+        const result = roleCounts.map((item) => ({
+            role: item.role,
+            count: item._count.id,
+        }));
+
+        return result;
+    }
+
+    /**
+     * Get active users count
+     */
+    async getActiveUsersCount() {
+        const activeCount = await this.db.user.count({
+            where: { is_active: true },
+        });
+
+        const totalCount = await this.db.user.count();
+
+        return {
+            active: activeCount,
+            total: totalCount,
+            inactive: totalCount - activeCount,
+        };
+    }
+
+    /**
+     * Get helpdesk tickets summary
+     */
+    async getHelpdeskSummary() {
+        const [total, pending, resolved] = await Promise.all([
+            this.db.helpdesk.count(),
+            this.db.helpdesk.count({ where: { is_resolved: false } }),
+            this.db.helpdesk.count({ where: { is_resolved: true } }),
+        ]);
+
+        return {
+            total,
+            pending,
+            resolved,
+        };
+    }
 }

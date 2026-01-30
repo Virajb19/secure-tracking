@@ -28,8 +28,18 @@ let UsersController = class UsersController {
         const ipAddress = this.extractIpAddress(request);
         return this.usersService.create(createUserDto, currentUser.id, ipAddress);
     }
-    async findAll() {
-        return this.usersService.findAll();
+    async findAll(page, limit, role, district_id, school_id, class_level, subject, search, is_active) {
+        return this.usersService.findAllPaginated({
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 25,
+            role,
+            district_id,
+            school_id,
+            class_level: class_level ? parseInt(class_level, 10) : undefined,
+            subject,
+            search,
+            is_active: is_active === 'true' ? true : is_active === 'false' ? false : undefined,
+        });
     }
     async toggleStatus(userId, toggleStatusDto, currentUser, request) {
         const ipAddress = this.extractIpAddress(request);
@@ -57,8 +67,17 @@ __decorate([
 ], UsersController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
+    __param(2, (0, common_1.Query)('role')),
+    __param(3, (0, common_1.Query)('district_id')),
+    __param(4, (0, common_1.Query)('school_id')),
+    __param(5, (0, common_1.Query)('class_level')),
+    __param(6, (0, common_1.Query)('subject')),
+    __param(7, (0, common_1.Query)('search')),
+    __param(8, (0, common_1.Query)('is_active')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "findAll", null);
 __decorate([

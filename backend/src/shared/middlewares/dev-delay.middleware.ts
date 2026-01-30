@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 /**
  * Development Delay Middleware
  * 
- * Adds an artificial delay of 7 seconds for POST and DELETE requests
+ * Adds an artificial delay of 3 seconds for POST, DELETE, PUT, and PATCH requests
  * ONLY in development mode (NODE_ENV !== 'production')
  * 
  * This helps test loading states and UI behavior during async operations.
@@ -17,12 +17,24 @@ export class DevDelayMiddleware implements NestMiddleware {
     async use(req: Request, res: Response, next: NextFunction) {
         const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
         
-        // Only apply delay in development mode for POST/DELETE requests
-        if (nodeEnv !== 'production' && (req.method === 'POST' || req.method === 'DELETE')) {
-            const delayMs = 3000; // 3 seconds
-            console.log(`[DevDelay] Adding ${delayMs}ms delay for ${req.method} ${req.url}`);
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
+
+         if (nodeEnv === 'production') {
+                return next();
+            }
+
+            let delayMs = 0;
+
+            if (req.method === 'GET') {
+                delayMs = 1500; // 1.5s for queries
+            } else if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+                delayMs = 3000; // 3s for mutations
+            }
+
+              if (delayMs > 0) {
+                console.log( `[DevDelay] ${delayMs}ms delay for ${req.method} ${req.url}`, );    
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
+            }
+
         
         next();
     }

@@ -27,7 +27,7 @@
  * - 100 Form Submissions
  */
 
-import { PrismaClient, UserRole, Gender, TaskStatus, EventType, FacultyType, ApprovalStatus, InvitationStatus, SelectionStatus, FormSubmissionStatus, NoticeType } from '@prisma/client';
+import { PrismaClient, UserRole, Gender, TaskStatus, EventType, FacultyType, ApprovalStatus, InvitationStatus, SelectionStatus, FormSubmissionStatus, NoticeType, SchoolEventType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -101,7 +101,53 @@ const locations = [
     'Government School', 'Exam Center', 'Administrative Building', 'Storage Facility'
 ];
 
-const eventTypes = ['EXAM', 'MEETING', 'HOLIDAY', 'SPORTS', 'CULTURAL', 'WORKSHOP', 'SEMINAR', 'TRAINING', 'OTHER'];
+// School Event Types enum values
+const schoolEventTypes: SchoolEventType[] = [
+    SchoolEventType.MEETING,
+    SchoolEventType.EXAM,
+    SchoolEventType.HOLIDAY,
+    SchoolEventType.SEMINAR,
+    SchoolEventType.WORKSHOP,
+    SchoolEventType.SPORTS,
+    SchoolEventType.CULTURAL,
+    SchoolEventType.OTHER,
+];
+
+// Activity types for events
+const activityTypes = [
+    'Teachers Training Program',
+    'Parent-Teacher Meeting',
+    'Annual Day Celebration',
+    'Sports Day',
+    'Science Exhibition',
+    'Cultural Festival',
+    'Workshop on NEP 2020',
+    'Orientation Program',
+    'Republic Day Celebration',
+    'Independence Day Celebration',
+    'Career Guidance Seminar',
+    'Health Camp',
+    'Environmental Awareness Program',
+];
+
+// Unsplash URLs for dummy event photos
+const unsplashEventPhotos = [
+    'https://images.unsplash.com/photo-1540575467063-178a50e2fd87?w=800&q=80', // School assembly
+    'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&q=80', // Classroom
+    'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80', // Graduation
+    'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=800&q=80', // Teacher with students
+    'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=800&q=80', // School meeting
+    'https://images.unsplash.com/photo-1571260899304-425eee4c7efc?w=800&q=80', // Seminar
+    'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=800&q=80', // University hall
+    'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=800&q=80', // Students group
+    'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&q=80', // Lecture hall
+    'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&q=80', // School building
+    'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800&q=80', // Classroom setting
+    'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=800&q=80', // Library
+    'https://images.unsplash.com/photo-1588072432836-e10032774350?w=800&q=80', // Science lab
+    'https://images.unsplash.com/photo-1461280360983-bd93eaa5051b?w=800&q=80', // Sports event
+    'https://images.unsplash.com/photo-1544531585-9847b68c8c86?w=800&q=80', // Cultural event
+];
 
 const noticeTypes: NoticeType[] = [
   NoticeType.GENERAL,
@@ -428,15 +474,23 @@ async function main() {
     const events = await Promise.all(
         Array.from({ length: 200 }, async (_, i) => {
             const isSchoolLevel = randomBoolean(0.7);
+            const eventType = randomElement(schoolEventTypes);
+            const eventDate = generateFutureDate(120);
+            const eventEndDate = randomBoolean(0.3) ? new Date(eventDate.getTime() + randomInt(1, 3) * 24 * 60 * 60 * 1000) : null;
+            
             return prisma.event.create({
                 data: {
-                    title: `${randomElement(['Annual', 'Monthly', 'Special'])} ${randomElement(eventTypes)} ${i + 1}`,
-                    description: `Event description for ${randomElement(eventTypes)}`,
-                    event_date: generateFutureDate(120),
+                    title: `${randomElement(['Annual', 'Monthly', 'Special'])} ${eventType} ${i + 1}`,
+                    description: `Event description for ${eventType}. This event aims to enhance the educational experience and bring together students, teachers, and parents for collaborative learning.`,
+                    event_date: eventDate,
+                    event_end_date: eventEndDate,
                     event_time: `${randomInt(8, 17)}:${randomElement(['00', '30'])}`,
                     location: `${randomElement(locations)}, ${randomElement(districtNames)}`,
-                    event_type: randomElement(eventTypes),
-                    flyer_url: randomBoolean(0.3) ? `https://storage.example.com/flyers/event_${i}.jpg` : null,
+                    event_type: eventType,
+                    activity_type: randomElement(activityTypes),
+                    flyer_url: randomBoolean(0.7) ? randomElement(unsplashEventPhotos) : null,
+                    male_participants: randomInt(5, 50),
+                    female_participants: randomInt(5, 60),
                     is_active: randomBoolean(0.9),
                     school_id: isSchoolLevel ? randomElement(schools).id : null,
                     district_id: !isSchoolLevel ? randomElement(districts).id : null,

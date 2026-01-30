@@ -108,6 +108,136 @@ export class UsersService {
     }
 
     /**
+     * Find users with pagination and filters.
+     * Server-side pagination - only fetches data for the requested page.
+     */
+    async findAllPaginated(params: {
+        page: number;
+        limit: number;
+        role?: string;
+        district_id?: string;
+        school_id?: string;
+        class_level?: number;
+        subject?: string;
+        search?: string;
+        is_active?: boolean;
+    }): Promise<{
+        data: User[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }> {
+        const { page, limit, role, district_id, school_id, class_level, subject, search, is_active } = params;
+        
+        // Build where clause
+        const where: any = {
+            // Exclude admin roles
+            role: {
+                notIn: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+            },
+        };
+
+        // Role filter
+        if (role) {
+            where.role = role as UserRole;
+        }
+
+        // Active status filter
+        if (is_active !== undefined) {
+            where.is_active = is_active;
+        }
+
+        // Search filter (name, phone, email)
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { phone: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+
+        // District filter (through faculty -> school -> district)
+        if (district_id) {
+            where.faculty = {
+                ...where.faculty,
+                school: {
+                    district_id,
+                },
+            };
+        }
+
+        // School filter
+        if (school_id) {
+            where.faculty = {
+                ...where.faculty,
+                school_id,
+            };
+        }
+
+        // Class level filter (through teaching_assignments)
+        if (class_level) {
+            where.faculty = {
+                ...where.faculty,
+                teaching_assignments: {
+                    some: {
+                        class_level,
+                    },
+                },
+            };
+        }
+
+        // Subject filter (through teaching_assignments)
+        if (subject) {
+            where.faculty = {
+                ...where.faculty,
+                teaching_assignments: {
+                    some: {
+                        subject: { equals: subject, mode: 'insensitive' },
+                    },
+                },
+            };
+        }
+
+        // Get total count
+        const total = await this.db.user.count({ where });
+
+        // Calculate offset
+        const skip = (page - 1) * limit;
+
+        // Fetch paginated data
+        const data = await this.db.user.findMany({
+            where,
+            include: {
+                faculty: {
+                    include: {
+                        school: {
+                            include: {
+                                district: true,
+                            },
+                        },
+                        teaching_assignments: true,
+                    },
+                },
+            },
+            orderBy: [
+                { is_active: 'desc' }, // Active users first
+                { created_at: 'desc' },
+            ],
+            skip,
+            take: limit,
+        });
+
+        return {
+            data,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
+    }
+
+    /**
      * Find a user by ID.
      * 
      * @param id - User UUID

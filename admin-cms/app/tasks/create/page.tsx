@@ -42,10 +42,13 @@ export default function CreateTaskPage() {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const allUsers = await usersApi.getAll();
-                // Filter only DEALING_ASSISTANT users for delivery tasks
-                const deliveryUsers = allUsers.filter(u => u.role === UserRole.DEALING_ASSISTANT && u.is_active);
-                setUsers(deliveryUsers);
+                // Fetch all DEALING_ASSISTANT users with active status
+                const response = await usersApi.getAll({
+                    role: UserRole.DEALING_ASSISTANT,
+                    is_active: true,
+                    limit: 100, // Fetch up to 100 active dealing assistants
+                });
+                setUsers(response.data);
             } catch {
                 setError('Failed to load users');
             } finally {

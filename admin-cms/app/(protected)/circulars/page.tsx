@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,14 +39,16 @@ import {
   Hash,
   Sparkles,
   FileUp,
-  X
+  X,
+  Search
 } from 'lucide-react';
-import { circularsApi, masterDataApi } from '@/services/api';
+import { circularsApi, masterDataApi, CircularsResponse } from '@/services/api';
 import { Circular, District, School } from '@/types';
 import { DeleteCircularButton } from '@/components/DeleteCircularButton';
 import { CircularFormSchema, circularFormSchema } from '@/lib/zod';
 import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
+import { useDebounceCallback } from 'usehooks-ts';
 
 // Animation variants
 const containerVariants = {
@@ -93,7 +95,16 @@ export default function CircularsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
   const [isSchoolListExpanded, setIsSchoolListExpanded] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [allCirculars, setAllCirculars] = useState<Circular[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const pageSize = 20;
   const queryClient = useQueryClient();
+
+  // Debounce the search
+  const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
 
   // Form setup with react-hook-form and zod
   const form = useForm<CircularFormSchema>({
@@ -111,11 +122,40 @@ export default function CircularsPage() {
 
   const selectedDistrictId = form.watch('district_id');
 
-  // Fetch circulars
-  const { data: circulars = [], isLoading: circularsLoading, isFetching: circularsFetching, error: circularsError } = useQuery<Circular[]>({
-    queryKey: ['circulars'],
-    queryFn: circularsApi.getAll,
+  // Fetch circulars with pagination
+  const { data, isLoading: circularsLoading, isFetching: circularsFetching, error: circularsError } = useQuery<CircularsResponse>({
+    queryKey: ['circulars', pageSize, offset, searchQuery],
+    queryFn: () => circularsApi.getAll(pageSize, offset, searchQuery || undefined),
   });
+
+  // Update allCirculars when data changes
+  useEffect(() => {
+    if (data) {
+      if (offset === 0) {
+        setAllCirculars(data.data);
+      } else {
+        setAllCirculars(prev => {
+          const existingIds = new Set(prev.map(c => c.id));
+          const newCirculars = data.data.filter(c => !existingIds.has(c.id));
+          return [...prev, ...newCirculars];
+        });
+      }
+      setIsLoadingMore(false);
+    }
+  }, [data, offset]);
+
+  // Reset when search changes
+  useEffect(() => {
+    setOffset(0);
+    setAllCirculars([]);
+  }, [searchQuery]);
+
+  const loadMore = () => {
+    if (!circularsFetching && !isLoadingMore && data?.hasMore) {
+      setIsLoadingMore(true);
+      setOffset(prev => prev + pageSize);
+    }
+  };
 
   // Fetch districts for dropdown
   const { data: districts = [] } = useQuery<District[]>({
@@ -597,26 +637,52 @@ export default function CircularsPage() {
 
       {/* View Circulars Section */}
       <motion.div variants={itemVariants}>
-        <div className="flex items-center gap-3 mb-6">
-          <motion.div
-            className="p-2 bg-linear-to-br from-emerald-500 to-teal-600 rounded-lg"
-            whileHover={{ scale: 1.05, rotate: -5 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <FileText className="h-6 w-6 text-white" />
-          </motion.div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">All Circulars</h2>
-          <span className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 rounded-full text-sm">
-            {circulars.length} total
-          </span>
-          <RefreshTableButton queryKey={['circulars']} isFetching={circularsFetching} />
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <motion.div
+              className="p-2 bg-linear-to-br from-emerald-500 to-teal-600 rounded-lg"
+              whileHover={{ scale: 1.05, rotate: -5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <FileText className="h-6 w-6 text-white" />
+            </motion.div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">All Circulars</h2>
+            <span className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 rounded-full text-sm">
+              {data?.total || allCirculars.length} total
+            </span>
+            <RefreshTableButton queryKey={['circulars', pageSize, offset, searchQuery]} isFetching={circularsFetching} />
+          </div>
+          
+          {/* Search Input */}
+          <div className="relative w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search circulars..."
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                debouncedSetSearch(e.target.value);
+              }}
+              className="pl-10 bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white"
+            />
+          </div>
         </div>
 
         <motion.div 
-          className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
+          className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl relative"
           variants={cardVariants}
         >
-          {circularsLoading || circularsFetching ? (
+          {/* Loading overlay when refetching */}
+          {circularsFetching && allCirculars.length > 0 && !isLoadingMore && (
+            <div className="absolute inset-0 bg-slate-900/50 z-10 flex items-center justify-center">
+              <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
+                <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                <span className="text-slate-300 text-sm">Refreshing...</span>
+              </div>
+            </div>
+          )}
+
+          {circularsLoading && allCirculars.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <motion.div
                 animate={{ rotate: 360 }}
@@ -632,9 +698,9 @@ export default function CircularsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <RetryButton queryKey={['circulars']} message="Failed to load circulars" />
+              <RetryButton queryKey={['circulars', pageSize, offset, searchQuery]} message="Failed to load circulars" />
             </motion.div>
-          ) : circulars.length === 0 ? (
+          ) : allCirculars.length === 0 ? (
             <motion.div 
               className="text-center py-16"
               initial={{ opacity: 0, scale: 0.9 }}
@@ -669,7 +735,7 @@ export default function CircularsPage() {
                 </thead>
                 <tbody>
                   <AnimatePresence>
-                    {circulars.map((circular, index) => (
+                    {allCirculars.map((circular, index) => (
                       <motion.tr
                         key={circular.id}
                         custom={index}
@@ -721,6 +787,32 @@ export default function CircularsPage() {
                   </AnimatePresence>
                 </tbody>
               </table>
+            </div>
+          )}
+          
+          {/* Load More / Status */}
+          {allCirculars.length > 0 && (
+            <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50">
+              {(circularsFetching || isLoadingMore) ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                  <span className="text-slate-400 text-sm">Loading more...</span>
+                </div>
+              ) : data?.hasMore ? (
+                <div className="flex justify-center">
+                  <Button
+                    onClick={loadMore}
+                    variant="outline"
+                    className="bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  >
+                    Load More
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-center text-sm text-slate-500">
+                  Showing all {allCirculars.length} circulars
+                </p>
+              )}
             </div>
           )}
         </motion.div>

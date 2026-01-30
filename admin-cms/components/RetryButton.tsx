@@ -3,9 +3,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
+import type { QueryKey } from '@tanstack/react-query';
 
 interface RetryButtonProps {
-  queryKey: string[];
+  queryKey: QueryKey;
   message?: string;
   subMessage?: string;
 }

@@ -42,6 +42,7 @@ import { twMerge } from 'tailwind-merge';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useDebounceCallback } from 'usehooks-ts';
 
 // Animation variants for table rows
 const tableRowVariants = {
@@ -86,7 +87,12 @@ export default function Form6Page() {
   const [formType, setFormType] = useState('all');
   const [districtId, setDistrictId] = useState('all');
   const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Debounce the search
+  const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
+  
   const [viewDialog, setViewDialog] = useState<{ open: boolean; schoolId: string | null; formType: string | null; schoolName: string }>({ 
     open: false, 
     schoolId: null, 
@@ -554,8 +560,11 @@ export default function Form6Page() {
           </label>
           <Input
             placeholder="Search by school name or registration code..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => {
+              setSearchInput(e.target.value);
+              debouncedSetSearch(e.target.value);
+            }}
             className="bg-slate-50 dark:bg-slate-800 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
         </div>
@@ -608,8 +617,8 @@ export default function Form6Page() {
 
         {/* Loading State */}
         {isFetching ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          <div className="flex flex-col gap-2 items-center text-slate-500 dark:text-slate-400 justify-center h-32">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500" /> Loading...
           </div>
         ) : error ? (
           <RetryButton 
