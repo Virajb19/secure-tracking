@@ -630,36 +630,23 @@ export default function UsersPage() {
             >
               ← Prev
             </Button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(7, totalPages || 1) }, (_, i) => {
-                let pageNum;
-                const total = totalPages || 1;
-                if (total <= 7) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 4) {
-                  pageNum = i + 1;
-                } else if (currentPage >= total - 3) {
-                  pageNum = total - 6 + i;
-                } else {
-                  pageNum = currentPage - 3 + i;
-                }
-                return (
+            <div className="flex items-center gap-1 max-w-[250px] overflow-x-auto overflow-hidden scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
+              {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((pageNum) => (
                   <motion.div key={pageNum} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Button
                       variant={currentPage === pageNum ? "default" : "outline"}
                       size="sm"
                       onClick={() => setCurrentPage(pageNum)}
-                      disabled={isFetching || pageNum > (totalPages || 1)}
-                      className={currentPage === pageNum 
+                      disabled={isFetching}
+                      className={`flex-shrink-0 ${currentPage === pageNum 
                         ? "bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white border-0 min-w-[36px]" 
                         : "bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white min-w-[36px]"
-                      }
+                      }`}
                     >
                       {pageNum}
                     </Button>
                   </motion.div>
-                );
-              })}
+                ))}
             </div>
             <Button
               variant="outline"
@@ -685,6 +672,11 @@ export default function UsersPage() {
         open={notificationDialogOpen}
         onOpenChange={setNotificationDialogOpen}
         recipientUserIds={currentUserForNotification ? [currentUserForNotification] : selectedUsers}
+        selectedUsers={
+          currentUserForNotification 
+            ? users.filter(u => u.id === currentUserForNotification)
+            : users.filter(u => selectedUsers.includes(u.id))
+        }
         singleUser={!!currentUserForNotification}
       />
     </motion.div>

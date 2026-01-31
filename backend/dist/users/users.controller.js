@@ -45,6 +45,9 @@ let UsersController = class UsersController {
         const ipAddress = this.extractIpAddress(request);
         return this.usersService.toggleActiveStatus(userId, toggleStatusDto.is_active, currentUser.id, ipAddress);
     }
+    async getTeachingAssignments(userId) {
+        return this.usersService.getTeachingAssignments(userId);
+    }
     extractIpAddress(request) {
         const forwarded = request.headers['x-forwarded-for'];
         if (forwarded) {
@@ -91,6 +94,13 @@ __decorate([
     __metadata("design:paramtypes", [String, toggle_user_status_dto_1.ToggleUserStatusDto, Object, Object]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "toggleStatus", null);
+__decorate([
+    (0, common_1.Get)(':userId/teaching-assignments'),
+    __param(0, (0, common_1.Param)('userId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "getTeachingAssignments", null);
 exports.UsersController = UsersController = __decorate([
     (0, common_1.Controller)('admin/users'),
     (0, common_1.UseGuards)(guards_1.JwtAuthGuard, guards_1.RolesGuard),

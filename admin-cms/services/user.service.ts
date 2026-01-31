@@ -17,7 +17,7 @@ export const useToggleUserStatus = () => {
     mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) => 
       usersApi.toggleStatus(userId, isActive),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["users"], exact: false });
     },
   });
 }

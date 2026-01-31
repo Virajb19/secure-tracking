@@ -38,16 +38,10 @@ import { useGetDistricts } from '@/services/user.service';
 import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
 import { EventFilterParams, SchoolEventType, EventWithStats } from '@/services/api';
+import { Skeleton } from '@/components/ui/skeleton';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { useDebounceCallback } from 'usehooks-ts';
-
-// Extend jsPDF type for autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 // Animation variants
 const containerVariants = {
@@ -96,6 +90,41 @@ const cardVariants = {
   }
 };
 
+// Skeleton row for loading state
+const EventTableSkeleton = () => (
+  <>
+    {Array.from({ length: 5 }).map((_, index) => (
+      <tr key={index} className="border-b border-slate-100 dark:border-slate-800/50">
+        <td className="py-4 px-5">
+          <Skeleton className="h-5 w-8 bg-slate-200 dark:bg-slate-700" />
+        </td>
+        <td className="py-4 px-5">
+          <Skeleton className="w-16 h-12 rounded-lg bg-slate-200 dark:bg-slate-700" />
+        </td>
+        <td className="py-4 px-5">
+          <Skeleton className="h-5 w-40 mb-2 bg-slate-200 dark:bg-slate-700" />
+          <Skeleton className="h-5 w-20 bg-slate-200 dark:bg-slate-700" />
+        </td>
+        <td className="py-4 px-5">
+          <Skeleton className="h-5 w-28 bg-slate-200 dark:bg-slate-700" />
+        </td>
+        <td className="py-4 px-5">
+          <Skeleton className="h-5 w-24 bg-slate-200 dark:bg-slate-700" />
+        </td>
+        <td className="py-4 px-5">
+          <Skeleton className="h-5 w-32 bg-slate-200 dark:bg-slate-700" />
+        </td>
+        <td className="py-4 px-5">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-16 rounded-full bg-slate-200 dark:bg-slate-700" />
+            <Skeleton className="h-9 w-9 rounded-lg bg-slate-200 dark:bg-slate-700" />
+          </div>
+        </td>
+      </tr>
+    ))}
+  </>
+);
+
 const eventTypeLabels: Record<SchoolEventType, string> = {
   MEETING: 'Meeting',
   EXAM: 'Exam',
@@ -132,7 +161,7 @@ export default function EventsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Debounce the search
+  // Debounce the search (Server-side filtering)
   const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
   
   const pageSize = 20;
@@ -250,7 +279,7 @@ export default function EventsPage() {
         `${event.male_participants || 0}M / ${event.female_participants || 0}F`,
       ]);
       
-      doc.autoTable({
+      autoTable(doc, {
         head: [['#', 'Event Name', 'Type', 'Date', 'Venue', 'Created By', 'Participants']],
         body: tableData,
         startY: 42,
@@ -269,30 +298,6 @@ export default function EventsPage() {
       setIsDownloading(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <motion.div 
-        className="space-y-8 p-2"
-        variants={containerVariants}
-        initial={false}
-        animate="visible"
-      >
-        <motion.div variants={itemVariants}>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
-              <CalendarDays className="h-6 w-6 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-white">Events</h1>
-          </div>
-        </motion.div>
-        <div className="flex flex-col items-center justify-center h-96 gap-4">
-          <Loader2 className='size-10 text-blue-500 animate-spin' />
-          <span className="text-slate-400">Loading events...</span>
-        </div>
-      </motion.div>
-    );
-  }
 
   if (isError) {
     return (
@@ -492,15 +497,8 @@ export default function EventsPage() {
               </tr>
             </thead>
             <tbody>
-              {(isLoading || isFetching) && allEvents.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-16">
-                    <div className="flex flex-col items-center justify-center gap-4">
-                      <Loader2 className='size-10 text-blue-500 animate-spin' />
-                      <span className="text-slate-400">Loading events...</span>
-                    </div>
-                  </td>
-                </tr>
+              {isLoading ? (
+                <EventTableSkeleton />
               ) : allEvents.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-16">

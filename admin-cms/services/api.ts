@@ -104,6 +104,10 @@ export const usersApi = {
     });
     return response.data;
   },
+  getTeachingAssignments: async (userId: string): Promise<{ class_level: number; subject: string }[]> => {
+    const response = await api.get<{ class_level: number; subject: string }[]>(`/admin/users/${userId}/teaching-assignments`);
+    return response.data;
+  },
 };
 
 // ============================

@@ -14,10 +14,9 @@ export declare class JwtStrategy extends JwtStrategy_base {
     private readonly usersService;
     constructor(configService: ConfigService, usersService: UsersService);
     validate(payload: JwtPayload): Promise<{
-        id: string;
-        is_active: boolean;
-        created_at: Date;
         name: string;
+        id: string;
+        created_at: Date;
         email: string | null;
         password: string;
         phone: string;
@@ -25,6 +24,7 @@ export declare class JwtStrategy extends JwtStrategy_base {
         gender: import("@prisma/client").$Enums.Gender | null;
         profile_image_url: string | null;
         device_id: string | null;
+        is_active: boolean;
         push_token: string | null;
         coordinator_subject: string | null;
         coordinator_class: number | null;

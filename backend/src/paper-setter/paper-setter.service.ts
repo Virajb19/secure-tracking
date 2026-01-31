@@ -362,37 +362,242 @@ export class PaperSetterService {
         subject?: string;
         classLevel?: number;
         status?: SelectionStatus;
+        selectionType?: 'PAPER_SETTER' | 'EXAMINER';
+        search?: string;
+        page?: number;
+        limit?: number;
     }) {
         const where: any = {};
 
         if (filters?.subject) where.subject = filters.subject;
         if (filters?.classLevel) where.class_level = filters.classLevel;
         if (filters?.status) where.status = filters.status;
+        if (filters?.selectionType) where.selection_type = filters.selectionType;
 
-        return this.db.paperSetterSelection.findMany({
+        // Add search filter for teacher name or school name
+        if (filters?.search) {
+            where.OR = [
+                {
+                    teacher: {
+                        name: {
+                            contains: filters.search,
+                            mode: 'insensitive',
+                        },
+                    },
+                },
+                {
+                    teacher: {
+                        faculty: {
+                            school: {
+                                name: {
+                                    contains: filters.search,
+                                    mode: 'insensitive',
+                                },
+                            },
+                        },
+                    },
+                },
+            ];
+        }
+
+        const page = filters?.page || 1;
+        const limit = filters?.limit || 20;
+        const skip = (page - 1) * limit;
+
+        const [rawData, total] = await Promise.all([
+            this.db.paperSetterSelection.findMany({
+                where,
+                include: {
+                    teacher: {
+                        select: {
+                            id: true,
+                            name: true,
+                            phone: true,
+                            faculty: {
+                                select: {
+                                    school: {
+                                        select: { id: true, name: true, district: { select: { name: true } } },
+                                    },
+                                },
+                            },
+                            bank_details: true,
+                        },
+                    },
+                    coordinator: {
+                        select: { id: true, name: true },
+                    },
+                },
+                orderBy: { created_at: 'desc' },
+                skip,
+                take: limit,
+            }),
+            this.db.paperSetterSelection.count({ where }),
+        ]);
+
+        // Flatten the school data for frontend consumption
+        const data = rawData.map(selection => ({
+            ...selection,
+            teacher: selection.teacher ? {
+                id: selection.teacher.id,
+                name: selection.teacher.name,
+                phone: selection.teacher.phone,
+                bank_details: selection.teacher.bank_details,
+                school: selection.teacher.faculty?.school ? {
+                    id: selection.teacher.faculty.school.id,
+                    name: selection.teacher.faculty.school.name,
+                    district: selection.teacher.faculty.school.district,
+                } : null,
+            } : null,
+        }));
+
+        return {
+            data,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
+    }
+
+    /**
+     * Get school-wise selection statistics
+     */
+    async getSchoolWiseSelections(filters?: {
+        subject?: string;
+        status?: SelectionStatus;
+        districtId?: string;
+        search?: string;
+        page?: number;
+        limit?: number;
+    }) {
+        const where: any = {};
+        
+        if (filters?.subject) where.subject = filters.subject;
+        if (filters?.status) where.status = filters.status;
+
+        const selections = await this.db.paperSetterSelection.findMany({
             where,
             include: {
                 teacher: {
                     select: {
-                        id: true,
-                        name: true,
-                        phone: true,
                         faculty: {
                             select: {
                                 school: {
-                                    select: { name: true, district: { select: { name: true } } },
+                                    select: { 
+                                        id: true,
+                                        name: true, 
+                                        district: { 
+                                            select: { id: true, name: true } 
+                                        },
+                                    },
                                 },
                             },
                         },
-                        bank_details: true,
                     },
                 },
-                coordinator: {
-                    select: { id: true, name: true },
+            },
+        });
+
+        // Filter by district if provided
+        let filteredSelections = selections;
+        if (filters?.districtId) {
+            filteredSelections = selections.filter(
+                s => s.teacher?.faculty?.school?.district?.id === filters.districtId
+            );
+        }
+
+        // Group by school
+        const schoolMap = new Map<string, {
+            schoolId: string;
+            schoolName: string;
+            district: string;
+            districtId: string;
+            totalSubmissions: number;
+            accepted: number;
+            pending: number;
+            subjects: Set<string>;
+        }>();
+
+        filteredSelections.forEach(selection => {
+            const school = selection.teacher?.faculty?.school;
+            if (!school) return;
+
+            const schoolId = school.id;
+            if (!schoolMap.has(schoolId)) {
+                schoolMap.set(schoolId, {
+                    schoolId,
+                    schoolName: school.name,
+                    district: school.district?.name || 'N/A',
+                    districtId: school.district?.id || '',
+                    totalSubmissions: 0,
+                    accepted: 0,
+                    pending: 0,
+                    subjects: new Set(),
+                });
+            }
+
+            const stats = schoolMap.get(schoolId)!;
+            stats.totalSubmissions++;
+            if (selection.status === SelectionStatus.ACCEPTED) {
+                stats.accepted++;
+            } else if (selection.status === SelectionStatus.INVITED) {
+                stats.pending++;
+            }
+            stats.subjects.add(selection.subject);
+        });
+
+        // Convert to array and apply search filter
+        let schoolStats = Array.from(schoolMap.values()).map(stat => ({
+            ...stat,
+            subjects: Array.from(stat.subjects).join(', '),
+        }));
+
+        // Apply search filter on school name or district
+        if (filters?.search) {
+            const searchLower = filters.search.toLowerCase();
+            schoolStats = schoolStats.filter(
+                s => s.schoolName.toLowerCase().includes(searchLower) ||
+                     s.district.toLowerCase().includes(searchLower)
+            );
+        }
+
+        // Sort by total submissions (descending), then by school name
+        schoolStats.sort((a, b) => 
+            b.totalSubmissions - a.totalSubmissions || a.schoolName.localeCompare(b.schoolName)
+        );
+
+        // Apply pagination
+        const page = filters?.page || 1;
+        const limit = filters?.limit || 10;
+        const total = schoolStats.length;
+        const totalPages = Math.ceil(total / limit);
+        const skip = (page - 1) * limit;
+        const paginatedData = schoolStats.slice(skip, skip + limit);
+
+        return {
+            data: paginatedData,
+            total,
+            page,
+            limit,
+            totalPages,
+            hasNextPage: page < totalPages,
+        };
+    }
+
+    /**
+     * Delete all selections for a school (Admin only)
+     */
+    async deleteSchoolSelections(schoolId: string) {
+        const result = await this.db.paperSetterSelection.deleteMany({
+            where: {
+                teacher: {
+                    faculty: {
+                        school_id: schoolId,
+                    },
                 },
             },
-            orderBy: { created_at: 'desc' },
         });
+        return result.count;
     }
 
     /**

@@ -38,6 +38,10 @@ export declare class UsersService {
         totalPages: number;
     }>;
     findById(id: string): Promise<User>;
+    getTeachingAssignments(userId: string): Promise<{
+        class_level: number;
+        subject: string;
+    }[]>;
     findByPhone(phone: string): Promise<User | null>;
     findByEmail(email: string): Promise<User | null>;
     registerUser(data: RegisterUserData, ipAddress: string | null): Promise<User>;

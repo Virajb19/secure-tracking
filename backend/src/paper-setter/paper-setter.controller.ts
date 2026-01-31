@@ -141,12 +141,55 @@ export class PaperSetterController {
         @Query('subject') subject?: string,
         @Query('classLevel') classLevel?: string,
         @Query('status') status?: SelectionStatus,
+        @Query('selectionType') selectionType?: 'PAPER_SETTER' | 'EXAMINER',
+        @Query('search') search?: string,
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
     ) {
         return this.paperSetterService.getAllSelections({
             subject,
             classLevel: classLevel ? parseInt(classLevel, 10) : undefined,
             status,
+            selectionType,
+            search,
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 20,
         });
+    }
+
+    /**
+     * Get school-wise selection statistics
+     * GET /api/paper-setter/school-wise
+     */
+    @Get('school-wise')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    async getSchoolWiseSelections(
+        @Query('subject') subject?: string,
+        @Query('status') status?: SelectionStatus,
+        @Query('districtId') districtId?: string,
+        @Query('search') search?: string,
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+    ) {
+        return this.paperSetterService.getSchoolWiseSelections({
+            subject,
+            status,
+            districtId,
+            search,
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 10,
+        });
+    }
+
+    /**
+     * Delete all selections for a school (Admin only)
+     * DELETE /api/paper-setter/school/:schoolId
+     */
+    @Delete('school/:schoolId')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    async deleteSchoolSelections(@Param('schoolId') schoolId: string) {
+        const count = await this.paperSetterService.deleteSchoolSelections(schoolId);
+        return { success: true, message: `${count} selections deleted`, deletedCount: count };
     }
 
     /**

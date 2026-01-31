@@ -185,6 +185,19 @@ let UsersService = class UsersService {
         }
         return user;
     }
+    async getTeachingAssignments(userId) {
+        const faculty = await this.db.faculty.findFirst({
+            where: { user_id: userId },
+            include: { teaching_assignments: true },
+        });
+        if (!faculty) {
+            return [];
+        }
+        return faculty.teaching_assignments.map((ta) => ({
+            class_level: ta.class_level,
+            subject: ta.subject,
+        }));
+    }
     async findByPhone(phone) {
         return this.db.user.findUnique({ where: { phone } });
     }

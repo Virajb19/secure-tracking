@@ -14,6 +14,7 @@ interface StarButtonProps {
 export function StarButton({ userId, isStarred }: StarButtonProps) {
   const queryClient = useQueryClient();
 
+  // Optimistic update mutation
   const toggleStarMutation = useMutation({
     mutationFn: async () => {
       const response = await userStarsApi.toggleStar(userId);

@@ -76,6 +76,7 @@ export const generalNotificationSchema = baseNotificationSchema.extend({
 export const paperSetterNotificationSchema = baseNotificationSchema.extend({
   type: z.literal('Paper Setter'),
   subject: z.string().min(1, 'Subject is required'),
+  classLevel: z.number().min(1, 'Class level is required').max(12, 'Class level cannot exceed 12'),
   message: z.string().min(1, 'Message is required').max(1000, 'Message cannot exceed 1000 characters'),
 });
 
@@ -83,6 +84,7 @@ export const paperSetterNotificationSchema = baseNotificationSchema.extend({
 export const paperCheckerNotificationSchema = baseNotificationSchema.extend({
   type: z.literal('Paper Checker'),
   subject: z.string().min(1, 'Subject is required'),
+  classLevel: z.number().min(1, 'Class level is required').max(12, 'Class level cannot exceed 12'),
   message: z.string().min(1, 'Message is required').max(1000, 'Message cannot exceed 1000 characters'),
 });
 

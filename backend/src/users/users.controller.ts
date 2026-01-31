@@ -119,6 +119,20 @@ export class UsersController {
     }
 
     /**
+     * Get user's teaching assignments.
+     * Returns class levels the user teaches.
+     * 
+     * @param userId - User ID
+     * @returns Teaching assignments array
+     */
+    @Get(':userId/teaching-assignments')
+    async getTeachingAssignments(
+        @Param('userId') userId: string,
+    ): Promise<{ class_level: number; subject: string }[]> {
+        return this.usersService.getTeachingAssignments(userId);
+    }
+
+    /**
      * Extract client IP address from request.
      * Handles proxied requests (X-Forwarded-For header).
      */

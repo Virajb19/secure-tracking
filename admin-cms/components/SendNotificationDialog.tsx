@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -40,13 +40,15 @@ import {
   notificationTypes,
 } from '@/lib/zod';
 import noticesApi from '@/services/notices.service';
-import { api, masterDataApi } from '@/services/api';
+import { masterDataApi } from '@/services/api';
 import { showSuccessToast } from './ui/custom-toast';
+import { User } from '@/types';
 
 interface SendNotificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   recipientUserIds: string[];
+  selectedUsers?: User[]; // Pass selected users data to extract teaching assignments
   singleUser?: boolean;
 }
 
@@ -74,6 +76,7 @@ export function SendNotificationDialog({
   open,
   onOpenChange,
   recipientUserIds,
+  selectedUsers = [],
   singleUser = false,
 }: SendNotificationDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +99,38 @@ export function SendNotificationDialog({
     staleTime: 1000 * 60 * 5, 
   });
 
+  // Compute class levels from selected users' teaching assignments
+  // If multiple users: show only overlapping (common) classes
+  // If single user: show all their classes
+  const isPaperSetterOrChecker = selectedType === 'Paper Setter' || selectedType === 'Paper Checker';
+  
+  const userClassLevels = useMemo(() => {
+    if (!isPaperSetterOrChecker || selectedUsers.length === 0) return [];
+    
+    // Get class levels for each user
+    const classLevelsPerUser = selectedUsers.map(user => {
+      const assignments = user.faculty?.teaching_assignments || [];
+      return [...new Set(assignments.map(ta => ta.class_level))];
+    });
+    
+    // If no users have teaching assignments, return empty
+    if (classLevelsPerUser.every(levels => levels.length === 0)) return [];
+    
+    // Filter out users without teaching assignments for intersection calculation
+    const usersWithClasses = classLevelsPerUser.filter(levels => levels.length > 0);
+    
+    if (usersWithClasses.length === 0) return [];
+    
+    // Find common (overlapping) class levels across all selected users
+    // Start with first user's classes and intersect with others
+    let commonClasses = usersWithClasses[0];
+    for (let i = 1; i < usersWithClasses.length; i++) {
+      commonClasses = commonClasses.filter(level => usersWithClasses[i].includes(level));
+    }
+    
+    return commonClasses.sort((a, b) => a - b);
+  }, [selectedUsers, isPaperSetterOrChecker]);
+
   const subjects = subjectsData || SUBJECTS;
 
   const getDefaultValues = (type: NotificationType): SendNotificationSchema => {
@@ -103,9 +138,9 @@ export function SendNotificationDialog({
       case 'General':
         return { type: 'General', message: '', file: undefined };
       case 'Paper Setter':
-        return { type: 'Paper Setter', subject: '', message: '', file: undefined };
+        return { type: 'Paper Setter', subject: '', classLevel: 10, message: '', file: undefined };
       case 'Paper Checker':
-        return { type: 'Paper Checker', subject: '', message: '', file: undefined };
+        return { type: 'Paper Checker', subject: '', classLevel: 10, message: '', file: undefined };
       case 'Invitation':
         return { type: 'Invitation', heading: '', venue: '', eventTime: '', eventDate: '', file: undefined };
       case 'Push Notification':
@@ -179,11 +214,13 @@ export function SendNotificationDialog({
           payload.title = `Paper Setter - ${data.subject}`;
           payload.message = data.message;
           payload.subject = data.subject;
+          payload.class_level = data.classLevel;
           break;
         case 'Paper Checker':
           payload.title = `Paper Checker - ${data.subject}`;
           payload.message = data.message;
           payload.subject = data.subject;
+          payload.class_level = data.classLevel;
           break;
         case 'Invitation':
           payload.title = 'Invitation';
@@ -204,6 +241,8 @@ export function SendNotificationDialog({
     onSuccess: (data) => {
       showSuccessToast(data.message || 'Notice sent successfully!');
       queryClient.refetchQueries({ queryKey: ['notices'] });
+      // Also refresh paper-setter selections if type was Paper Setter/Checker
+      queryClient.invalidateQueries({ queryKey: ['paper-setter-selections'] });
       handleClose();
     },
     onError: (error: any) => {
@@ -212,6 +251,7 @@ export function SendNotificationDialog({
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['notices'] });
+      queryClient.invalidateQueries({ queryKey: ['paper-setter-selections'] });
     }
   });
 
@@ -305,6 +345,51 @@ export function SendNotificationDialog({
                   <FormMessage />
                 </FormItem>
               )}
+            />
+            <FormField
+              control={form.control}
+              name="classLevel"
+              render={({ field }) => {
+                // Use selected users' class levels, fallback to default 10, 12 if none
+                const classLevelOptions = userClassLevels.length > 0 
+                  ? userClassLevels 
+                  : [10, 12];
+                
+                return (
+                  <FormItem>
+                    <FormLabel className="text-slate-700 dark:text-slate-300">Class Level</FormLabel>
+                    <Select 
+                      onValueChange={(value) => field.onChange(parseInt(value))} 
+                      value={field.value?.toString()}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-blue-500/20 h-11">
+                          <SelectValue placeholder="Select a class" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 z-9999">
+                        {classLevelOptions.map((level) => (
+                          <SelectItem 
+                            key={level} 
+                            value={level.toString()} 
+                            className="text-slate-900 dark:text-white cursor-pointer"
+                          >
+                            Class {level}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedUsers.length > 0 && userClassLevels.length === 0 && (
+                      <p className="text-xs text-amber-500 dark:text-amber-400 mt-1">
+                        {selectedUsers.length > 1 
+                          ? 'No common classes found across selected teachers'
+                          : 'No teaching assignments found for this teacher'}
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}

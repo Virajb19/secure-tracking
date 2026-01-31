@@ -12,6 +12,7 @@ import { SetBackToPendingButton } from '@/components/SetBackToPendingButton';
 import { ExpandableText } from '@/components/ExpandableText';
 import { RetryButton } from '@/components/RetryButton';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
+import { TableRowsSkeleton } from '@/components/TableSkeleton';
 import { useDebounceCallback } from 'usehooks-ts';
 
 // Animation variants
@@ -73,7 +74,7 @@ export default function HelpdeskPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
 
-  // Debounce the search
+  // Debounce the search (Client-side filtering)
   const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
 
   // Fetch helpdesk tickets with infinite query
@@ -285,53 +286,40 @@ export default function HelpdeskPage() {
         className="bg-linear-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 overflow-hidden shadow-xl relative"
         variants={cardVariants}
       >
-        {/* Show loading state when fetching with no data (e.g., after filter change) */}
-        {(isLoading || (isFetching && !isFetchingNextPage)) && allTickets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <Loader2 className='size-10 text-blue-500 animate-spin' />
-            <span className="text-slate-400">Loading tickets...</span>
-          </div>
-        ) : filteredTickets.length > 0 ? (
-          <>
-            <div className="overflow-x-auto relative">
-              {/* Loading overlay when refetching */}
-              {isFetching && !isFetchingNextPage && allTickets.length > 0 && (
-                <div className="absolute inset-0 bg-slate-900/50 z-10 flex items-center justify-center">
-                  <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
-                    <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                    <span className="text-slate-300 text-sm">Refreshing...</span>
-                  </div>
-                </div>
-              )}
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-slate-800/50 border-b border-slate-700">
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
-                      <Hash className="h-4 w-4 inline mr-1" />
-                      Sl No.
-                    </th>
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
-                      <User className="h-4 w-4 inline mr-1" />
-                      Full Name
-                    </th>
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
-                      <MessageSquare className="h-4 w-4 inline mr-1" />
-                      Message
-                    </th>
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
-                      <Phone className="h-4 w-4 inline mr-1" />
-                      Phone
-                    </th>
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
-                      <Calendar className="h-4 w-4 inline mr-1" />
-                      Date
-                    </th>
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Status</th>
-                    <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <AnimatePresence mode="popLayout">
+        <div className="overflow-x-auto relative">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-slate-800/50 border-b border-slate-700">
+                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <Hash className="h-4 w-4 inline mr-1" />
+                  Sl No.
+                </th>
+                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <User className="h-4 w-4 inline mr-1" />
+                  Full Name
+                </th>
+                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <MessageSquare className="h-4 w-4 inline mr-1" />
+                  Message
+                </th>
+                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <Phone className="h-4 w-4 inline mr-1" />
+                  Phone
+                </th>
+                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <Calendar className="h-4 w-4 inline mr-1" />
+                  Date
+                </th>
+                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Status</th>
+                <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Show skeleton rows when loading or refetching */}
+              {(isLoading || (isFetching && !isFetchingNextPage)) ? (
+                <TableRowsSkeleton rows={8} columns={7} />
+              ) : filteredTickets.length > 0 ? (
+                <AnimatePresence mode="popLayout">
                     {filteredTickets.map((ticket, index) => (
                       <motion.tr 
                         key={ticket.id}
@@ -391,63 +379,62 @@ export default function HelpdeskPage() {
                       </motion.tr>
                     ))}
                   </AnimatePresence>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Load More / Record count */}
-            <div className="px-6 py-4 border-t border-slate-700/50">
-              {hasNextPage ? (
-                <motion.button
-                  onClick={handleLoadMore}
-                  disabled={isFetchingNextPage}
-                  className="w-full py-3 text-sm text-blue-400 hover:text-blue-300 bg-blue-500/5 hover:bg-blue-500/10 rounded-lg transition-all font-medium disabled:opacity-70 border border-blue-500/20"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                >
-                  {isFetchingNextPage ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className='size-5 text-blue-500 animate-spin' />
-                      <span className="text-blue-300">Loading more tickets...</span>
-                    </span>
-                  ) : (
-                    `Load More (${total - allTickets.length} remaining)`
-                  )}
-                </motion.button>
               ) : (
-                <p className="text-center text-sm text-slate-500">
-                  Showing all {allTickets.length} records
-                </p>
+                <tr>
+                  <td colSpan={7} className="py-16 text-center">
+                    <Headphones className="h-16 w-16 text-slate-700 mx-auto mb-4" />
+                    <div className="text-slate-400 text-lg">
+                      {searchInput ? 'No matching tickets found' : 'No helpdesk tickets found'}
+                    </div>
+                    <p className="text-slate-500 text-sm mt-2">
+                      {searchInput 
+                        ? 'Try adjusting your search criteria' 
+                        : 'Tickets submitted by users will appear here'}
+                    </p>
+                    {searchInput && (
+                      <button
+                        onClick={() => {
+                          setSearchInput('');
+                          setSearchQuery('');
+                        }}
+                        className="mt-4 text-blue-500 hover:text-blue-600 text-sm font-medium"
+                      >
+                        Clear search
+                      </button>
+                    )}
+                  </td>
+                </tr>
               )}
-            </div>
-          </>
-        ) : (
-          <motion.div 
-            className="text-center py-16"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <Headphones className="h-16 w-16 text-slate-700 mx-auto mb-4" />
-            <div className="text-slate-400 text-lg">
-              {searchInput ? 'No matching tickets found' : 'No helpdesk tickets found'}
-            </div>
-            <p className="text-slate-500 text-sm mt-2">
-              {searchInput 
-                ? 'Try adjusting your search criteria' 
-                : 'Tickets submitted by users will appear here'}
-            </p>
-            {searchInput && (
-              <button
-                onClick={() => {
-                  setSearchInput('');
-                  setSearchQuery('');
-                }}
-                className="mt-4 text-blue-500 hover:text-blue-600 text-sm font-medium"
+            </tbody>
+          </table>
+        </div>
+
+        {/* Load More / Record count */}
+        {filteredTickets.length > 0 && (
+          <div className="px-6 py-4 border-t border-slate-700/50">
+            {hasNextPage ? (
+              <motion.button
+                onClick={handleLoadMore}
+                disabled={isFetchingNextPage}
+                className="w-full py-3 text-sm text-blue-400 hover:text-blue-300 bg-blue-500/5 hover:bg-blue-500/10 rounded-lg transition-all font-medium disabled:opacity-70 border border-blue-500/20"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
               >
-                Clear search
-              </button>
+                {isFetchingNextPage ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className='size-5 text-blue-500 animate-spin' />
+                    <span className="text-blue-300">Loading more tickets...</span>
+                  </span>
+                ) : (
+                  `Load More (${total - allTickets.length} remaining)`
+                )}
+              </motion.button>
+            ) : (
+              <p className="text-center text-sm text-slate-500">
+                Showing all {allTickets.length} records
+              </p>
             )}
-          </motion.div>
+          </div>
         )}
       </motion.div>
     </motion.div>

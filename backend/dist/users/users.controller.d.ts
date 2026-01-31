@@ -15,5 +15,9 @@ export declare class UsersController {
         totalPages: number;
     }>;
     toggleStatus(userId: string, toggleStatusDto: ToggleUserStatusDto, currentUser: User, request: Request): Promise<User>;
+    getTeachingAssignments(userId: string): Promise<{
+        class_level: number;
+        subject: string;
+    }[]>;
     private extractIpAddress;
 }

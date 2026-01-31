@@ -47,7 +47,7 @@ export function UserStatusToggle({
         className={twMerge("cursor-pointer hover:opacity-80 transition-opacity min-w-18 flex justify-center", !isActive && "bg-red-600 dark:bg-red-500/80")}
       >
         {toggleStatusMutation.isPending ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
+           <div className={twMerge("size-4 border-2 border-t-[3px] border-white/20 rounded-full animate-spin mr-2", isActive ? "border-t-emerald-400" : "border-t-red-400")}/>
         ) : isActive ? (
           'Active'
         ) : (

@@ -254,6 +254,29 @@ export class UsersService {
     }
 
     /**
+     * Get user's teaching assignments.
+     * Returns class levels and subjects the user teaches.
+     * 
+     * @param userId - User ID
+     * @returns Teaching assignments array
+     */
+    async getTeachingAssignments(userId: string): Promise<{ class_level: number; subject: string }[]> {
+        const faculty = await this.db.faculty.findFirst({
+            where: { user_id: userId },
+            include: { teaching_assignments: true },
+        });
+
+        if (!faculty) {
+            return [];
+        }
+
+        return faculty.teaching_assignments.map((ta) => ({
+            class_level: ta.class_level,
+            subject: ta.subject,
+        }));
+    }
+
+    /**
      * Find a user by phone number.
      * Used for authentication.
      * 

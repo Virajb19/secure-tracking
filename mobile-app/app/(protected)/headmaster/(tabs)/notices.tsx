@@ -25,7 +25,7 @@ interface Notice {
     title: string;
     content: string;
     priority: 'HIGH' | 'NORMAL' | 'LOW';
-    type?: 'General' | 'Paper Setter' | 'Paper Checker' | 'Invitation' | 'Push Notification';
+    type?: 'GENERAL' | 'PAPER_SETTER' | 'PAPER_CHECKER' | 'INVITATION' | 'PUSH_NOTIFICATION';
     subject?: string;
     venue?: string;
     event_time?: string;
@@ -45,39 +45,39 @@ type PriorityFilter = 'ALL' | 'HIGH' | 'NORMAL' | 'LOW';
 // Type-based styling configuration
 const getTypeStyle = (type?: Notice['type']) => {
     switch (type) {
-        case 'Paper Setter':
+        case 'PAPER_SETTER':
             return {
-                bg: '#f0fdf4',
-                text: '#16a34a',
-                border: '#16a34a',
+                bg: '#dcfce7',
+                text: '#15803d',
+                border: '#15803d',
                 icon: 'create-outline' as const,
                 label: 'Paper Setter',
             };
-        case 'Paper Checker':
+        case 'PAPER_CHECKER':
             return {
                 bg: '#fef3c7',
-                text: '#d97706',
-                border: '#d97706',
+                text: '#b45309',
+                border: '#b45309',
                 icon: 'checkmark-done-outline' as const,
                 label: 'Paper Checker',
             };
-        case 'Invitation':
+        case 'INVITATION':
             return {
-                bg: '#fae8ff',
-                text: '#a855f7',
-                border: '#a855f7',
+                bg: '#f3e8ff',
+                text: '#7c3aed',
+                border: '#7c3aed',
                 icon: 'calendar-outline' as const,
                 label: 'Invitation',
             };
-        case 'Push Notification':
+        case 'PUSH_NOTIFICATION':
             return {
                 bg: '#dbeafe',
-                text: '#2563eb',
-                border: '#2563eb',
+                text: '#1d4ed8',
+                border: '#1d4ed8',
                 icon: 'notifications-outline' as const,
                 label: 'Notification',
             };
-        default: // General
+        default: // GENERAL
             return {
                 bg: '#f1f5f9',
                 text: '#475569',
@@ -383,7 +383,7 @@ export default function NoticesScreen() {
                                     </StyledText>
 
                                     {/* Subject for Paper Setter/Checker */}
-                                    {(notice.type === 'Paper Setter' || notice.type === 'Paper Checker') && notice.subject && (
+                                    {(notice.type === 'PAPER_SETTER' || notice.type === 'PAPER_CHECKER') && notice.subject && (
                                         <StyledView className="flex-row items-center bg-gray-100 px-3 py-2 rounded-lg mb-3">
                                             <Ionicons name="book-outline" size={16} color="#6b7280" />
                                             <StyledText className="ml-2 text-sm font-medium text-gray-700">
@@ -393,7 +393,7 @@ export default function NoticesScreen() {
                                     )}
 
                                     {/* Invitation Details */}
-                                    {notice.type === 'Invitation' && (
+                                    {notice.type === 'INVITATION' && (
                                         <StyledView className="bg-purple-50 rounded-lg p-3 mb-3">
                                             {notice.venue && (
                                                 <StyledView className="flex-row items-center mb-2">

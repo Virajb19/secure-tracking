@@ -16,6 +16,7 @@ import { DeleteNoticeButton } from '@/components/DeleteNoticeButton';
 import { ViewNoticeButton } from '@/components/ViewNoticeButton';
 import { ExpandableText } from '@/components/ExpandableText';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
+import { TableRowsSkeleton } from '@/components/TableSkeleton';
 import { useQueryClient } from '@tanstack/react-query';
 import noticesApi, { type Notice, type NoticeType, noticeTypeLabels, NOTICES_QUERY_KEY, useGetNoticesInfinite } from '@/services/notices.service';
 import { useDebounceCallback } from 'usehooks-ts';
@@ -90,7 +91,7 @@ export default function NotificationsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Debounce the search
+  // Debounce the search (Client-side filtering)
   const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
   
   const pageSize = 50;
@@ -295,65 +296,51 @@ export default function NotificationsPage() {
         className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-lg dark:shadow-xl"
         variants={cardVariants}
       >
-        {/* Show loading state when fetching with no data or filter changed */}
-        {(isFetching || isLoading) && allNotices.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <Loader2 className='size-10 text-blue-500 animate-spin' />
-            <span className="text-slate-500 dark:text-slate-400">Loading notices...</span>
-          </div>
-        ) : filteredNotices.length === 0 && !isLoading && !isFetching ? (
-          <motion.div 
-            className="text-center py-16"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <Bell className="h-16 w-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-            <div className="text-slate-500 dark:text-slate-400 text-lg">No notices found</div>
-            <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Try adjusting your filters</p>
-          </motion.div>
-        ) : (
-          <div className="overflow-x-auto relative">
-            {/* Loading overlay when refetching */}
-            {isFetching && !isFetchingNextPage && allNotices.length > 0 && (
-              <div className="absolute inset-0 bg-slate-900/50 z-10 flex items-center justify-center">
-                <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
-                  <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                  <span className="text-slate-300 text-sm">Refreshing...</span>
-                </div>
-              </div>
-            )}
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">Sl No.</th>
-                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
-                    <FileText className="h-4 w-4 inline mr-1" />
-                    Title
-                  </th>
-                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
-                    <Tag className="h-4 w-4 inline mr-1" />
-                    Type
-                  </th>
-                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
-                    <MessageSquare className="h-4 w-4 inline mr-1" />
-                    Message
-                  </th>
-                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
-                    <Building2 className="h-4 w-4 inline mr-1" />
-                    School
-                  </th>
-                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
-                    <Calendar className="h-4 w-4 inline mr-1" />
-                    Date
-                  </th>
-                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
-                    <Paperclip className="h-4 w-4 inline mr-1" />
-                    File
-                  </th>
-                  <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">Actions</th>
+        <div className="overflow-x-auto relative">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">Sl No.</th>
+                <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
+                  <FileText className="h-4 w-4 inline mr-1" />
+                  Title
+                </th>
+                <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
+                  <Tag className="h-4 w-4 inline mr-1" />
+                  Type
+                </th>
+                <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
+                  <MessageSquare className="h-4 w-4 inline mr-1" />
+                  Message
+                </th>
+                <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
+                  <Building2 className="h-4 w-4 inline mr-1" />
+                  School
+                </th>
+                <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
+                  <Calendar className="h-4 w-4 inline mr-1" />
+                  Date
+                </th>
+                <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">
+                  <Paperclip className="h-4 w-4 inline mr-1" />
+                  File
+                </th>
+                <th className="text-left py-4 px-5 text-slate-500 dark:text-slate-400 font-medium text-sm">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Show skeleton rows when loading or refetching */}
+              {(isFetching && !isFetchingNextPage) || isLoading ? (
+                <TableRowsSkeleton rows={8} columns={8} />
+              ) : filteredNotices.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-16 text-center">
+                    <Bell className="h-16 w-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                    <div className="text-slate-500 dark:text-slate-400 text-lg">No notices found</div>
+                    <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Try adjusting your filters</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
+              ) : (
                 <AnimatePresence mode="popLayout">
                   {filteredNotices.map((notice: Notice, index: number) => (
                     <motion.tr 
@@ -406,41 +393,38 @@ export default function NotificationsPage() {
                     </motion.tr>
                   ))}
                 </AnimatePresence>
-              </tbody>
-            </table>
-          </div>
-        )}
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Load More Section */}
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50">
-          {isLoading && allNotices.length === 0 ? (
-            <div className="flex items-center justify-center gap-3">
-              <Loader2 className='size-5 text-blue-500 animate-spin' />
-              <span className="text-slate-500 dark:text-slate-400 text-sm">Loading notices...</span>
-            </div>
-          ) : isError ? (
-            <p className="text-red-500 dark:text-red-400 text-center text-sm">{(error as Error)?.message || 'Failed to load notices'}</p>
-          ) : isFetchingNextPage ? (
-            <div className="flex items-center justify-center gap-2">
-              <Loader2 className='size-4 text-blue-500 animate-spin' />
-              <span className="text-slate-500 dark:text-slate-400 text-sm">Loading more...</span>
-            </div>
-          ) : hasNextPage ? (
-            <motion.button
-              onClick={loadMore}
-              disabled={isFetchingNextPage}
-              className="w-full py-3 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-500/5 hover:bg-blue-100 dark:hover:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg transition-all font-medium disabled:opacity-70"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-            >
-              Load More ({total - allNotices.length} remaining)
-            </motion.button>
-          ) : (
-            <p className="text-center text-sm text-slate-500 dark:text-slate-400">
-              Showing all {allNotices.length} records
-            </p>
-          )}
-        </div>
+        {filteredNotices.length > 0 && (
+          <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50">
+            {isError ? (
+              <p className="text-red-500 dark:text-red-400 text-center text-sm">{(error as Error)?.message || 'Failed to load notices'}</p>
+            ) : isFetchingNextPage ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className='size-4 text-blue-500 animate-spin' />
+                <span className="text-slate-500 dark:text-slate-400 text-sm">Loading more...</span>
+              </div>
+            ) : hasNextPage ? (
+              <motion.button
+                onClick={loadMore}
+                disabled={isFetchingNextPage}
+                className="w-full py-3 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-500/5 hover:bg-blue-100 dark:hover:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg transition-all font-medium disabled:opacity-70"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+              >
+                Load More ({total - allNotices.length} remaining)
+              </motion.button>
+            ) : (
+              <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+                Showing all {allNotices.length} records
+              </p>
+            )}
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );

@@ -11,6 +11,7 @@ export interface PaperSetterSelection {
   exam_year: number;
   status: 'INVITED' | 'ACCEPTED';
   official_order_url?: string;
+  invitation_message?: string;
   accepted_at?: string;
   created_at: string;
   teacher?: {
@@ -19,10 +20,11 @@ export interface PaperSetterSelection {
     email?: string;
     phone: string;
     school?: {
+      id: string;
       name: string;
       district?: { name: string };
-    };
-  };
+    } | null;
+  } | null;
   coordinator?: {
     id: string;
     name: string;
@@ -82,13 +84,27 @@ export const paperSetterApi = {
     subject?: string;
     classLevel?: string;
     status?: 'INVITED' | 'ACCEPTED';
+    selectionType?: 'PAPER_SETTER' | 'EXAMINER';
+    search?: string;
     examYear?: number;
-  }): Promise<PaperSetterSelection[]> => {
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    data: PaperSetterSelection[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> => {
     const params = new URLSearchParams();
     if (filters?.subject) params.append('subject', filters.subject);
     if (filters?.classLevel) params.append('classLevel', filters.classLevel);
     if (filters?.status) params.append('status', filters.status);
+    if (filters?.selectionType) params.append('selectionType', filters.selectionType);
+    if (filters?.search) params.append('search', filters.search);
     if (filters?.examYear) params.append('examYear', filters.examYear.toString());
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
     
     const response = await api.get(`/paper-setter/all?${params}`);
     return response.data;
@@ -119,6 +135,48 @@ export const paperSetterApi = {
   }> => {
     const response = await api.get('/paper-setter/stats');
     return response.data;
+  },
+
+  // Get school-wise selections with pagination
+  getSchoolWiseSelections: async (filters?: {
+    subject?: string;
+    status?: 'INVITED' | 'ACCEPTED';
+    districtId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    data: Array<{
+      schoolId: string;
+      schoolName: string;
+      district: string;
+      districtId: string;
+      totalSubmissions: number;
+      accepted: number;
+      pending: number;
+      subjects: string;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+  }> => {
+    const params = new URLSearchParams();
+    if (filters?.subject) params.append('subject', filters.subject);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.districtId) params.append('districtId', filters.districtId);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    
+    const response = await api.get(`/paper-setter/school-wise?${params}`);
+    return response.data;
+  },
+
+  // Delete all selections for a school
+  deleteSchoolSelections: async (schoolId: string): Promise<void> => {
+    await api.delete(`/paper-setter/school/${schoolId}`);
   },
 };
 

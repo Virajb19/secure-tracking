@@ -56,6 +56,7 @@ const SendNoticeSchema = z.object({
     message: z.string().min(1, 'Message is required').max(1000, 'Message cannot exceed 1000 characters'),
     type: noticeTypeEnum.optional().default(NoticeType.GENERAL),
     subject: z.string().optional(),  // For Paper Setter/Checker
+    class_level: z.number().min(1).max(12).optional(),  // For Paper Setter/Checker (e.g., 10, 12)
     venue: z.string().optional(),     // For Invitation
     event_time: z.string().optional(), // For Invitation
     event_date: z.string().optional(), // For Invitation

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma';
 import { CreateNoticeDto, UpdateNoticeDto, SendNoticeDto } from './dto/notice.dto';
-import { NoticeType } from '@prisma/client';
+import { NoticeType, SelectionStatus } from '@prisma/client';
 
 // Max file size: 5MB
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -214,11 +214,23 @@ export class AdminNoticesService {
     /**
      * Send a notice to specific users.
      * Creates a global notice that is visible to all users.
+     * For Paper Setter/Checker types, also creates PaperSetterSelection records.
      */
     async sendNotice(dto: SendNoticeDto, createdBy: string) {
         // Validate file size if provided
         if (dto.file_size && dto.file_size > MAX_FILE_SIZE) {
             throw new BadRequestException('File size must be less than 5MB');
+        }
+
+        // Validate class_level for Paper Setter/Checker types
+        const isPaperSetterType = dto.type === NoticeType.PAPER_SETTER || dto.type === NoticeType.PAPER_CHECKER;
+        if (isPaperSetterType) {
+            if (!dto.subject) {
+                throw new BadRequestException('Subject is required for Paper Setter/Checker notices');
+            }
+            if (!dto.class_level) {
+                throw new BadRequestException('Class level is required for Paper Setter/Checker notices');
+            }
         }
 
         // Verify that all user IDs exist
@@ -257,14 +269,56 @@ export class AdminNoticesService {
             },
         });
 
+        // If Paper Setter or Paper Checker, create PaperSetterSelection records
+        let selectionsCreated = 0;
+        let selectionsSkipped = 0;
+        if (isPaperSetterType && dto.subject && dto.class_level) {
+            const selectionType = dto.type === NoticeType.PAPER_SETTER ? 'PAPER_SETTER' : 'EXAMINER';
+            
+            for (const userId of dto.user_ids) {
+                try {
+                    // Check if selection already exists for this teacher
+                    const existingSelection = await this.db.paperSetterSelection.findFirst({
+                        where: { teacher_id: userId },
+                    });
+
+                    if (existingSelection) {
+                        selectionsSkipped++;
+                        continue;
+                    }
+
+                    // Create paper setter selection
+                    await this.db.paperSetterSelection.create({
+                        data: {
+                            teacher_id: userId,
+                            coordinator_id: createdBy,
+                            subject: dto.subject,
+                            class_level: dto.class_level,
+                            selection_type: selectionType,
+                            invitation_message: dto.message,
+                            status: SelectionStatus.INVITED,
+                        },
+                    });
+                    selectionsCreated++;
+                } catch (error) {
+                    // If it's a unique constraint error, skip this user
+                    selectionsSkipped++;
+                }
+            }
+        }
+
         return {
             success: true,
-            message: `Notice sent to ${dto.user_ids.length} users`,
+            message: isPaperSetterType 
+                ? `Notice sent and ${selectionsCreated} selection(s) created (${selectionsSkipped} skipped)`
+                : `Notice sent to ${dto.user_ids.length} users`,
             notice,
             details: {
                 total: dto.user_ids.length,
                 success: dto.user_ids.length,
                 failed: 0,
+                selectionsCreated,
+                selectionsSkipped,
             },
         };
     }

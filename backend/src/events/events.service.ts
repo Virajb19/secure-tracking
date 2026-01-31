@@ -91,9 +91,12 @@ export class EventsService {
             }
         }
 
-        // Apply district filter
+        // Apply district filter - check both direct district_id and school's district
         if (filters?.district_id) {
-            whereClause.district_id = filters.district_id;
+            whereClause.OR = [
+                { district_id: filters.district_id },
+                { school: { district_id: filters.district_id } },
+            ];
         }
 
         // Apply event type filter
@@ -103,11 +106,22 @@ export class EventsService {
 
         // Apply search filter (search in title, location, creator name)
         if (filters?.search) {
-            whereClause.OR = [
+            const searchConditions = [
                 { title: { contains: filters.search, mode: 'insensitive' } },
                 { location: { contains: filters.search, mode: 'insensitive' } },
                 { creator: { name: { contains: filters.search, mode: 'insensitive' } } },
             ];
+            
+            // If we already have OR conditions from district filter, use AND
+            if (whereClause.OR) {
+                whereClause.AND = [
+                    { OR: whereClause.OR },
+                    { OR: searchConditions },
+                ];
+                delete whereClause.OR;
+            } else {
+                whereClause.OR = searchConditions;
+            }
         }
 
         const [events, total] = await Promise.all([
