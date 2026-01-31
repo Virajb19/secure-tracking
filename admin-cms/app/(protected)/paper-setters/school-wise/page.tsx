@@ -67,26 +67,57 @@ export default function SchoolWiseRecordsPage() {
     initialPageParam: 1,
   });
 
-  // Prefetch next page for smoother UX
-  useEffect(() => {
-    if (data?.pages) {
-      const lastPage = data.pages[data.pages.length - 1];
-      if (lastPage.hasNextPage) {
-        const nextPage = lastPage.page + 1;
-        queryClient.prefetchQuery({
-          queryKey: ['school-wise-paper-setters-page', subjectFilter, statusFilter, districtFilter, searchQuery, nextPage],
-          queryFn: () => paperSetterApi.getSchoolWiseSelections({
-            subject: subjectFilter !== 'all' ? subjectFilter : undefined,
-            status: statusFilter !== 'all' ? statusFilter : undefined,
-            districtId: districtFilter !== 'all' ? districtFilter : undefined,
-            search: searchQuery || undefined,
-            page: nextPage,
-            limit: ITEMS_PER_PAGE,
-          }),
-        });
-      }
-    }
-  }, [data, subjectFilter, statusFilter, districtFilter, searchQuery, queryClient]);
+  // Prefetch on hover handlers for select filters
+  const handleDistrictHover = (districtId: string) => {
+    if (districtId === districtFilter) return;
+    queryClient.prefetchInfiniteQuery({
+      queryKey: ['school-wise-paper-setters', subjectFilter, statusFilter, districtId, searchQuery],
+      queryFn: ({ pageParam = 1 }) => paperSetterApi.getSchoolWiseSelections({
+        subject: subjectFilter !== 'all' ? subjectFilter : undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        districtId: districtId !== 'all' ? districtId : undefined,
+        search: searchQuery || undefined,
+        page: pageParam,
+        limit: ITEMS_PER_PAGE,
+      }),
+      initialPageParam: 1,
+    });
+  };
+
+  const handleSubjectHover = (subject: string) => {
+    if (subject === subjectFilter) return;
+    queryClient.prefetchInfiniteQuery({
+      queryKey: ['school-wise-paper-setters', subject, statusFilter, districtFilter, searchQuery],
+      queryFn: ({ pageParam = 1 }) => paperSetterApi.getSchoolWiseSelections({
+        subject: subject !== 'all' ? subject : undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        districtId: districtFilter !== 'all' ? districtFilter : undefined,
+        search: searchQuery || undefined,
+        page: pageParam,
+        limit: ITEMS_PER_PAGE,
+      }),
+      initialPageParam: 1,
+    });
+  };
+
+  // Will it refetch again if I hover again or not because its cached ?
+  // Check using -> REACT QUERY DEV TOOLS
+
+  const handleStatusHover = (status: string) => {
+    if (status === statusFilter) return;
+    queryClient.prefetchInfiniteQuery({
+      queryKey: ['school-wise-paper-setters', subjectFilter, status, districtFilter, searchQuery],
+      queryFn: ({ pageParam = 1 }) => paperSetterApi.getSchoolWiseSelections({
+        subject: subjectFilter !== 'all' ? subjectFilter : undefined,
+        status: status !== 'all' ? status as 'INVITED' | 'ACCEPTED' : undefined,
+        districtId: districtFilter !== 'all' ? districtFilter : undefined,
+        search: searchQuery || undefined,
+        page: pageParam,
+        limit: ITEMS_PER_PAGE,
+      }),
+      initialPageParam: 1,
+    });
+  };
 
   // Flatten all pages into a single array
   const allRecords = useMemo(() => {
@@ -98,9 +129,9 @@ export default function SchoolWiseRecordsPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <RetryButton 
-          queryKey={['school-wise-paper-setters']} 
-          message="Failed to load data" 
+        <RetryButton
+          queryKey={['school-wise-paper-setters']}
+          message="Failed to load data"
         />
       </div>
     );
@@ -114,9 +145,9 @@ export default function SchoolWiseRecordsPage() {
           <School className="h-7 w-7 text-blue-500 dark:text-blue-400" />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">School-Wise Paper Checkers</h1>
         </div>
-        <RefreshTableButton 
-          queryKey={['school-wise-paper-setters', subjectFilter, statusFilter, districtFilter, searchQuery]} 
-          isFetching={isFetching && !isFetchingNextPage} 
+        <RefreshTableButton
+          queryKey={['school-wise-paper-setters', subjectFilter, statusFilter, districtFilter, searchQuery]}
+          isFetching={isFetching && !isFetchingNextPage}
         />
       </div>
 
@@ -144,9 +175,9 @@ export default function SchoolWiseRecordsPage() {
                 <SelectValue placeholder="All Districts" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Districts</SelectItem>
+                <SelectItem value="all" onMouseEnter={() => handleDistrictHover('all')}>All Districts</SelectItem>
                 {districts.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  <SelectItem key={d.id} value={d.id} onMouseEnter={() => handleDistrictHover(d.id)}>{d.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -159,9 +190,9 @@ export default function SchoolWiseRecordsPage() {
                 <SelectValue placeholder="All Subjects" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Subjects</SelectItem>
+                <SelectItem value="all" onMouseEnter={() => handleSubjectHover('all')}>All Subjects</SelectItem>
                 {subjects.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                  <SelectItem key={s} value={s} onMouseEnter={() => handleSubjectHover(s)}>{s}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -174,9 +205,9 @@ export default function SchoolWiseRecordsPage() {
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="INVITED">Pending</SelectItem>
-                <SelectItem value="ACCEPTED">Accepted</SelectItem>
+                <SelectItem value="all" onMouseEnter={() => handleStatusHover('all')}>All Status</SelectItem>
+                <SelectItem value="INVITED" onMouseEnter={() => handleStatusHover('INVITED')}>Pending</SelectItem>
+                <SelectItem value="ACCEPTED" onMouseEnter={() => handleStatusHover('ACCEPTED')}>Accepted</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -218,9 +249,9 @@ export default function SchoolWiseRecordsPage() {
                         <td className="py-4 px-4 text-orange-600 dark:text-orange-400">{record.pending}</td>
                         <td className="py-4 px-4 text-blue-600 dark:text-blue-400">{record.subjects}</td>
                         <td className="py-4 px-4">
-                          <DeleteSchoolRecordButton 
-                            schoolId={record.schoolId} 
-                            schoolName={record.schoolName} 
+                          <DeleteSchoolRecordButton
+                            schoolId={record.schoolId}
+                            schoolName={record.schoolName}
                           />
                         </td>
                       </tr>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -61,8 +61,8 @@ const tableRowVariants = {
 
 const cardVariants = {
   hidden: { opacity: 0, scale: 0.95 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     scale: 1,
     transition: { duration: 0.3 }
   }
@@ -90,24 +90,24 @@ export default function NotificationsPage() {
   const [selectedType, setSelectedType] = useState('all');
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Debounce the search (Client-side filtering)
   const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
-  
+
   const pageSize = 50;
-  
+
   const queryClient = useQueryClient();
-  
+
   // Build the type filter - only pass to API if not 'all'
   const typeFilter = selectedType === 'all' ? undefined : selectedType;
-  
+
   // useInfiniteQuery for fetching notices
-  const { 
+  const {
     data,
-    isLoading, 
+    isLoading,
     isFetching,
     isFetchingNextPage,
-    isError, 
+    isError,
     error,
     hasNextPage,
     fetchNextPage,
@@ -127,10 +127,36 @@ export default function NotificationsPage() {
     }
   };
 
+  // Ref for the table container to track scroll position
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Prefetch next page when user scrolls near bottom
+  const handleScroll = useCallback(() => {
+    const container = tableContainerRef.current;
+    if (!container || !hasNextPage || isFetchingNextPage) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+    // Prefetch when within 200px of bottom
+    if (distanceFromBottom < 200) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Attach scroll listener
+  useEffect(() => {
+    const container = tableContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
   // Filter notices based on search (client-side)
   const filteredNotices = useMemo(() => {
     return allNotices.filter((notice: Notice) => {
-      const matchesSearch = searchQuery === '' || 
+      const matchesSearch = searchQuery === '' ||
         notice.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         notice.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (notice.school?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
@@ -154,9 +180,27 @@ export default function NotificationsPage() {
     });
   };
 
+  const handleSelectHover = (typeValue: string) => {
+    // Don't prefetch 'all' - it's already loaded or will be the default
+    if (typeValue === 'all' || typeValue === selectedType) return;
+
+    const filters = { type: typeValue };
+    queryClient.prefetchInfiniteQuery({
+      queryKey: [NOTICES_QUERY_KEY, 'infinite', filters],
+      queryFn: ({ pageParam = 0 }) =>
+        noticesApi.getAll(filters, pageSize, pageParam as number),
+      getNextPageParam: (lastPage: { hasMore: boolean }, allPages: unknown[]) => {
+        if (!lastPage.hasMore) return undefined;
+        return allPages.length * pageSize;
+      },
+      initialPageParam: 0,
+      staleTime: 1000 * 60 * 7, // Already set in queryClient globally
+    });
+  };
+
   if (isLoading && allNotices.length === 0) {
     return (
-      <motion.div 
+      <motion.div
         className="space-y-8 p-2"
         variants={containerVariants}
         initial="hidden"
@@ -180,7 +224,7 @@ export default function NotificationsPage() {
 
   if (isError && allNotices.length === 0) {
     return (
-      <motion.div 
+      <motion.div
         className="space-y-8 p-2"
         variants={containerVariants}
         initial="hidden"
@@ -214,7 +258,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-8 p-2"
       variants={containerVariants}
       initial={false}
@@ -252,7 +296,7 @@ export default function NotificationsPage() {
       </motion.div>
 
       {/* Filters */}
-      <motion.div 
+      <motion.div
         className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-lg dark:shadow-xl"
         variants={cardVariants}
       >
@@ -281,7 +325,12 @@ export default function NotificationsPage() {
               </SelectTrigger>
               <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                 {typeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700"
+                    onMouseEnter={() => handleSelectHover(option.value)}
+                  >
                     {option.label}
                   </SelectItem>
                 ))}
@@ -292,11 +341,11 @@ export default function NotificationsPage() {
       </motion.div>
 
       {/* Notices Table */}
-      <motion.div 
+      <motion.div
         className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-lg dark:shadow-xl"
         variants={cardVariants}
       >
-        <div className="overflow-x-auto relative">
+        <div ref={tableContainerRef} className="overflow-x-auto relative max-h-[600px] overflow-y-auto" onScroll={handleScroll}>
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
@@ -343,7 +392,7 @@ export default function NotificationsPage() {
               ) : (
                 <AnimatePresence mode="popLayout">
                   {filteredNotices.map((notice: Notice, index: number) => (
-                    <motion.tr 
+                    <motion.tr
                       key={notice.id}
                       custom={index}
                       variants={tableRowVariants}
@@ -366,10 +415,10 @@ export default function NotificationsPage() {
                         </Badge>
                       </td>
                       <td className="py-4 px-5 max-w-[300px]">
-                        <ExpandableText 
-                          text={notice.content} 
-                          maxLength={60} 
-                          className="text-slate-600 dark:text-slate-400 text-sm" 
+                        <ExpandableText
+                          text={notice.content}
+                          maxLength={60}
+                          className="text-slate-600 dark:text-slate-400 text-sm"
                         />
                       </td>
                       <td className="py-4 px-5 text-slate-700 dark:text-slate-300 max-w-[200px] truncate" title={notice.school?.name || 'All Schools'}>
@@ -377,8 +426,8 @@ export default function NotificationsPage() {
                       </td>
                       <td className="py-4 px-5 text-slate-600 dark:text-slate-400">{formatDate(notice.created_at)}</td>
                       <td className="py-4 px-5">
-                        <Badge className={notice.file_url 
-                          ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' 
+                        <Badge className={notice.file_url
+                          ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
                           : 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
                         }>
                           {notice.file_url ? 'Yes' : 'No'}
