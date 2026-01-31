@@ -25,7 +25,7 @@ import { PaperSetterService } from './paper-setter.service';
 @Controller('paper-setter')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PaperSetterController {
-    constructor(private readonly paperSetterService: PaperSetterService) {}
+    constructor(private readonly paperSetterService: PaperSetterService) { }
 
     /**
      * Search teachers for selection
@@ -129,6 +129,26 @@ export class PaperSetterController {
     @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
     async getSchoolCount(@Param('schoolId') schoolId: string) {
         return this.paperSetterService.getSchoolSelectionCount(schoolId);
+    }
+
+    /**
+     * Check for duplicate selection (for warning when sending notices)
+     * GET /api/paper-setter/check-duplicate
+     */
+    @Get('check-duplicate')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    async checkDuplicateSelection(
+        @Query('schoolId') schoolId: string,
+        @Query('subject') subject: string,
+        @Query('classLevel') classLevel: string,
+        @Query('selectionType') selectionType: 'PAPER_SETTER' | 'EXAMINER',
+    ) {
+        return this.paperSetterService.checkDuplicateSelection({
+            schoolId,
+            subject,
+            classLevel: parseInt(classLevel, 10),
+            selectionType,
+        });
     }
 
     /**

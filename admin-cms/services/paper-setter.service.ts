@@ -68,7 +68,7 @@ export const paperSetterApi = {
     if (classLevel) params.append('classLevel', classLevel);
     if (districtId) params.append('districtId', districtId);
     if (search) params.append('search', search);
-    
+
     const response = await api.get(`/paper-setter/search-teachers?${params}`);
     return response.data;
   },
@@ -105,7 +105,7 @@ export const paperSetterApi = {
     if (filters?.examYear) params.append('examYear', filters.examYear.toString());
     if (filters?.page) params.append('page', filters.page.toString());
     if (filters?.limit) params.append('limit', filters.limit.toString());
-    
+
     const response = await api.get(`/paper-setter/all?${params}`);
     return response.data;
   },
@@ -169,7 +169,7 @@ export const paperSetterApi = {
     if (filters?.search) params.append('search', filters.search);
     if (filters?.page) params.append('page', filters.page.toString());
     if (filters?.limit) params.append('limit', filters.limit.toString());
-    
+
     const response = await api.get(`/paper-setter/school-wise?${params}`);
     return response.data;
   },
@@ -177,6 +177,31 @@ export const paperSetterApi = {
   // Delete all selections for a school
   deleteSchoolSelections: async (schoolId: string): Promise<void> => {
     await api.delete(`/paper-setter/school/${schoolId}`);
+  },
+
+  // Check for duplicate selection (for warning when sending notices)
+  checkDuplicateSelection: async (params: {
+    schoolId: string;
+    subject: string;
+    classLevel: number;
+    selectionType: 'PAPER_SETTER' | 'EXAMINER';
+  }): Promise<{
+    hasDuplicate: boolean;
+    count: number;
+    existingSelections: Array<{
+      id: string;
+      status: string;
+      teacherName: string;
+    }>;
+  }> => {
+    const queryParams = new URLSearchParams({
+      schoolId: params.schoolId,
+      subject: params.subject,
+      classLevel: params.classLevel.toString(),
+      selectionType: params.selectionType,
+    });
+    const response = await api.get(`/paper-setter/check-duplicate?${queryParams}`);
+    return response.data;
   },
 };
 
@@ -218,7 +243,7 @@ export const formSubmissionsApi = {
     if (status && status !== 'all') params.append('status', status);
     params.append('page', page.toString());
     params.append('limit', limit.toString());
-    
+
     const response = await api.get(`/form-submissions/admin/all?${params}`);
     return response.data;
   },
@@ -233,7 +258,7 @@ export const formSubmissionsApi = {
     if (districtId) params.append('districtId', districtId);
     params.append('page', page.toString());
     params.append('limit', limit.toString());
-    
+
     const response = await api.get(`/form-submissions/admin/pending?${params}`);
     return response.data;
   },

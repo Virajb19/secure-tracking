@@ -42,3 +42,33 @@ export const RegisterSchema = z.object({
 });
 
 export type RegisterFormData = z.infer<typeof RegisterSchema>;
+
+/**
+ * Bank Details form schema
+ */
+export const BankDetailsSchema = z.object({
+    accountHolderName: z.string().min(2, 'Account holder name is required'),
+    accountNumber: z
+        .string()
+        .min(9, 'Account number should be at least 9 digits')
+        .max(18, 'Account number should not exceed 18 digits')
+        .regex(/^\d+$/, 'Account number should contain only digits'),
+    confirmAccountNumber: z.string().min(1, 'Please confirm your account number'),
+    ifscCode: z
+        .string()
+        .length(11, 'IFSC code must be 11 characters')
+        .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Invalid IFSC code format (e.g., SBIN0001234)'),
+    bankName: z.string().min(2, 'Bank name is required'),
+    branchName: z.string().min(2, 'Branch name is required'),
+    upiId: z
+        .string()
+        .regex(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, 'Invalid UPI ID format')
+        .optional()
+        .or(z.literal('')),
+}).refine((data) => data.accountNumber === data.confirmAccountNumber, {
+    message: 'Account numbers do not match',
+    path: ['confirmAccountNumber'],
+});
+
+export type BankDetailsFormData = z.infer<typeof BankDetailsSchema>;
+

@@ -19,7 +19,7 @@ export class PaperSetterService {
     constructor(
         private readonly db: PrismaService,
         private readonly notifications: NotificationsService,
-    ) {}
+    ) { }
 
     /**
      * Search teachers for paper setter selection
@@ -356,6 +356,49 @@ export class PaperSetterService {
     }
 
     /**
+     * Check if there's already a paper setter/checker for the same subject from the same school
+     * Used for showing duplicate warning when admin sends notices
+     */
+    async checkDuplicateSelection(params: {
+        schoolId: string;
+        subject: string;
+        classLevel: number;
+        selectionType: 'PAPER_SETTER' | 'EXAMINER';
+    }): Promise<{ hasDuplicate: boolean; count: number; existingSelections: any[] }> {
+        const selections = await this.db.paperSetterSelection.findMany({
+            where: {
+                subject: params.subject,
+                class_level: params.classLevel,
+                selection_type: params.selectionType,
+                teacher: {
+                    faculty: {
+                        school_id: params.schoolId,
+                    },
+                },
+            },
+            select: {
+                id: true,
+                status: true,
+                teacher: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
+        });
+
+        return {
+            hasDuplicate: selections.length > 0,
+            count: selections.length,
+            existingSelections: selections.map(s => ({
+                id: s.id,
+                status: s.status,
+                teacherName: s.teacher.name,
+            })),
+        };
+    }
+
+    /**
      * Get all selections (Admin view)
      */
     async getAllSelections(filters?: {
@@ -471,7 +514,7 @@ export class PaperSetterService {
         limit?: number;
     }) {
         const where: any = {};
-        
+
         if (filters?.subject) where.subject = filters.subject;
         if (filters?.status) where.status = filters.status;
 
@@ -483,11 +526,11 @@ export class PaperSetterService {
                         faculty: {
                             select: {
                                 school: {
-                                    select: { 
+                                    select: {
                                         id: true,
-                                        name: true, 
-                                        district: { 
-                                            select: { id: true, name: true } 
+                                        name: true,
+                                        district: {
+                                            select: { id: true, name: true }
                                         },
                                     },
                                 },
@@ -557,12 +600,12 @@ export class PaperSetterService {
             const searchLower = filters.search.toLowerCase();
             schoolStats = schoolStats.filter(
                 s => s.schoolName.toLowerCase().includes(searchLower) ||
-                     s.district.toLowerCase().includes(searchLower)
+                    s.district.toLowerCase().includes(searchLower)
             );
         }
 
         // Sort by total submissions (descending), then by school name
-        schoolStats.sort((a, b) => 
+        schoolStats.sort((a, b) =>
             b.totalSubmissions - a.totalSubmissions || a.schoolName.localeCompare(b.schoolName)
         );
 

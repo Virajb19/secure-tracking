@@ -33,14 +33,15 @@ import {
 import { Bell, Upload, Send, Sparkles, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { uploadFile } from '@/lib/appwrite';
-import { 
-  sendNotificationSchema, 
-  type SendNotificationSchema, 
+import {
+  sendNotificationSchema,
+  type SendNotificationSchema,
   type NotificationType,
   notificationTypes,
 } from '@/lib/zod';
 import noticesApi from '@/services/notices.service';
 import { masterDataApi } from '@/services/api';
+import { paperSetterApi } from '@/services/paper-setter.service';
 import { showSuccessToast } from './ui/custom-toast';
 import { User } from '@/types';
 
@@ -82,10 +83,16 @@ export function SendNotificationDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedType, setSelectedType] = useState<NotificationType>('General');
   const [uploadingFile, setUploadingFile] = useState<boolean>(false);
+  const [duplicateWarnings, setDuplicateWarnings] = useState<Array<{
+    schoolName: string;
+    teacherName: string;
+    status: string;
+  }>>([]);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
 
   // Fetch subjects from master data
   const { data: subjectsData, isLoading: subjectsLoading, error: subjectsError } = useQuery<string[]>({
-    queryKey: ['subjects'], 
+    queryKey: ['subjects'],
     queryFn: async () => {
       try {
         const data = await masterDataApi.getSubjects();
@@ -96,38 +103,38 @@ export function SendNotificationDialog({
         return SUBJECTS;
       }
     },
-    staleTime: 1000 * 60 * 5, 
+    staleTime: 1000 * 60 * 5,
   });
 
   // Compute class levels from selected users' teaching assignments
   // If multiple users: show only overlapping (common) classes
   // If single user: show all their classes
   const isPaperSetterOrChecker = selectedType === 'Paper Setter' || selectedType === 'Paper Checker';
-  
+
   const userClassLevels = useMemo(() => {
     if (!isPaperSetterOrChecker || selectedUsers.length === 0) return [];
-    
+
     // Get class levels for each user
     const classLevelsPerUser = selectedUsers.map(user => {
       const assignments = user.faculty?.teaching_assignments || [];
       return [...new Set(assignments.map(ta => ta.class_level))];
     });
-    
+
     // If no users have teaching assignments, return empty
     if (classLevelsPerUser.every(levels => levels.length === 0)) return [];
-    
+
     // Filter out users without teaching assignments for intersection calculation
     const usersWithClasses = classLevelsPerUser.filter(levels => levels.length > 0);
-    
+
     if (usersWithClasses.length === 0) return [];
-    
+
     // Find common (overlapping) class levels across all selected users
     // Start with first user's classes and intersect with others
     let commonClasses = usersWithClasses[0];
     for (let i = 1; i < usersWithClasses.length; i++) {
       commonClasses = commonClasses.filter(level => usersWithClasses[i].includes(level));
     }
-    
+
     return commonClasses.sort((a, b) => a - b);
   }, [selectedUsers, isPaperSetterOrChecker]);
 
@@ -160,7 +167,60 @@ export function SendNotificationDialog({
   // Reset form when type changes
   useEffect(() => {
     form.reset(getDefaultValues(selectedType));
+    setDuplicateWarnings([]); // Clear warnings when type changes
   }, [selectedType, form]);
+
+  // Watch subject and classLevel for duplicate checking
+  const watchedSubject = form.watch('subject');
+  const watchedClassLevel = form.watch('classLevel');
+
+  // Check for duplicate selections when Paper Setter/Checker is selected
+  useEffect(() => {
+    const checkDuplicates = async () => {
+      if (!isPaperSetterOrChecker || !watchedSubject || !watchedClassLevel || selectedUsers.length === 0) {
+        setDuplicateWarnings([]);
+        return;
+      }
+
+      setCheckingDuplicates(true);
+      const warnings: Array<{ schoolName: string; teacherName: string; status: string }> = [];
+
+      // Check each selected user's school for duplicates
+      for (const user of selectedUsers) {
+        const schoolId = user.faculty?.school?.id;
+        const schoolName = user.faculty?.school?.name || 'Unknown School';
+        if (!schoolId) continue;
+
+        try {
+          const result = await paperSetterApi.checkDuplicateSelection({
+            schoolId,
+            subject: watchedSubject,
+            classLevel: watchedClassLevel,
+            selectionType: selectedType === 'Paper Setter' ? 'PAPER_SETTER' : 'EXAMINER',
+          });
+
+          if (result.hasDuplicate) {
+            result.existingSelections.forEach(sel => {
+              warnings.push({
+                schoolName,
+                teacherName: sel.teacherName,
+                status: sel.status,
+              });
+            });
+          }
+        } catch (error) {
+          console.error('Failed to check duplicates for school:', schoolId, error);
+        }
+      }
+
+      setDuplicateWarnings(warnings);
+      setCheckingDuplicates(false);
+    };
+
+    // Debounce the check
+    const timeoutId = setTimeout(checkDuplicates, 300);
+    return () => clearTimeout(timeoutId);
+  }, [isPaperSetterOrChecker, watchedSubject, watchedClassLevel, selectedUsers, selectedType]);
 
   const queryClient = useQueryClient();
 
@@ -332,8 +392,8 @@ export function SendNotificationDialog({
                     </FormControl>
                     <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 z-9999 max-h-60">
                       {subjects.map((subject) => (
-                        <SelectItem 
-                          key={subject} 
+                        <SelectItem
+                          key={subject}
                           value={subject}
                           className="text-slate-900 dark:text-white cursor-pointer"
                         >
@@ -351,15 +411,15 @@ export function SendNotificationDialog({
               name="classLevel"
               render={({ field }) => {
                 // Use selected users' class levels, fallback to default 10, 12 if none
-                const classLevelOptions = userClassLevels.length > 0 
-                  ? userClassLevels 
+                const classLevelOptions = userClassLevels.length > 0
+                  ? userClassLevels
                   : [10, 12];
-                
+
                 return (
                   <FormItem>
                     <FormLabel className="text-slate-700 dark:text-slate-300">Class Level</FormLabel>
-                    <Select 
-                      onValueChange={(value) => field.onChange(parseInt(value))} 
+                    <Select
+                      onValueChange={(value) => field.onChange(parseInt(value))}
                       value={field.value?.toString()}
                     >
                       <FormControl>
@@ -369,9 +429,9 @@ export function SendNotificationDialog({
                       </FormControl>
                       <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 z-9999">
                         {classLevelOptions.map((level) => (
-                          <SelectItem 
-                            key={level} 
-                            value={level.toString()} 
+                          <SelectItem
+                            key={level}
+                            value={level.toString()}
                             className="text-slate-900 dark:text-white cursor-pointer"
                           >
                             Class {level}
@@ -381,7 +441,7 @@ export function SendNotificationDialog({
                     </Select>
                     {selectedUsers.length > 0 && userClassLevels.length === 0 && (
                       <p className="text-xs text-amber-500 dark:text-amber-400 mt-1">
-                        {selectedUsers.length > 1 
+                        {selectedUsers.length > 1
                           ? 'No common classes found across selected teachers'
                           : 'No teaching assignments found for this teacher'}
                       </p>
@@ -408,6 +468,47 @@ export function SendNotificationDialog({
                 </FormItem>
               )}
             />
+
+            {/* Duplicate Warning Banner */}
+            {duplicateWarnings.length > 0 && (
+              <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg p-3 mt-2">
+                <div className="flex items-start gap-2">
+                  <Bell className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                      Warning: Existing {selectedType} Found
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                      The following school(s) already have a {selectedType.toLowerCase()} for this subject:
+                    </p>
+                    <ul className="text-xs text-amber-600 dark:text-amber-400 mt-2 space-y-1">
+                      {duplicateWarnings.map((warning, idx) => (
+                        <li key={idx} className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+                          <span className="font-medium">{warning.schoolName}</span>
+                          <span>- {warning.teacherName}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${warning.status === 'ACCEPTED'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
+                            }`}>
+                            {warning.status}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-2 italic">
+                      You can still proceed - this is just a warning.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {checkingDuplicates && (
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-2">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Checking for existing selections...
+              </div>
+            )}
           </>
         );
 
@@ -569,11 +670,10 @@ export function SendNotificationDialog({
                     key={type}
                     type="button"
                     onClick={() => handleTypeChange(type)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                      selectedType === type 
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20' 
-                        : 'bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700/50'
-                    }`}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${selectedType === type
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20'
+                      : 'bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700/50'
+                      }`}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     layout
@@ -616,7 +716,7 @@ export function SendNotificationDialog({
                           </button>
                         </div>
                       ) : (
-                        <motion.label 
+                        <motion.label
                           className="flex items-center gap-3 h-12 px-4 rounded-lg cursor-pointer transition-all border bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300 dark:hover:border-slate-500"
                           whileHover={{ scale: 1.01 }}
                           whileTap={{ scale: 0.99 }}
