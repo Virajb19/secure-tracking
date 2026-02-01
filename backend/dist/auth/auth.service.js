@@ -203,6 +203,7 @@ let AuthService = class AuthService {
                 email: user.email,
                 phone: user.phone,
                 role: user.role,
+                profile_image_url: user.profile_image_url,
             },
         };
     }

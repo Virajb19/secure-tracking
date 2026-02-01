@@ -120,6 +120,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (email, password, phone) => {
     const res = await authApi.login(email, password, phone);
 
+    // toast.success(JSON.stringify(res));
+
     const accessToken = res.access_token;
     const userRole = res.user.role;
     const name = res.user.name || 'Administrator';

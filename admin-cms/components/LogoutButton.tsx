@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { set } from 'zod';
 
 export function LogoutButton() {
   const [showConfirm, setShowConfirm] = useState(false);
@@ -26,8 +27,6 @@ export function LogoutButton() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      // Delay to show loading state
-      await new Promise(resolve => setTimeout(resolve, 500));
       await logout();
     } catch (error) {
       console.error('Logout error:', error);
@@ -77,9 +76,10 @@ export function LogoutButton() {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.preventDefault();
-                handleLogout();
+                await handleLogout();
+                setShowConfirm(false);
               }}
               disabled={isLoggingOut}
               className="bg-red-600 hover:bg-red-500 text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"

@@ -12,6 +12,7 @@ export interface LoginResponse {
         email: string | null;
         phone: string;
         role: UserRole;
+        profile_image_url?: string | null;
     };
 }
 export interface RegisterResponse {
@@ -22,6 +23,7 @@ export interface RegisterResponse {
         email: string | null;
         phone: string;
         role: UserRole;
+        profile_image_url?: string | null;
     };
 }
 export declare class AuthService {

@@ -25,6 +25,7 @@ export interface LoginResponse {
         email: string | null;
         phone: string;
         role: UserRole;
+        profile_image_url?: string | null;
     };
 }
 
@@ -39,6 +40,7 @@ export interface RegisterResponse {
         email: string | null;
         phone: string;
         role: UserRole;
+        profile_image_url?: string | null;
     };
 }
 
@@ -393,6 +395,7 @@ export class AuthService {
                 email: user.email,
                 phone: user.phone,
                 role: user.role,
+                profile_image_url: user.profile_image_url,
             },
         };
     }
