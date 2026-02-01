@@ -33,4 +33,7 @@ export declare class AuthService {
     private validateDeliveryUserDevice;
     register(registerDto: RegisterDto, ipAddress: string | null): Promise<RegisterResponse>;
     adminLogin(loginDto: LoginDto, ipAddress: string | null): Promise<LoginResponse>;
+    logout(userId: string, ipAddress: string | null): Promise<{
+        message: string;
+    }>;
 }

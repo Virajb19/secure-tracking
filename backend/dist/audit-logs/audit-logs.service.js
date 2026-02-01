@@ -15,6 +15,7 @@ const prisma_1 = require("../prisma");
 var AuditAction;
 (function (AuditAction) {
     AuditAction["USER_LOGIN"] = "USER_LOGIN";
+    AuditAction["USER_LOGOUT"] = "USER_LOGOUT";
     AuditAction["USER_LOGIN_FAILED"] = "USER_LOGIN_FAILED";
     AuditAction["USER_REGISTERED"] = "USER_REGISTERED";
     AuditAction["DEVICE_ID_BOUND"] = "DEVICE_ID_BOUND";

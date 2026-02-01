@@ -25,7 +25,7 @@ export class DevDelayMiddleware implements NestMiddleware {
             let delayMs = 0;
 
             if (req.method === 'GET') {
-                delayMs = 1500; // 1.5s for queries
+                delayMs = 2000; // 2s for queries
             } else if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
                 delayMs = 3000; // 3s for mutations
             }

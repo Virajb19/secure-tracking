@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { SelectionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma';
 
 /**
@@ -8,7 +9,7 @@ import { PrismaService } from '../prisma';
  */
 @Injectable()
 export class AnalyticsService {
-    constructor(private readonly db: PrismaService) {}
+    constructor(private readonly db: PrismaService) { }
 
     /**
      * Calculate Teacher-Student Ratio for a school
@@ -33,8 +34,8 @@ export class AnalyticsService {
             },
         });
 
-        const ratio = totalTeachers > 0 
-            ? (totalStudents / totalTeachers).toFixed(2) 
+        const ratio = totalTeachers > 0
+            ? (totalStudents / totalTeachers).toFixed(2)
             : 'N/A';
 
         return {
@@ -42,8 +43,8 @@ export class AnalyticsService {
             total_students: totalStudents,
             total_teachers: totalTeachers,
             ratio: ratio,
-            ratio_display: totalTeachers > 0 
-                ? `1:${Math.round(totalStudents / totalTeachers)}` 
+            ratio_display: totalTeachers > 0
+                ? `1:${Math.round(totalStudents / totalTeachers)}`
                 : 'No teachers',
         };
     }
@@ -117,8 +118,8 @@ export class AnalyticsService {
             total_schools: totalSchools,
             total_districts: totalDistricts,
             total_students: studentCount,
-            overall_ratio: approvedTeachers > 0 
-                ? `1:${Math.round(studentCount / approvedTeachers)}` 
+            overall_ratio: approvedTeachers > 0
+                ? `1:${Math.round(studentCount / approvedTeachers)}`
                 : 'N/A',
         };
     }
@@ -138,8 +139,8 @@ export class AnalyticsService {
             girls: s.girls,
             total: s.boys + s.girls,
             sections: s.sections,
-            avg_per_section: s.sections > 0 
-                ? Math.round((s.boys + s.girls) / s.sections) 
+            avg_per_section: s.sections > 0
+                ? Math.round((s.boys + s.girls) / s.sections)
                 : 0,
         }));
     }
@@ -267,6 +268,35 @@ export class AnalyticsService {
             total,
             pending,
             resolved,
+        };
+    }
+
+    /**
+     * Get pending actions summary for dashboard widget
+     */
+    async getPendingActionsSummary() {
+        const [
+            inactiveUsers,
+            pendingFormSubmissions,
+            pendingPaperSetterResponses,
+            pendingHelpdeskTickets,
+        ] = await Promise.all([
+            // Inactive users count
+            this.db.user.count({ where: { is_active: false } }),
+            // Pending form submissions (status = SUBMITTED, awaiting approval)
+            this.db.formSubmission.count({ where: { status: 'SUBMITTED' } }),
+            // Pending paper setter/checker responses (status = INVITED)
+            this.db.paperSetterSelection.count({ where: { status: SelectionStatus.INVITED } }),
+            // Pending helpdesk tickets
+            this.db.helpdesk.count({ where: { is_resolved: false } }),
+        ]);
+
+        return {
+            inactive_users: inactiveUsers,
+            pending_form_approvals: pendingFormSubmissions,
+            pending_paper_setter: pendingPaperSetterResponses,
+            pending_helpdesk: pendingHelpdeskTickets,
+            total: inactiveUsers + pendingFormSubmissions + pendingPaperSetterResponses + pendingHelpdeskTickets,
         };
     }
 }

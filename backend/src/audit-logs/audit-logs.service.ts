@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma';
 export enum AuditAction {
     // Auth actions
     USER_LOGIN = 'USER_LOGIN',
+    USER_LOGOUT = 'USER_LOGOUT',
     USER_LOGIN_FAILED = 'USER_LOGIN_FAILED',
     USER_REGISTERED = 'USER_REGISTERED',
     DEVICE_ID_BOUND = 'DEVICE_ID_BOUND',
@@ -111,7 +112,7 @@ export class AuditLogsService {
             }),
             this.db.auditLog.count(),
         ]);
-        
+
         return {
             data,
             total,

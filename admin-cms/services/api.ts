@@ -47,19 +47,33 @@ api.interceptors.response.use(
 export const authApi = {
   // Admin-only login for CMS (only ADMIN/SUPER_ADMIN can login)
   login: async (email: string, password: string, phone?: string): Promise<LoginResponse> => {
-        const payload: Record<string, string> = {
-          email,
-          password,
-          device_id: ADMIN_DEVICE_ID,
-        };
-        // Only include phone if provided
-        if (phone && phone.trim() !== '') {
-          payload.phone = phone;
-        }
-        // Use admin-specific login endpoint
-        const response = await api.post<LoginResponse>('/auth/admin/login', payload);
-        return response.data;
-      },
+    const payload: Record<string, string> = {
+      email,
+      password,
+      device_id: ADMIN_DEVICE_ID,
+    };
+    // Only include phone if provided
+    if (phone && phone.trim() !== '') {
+      payload.phone = phone;
+    }
+    // Use admin-specific login endpoint
+    const response = await api.post<LoginResponse>('/auth/admin/login', payload);
+    return response.data;
+  },
+  // Logout - logs the action to audit logs before clearing local storage
+  logout: async (): Promise<void> => {
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      // Logout should succeed even if API call fails
+      console.error('Failed to log logout action:', error);
+    }
+    // Always clear local storage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('userRole');
+    }
+  },
 }
 
 export interface UserFilterParams {
@@ -94,7 +108,7 @@ export const usersApi = {
     if (filters?.subject) params.subject = filters.subject;
     if (filters?.search) params.search = filters.search;
     if (filters?.is_active !== undefined) params.is_active = String(filters.is_active);
-    
+
     const response = await api.get<PaginatedUsersResponse>('/admin/users', { params });
     return response.data;
   },
@@ -193,7 +207,7 @@ export const circularsApi = {
     params.append('limit', limit.toString());
     params.append('offset', offset.toString());
     if (search) params.append('search', search);
-    
+
     const response = await api.get<CircularsResponse>(`/circulars?${params}`);
     return response.data;
   },
@@ -222,7 +236,7 @@ export const circularsApi = {
       });
     }
     if (file) formData.append('file', file);
-    
+
     const response = await api.post<Circular>('/circulars', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -339,7 +353,7 @@ export const eventsApi = {
     if (filters?.search) params.search = filters.search;
     params.limit = limit.toString();
     params.offset = offset.toString();
-    
+
     const response = await api.get<EventsResponse>('/admin/events', { params });
     return response.data;
   },

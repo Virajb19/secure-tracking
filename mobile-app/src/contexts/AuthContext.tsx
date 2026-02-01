@@ -30,6 +30,7 @@ import {
     initializePushNotifications,
     removePushToken,
 } from '../services/notification.service';
+import apiClient from '../api/client';
 
 /**
  * Login credentials for AuthContext.
@@ -192,6 +193,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const logout = useCallback(async () => {
         try {
             console.log('[Auth] Logging out...');
+
+            // Call logout API to log the action
+            try {
+                const token = await getAccessToken();
+                if (token) {
+                    await apiClient.post('/auth/logout');
+                }
+            } catch (error) {
+                console.error('[Auth] Failed to log logout action:', error);
+            }
 
             // Remove push token from server before logout
             await removePushToken().catch(err => {

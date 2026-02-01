@@ -9,6 +9,9 @@ export declare class AuthController {
     register(registerDto: RegisterDto, request: Request): Promise<RegisterResponse>;
     adminLogin(loginDto: LoginDto, request: Request): Promise<LoginResponse>;
     private extractIpAddress;
+    logout(request: Request): Promise<{
+        message: string;
+    }>;
     uploadProfileImage(image: Express.Multer.File): Promise<{
         url: string;
     }>;

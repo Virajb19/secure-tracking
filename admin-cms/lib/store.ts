@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { UserRole } from '@/types'
 import { authApi } from '@/services/api'
+import { toast } from 'sonner';
 
 // ========================================
 // COOKIE HELPERS
@@ -72,7 +73,7 @@ interface AuthState {
   isAuthenticated: () => boolean;
   hydrate: () => void;
   login: (email: string, password: string, phone?: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -151,7 +152,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // ----------------------------------------
   // LOGOUT
   // ----------------------------------------
-  logout: () => {
+  logout: async () => {
+    // Call logout API to log the action and clear storage
+    await authApi.logout();
+
+    // toast.success('Logged out successfully');
+
     // Clear localStorage
     localStorage.removeItem('accessToken');
     localStorage.removeItem('userRole');

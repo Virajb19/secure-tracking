@@ -8,7 +8,9 @@ import {
     UseInterceptors,
     UploadedFile,
     BadRequestException,
+    UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '@/shared/guards/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { memoryStorage } from 'multer';
@@ -135,6 +137,23 @@ export class AuthController {
     }
 
     /**
+     * Logout endpoint.
+     * Logs the logout action to audit logs.
+     * This endpoint requires JWT authentication.
+     * 
+     * @param request - HTTP request (contains user info from JWT)
+     * @returns Confirmation message
+     */
+    @Post('logout')
+    @HttpCode(HttpStatus.OK)
+    @UseGuards(JwtAuthGuard)
+    async logout(@Req() request: Request): Promise<{ message: string }> {
+        const user = request.user as { userId: string };
+        const ipAddress = this.extractIpAddress(request);
+        return this.authService.logout(user.userId, ipAddress);
+    }
+
+    /**
      * Upload profile image endpoint.
      * Used during registration to upload profile image before creating user.
      * 
@@ -169,7 +188,7 @@ export class AuthController {
 
         // Return URL (relative path that can be served by static files)
         const url = `/uploads/profiles/${filename}`;
-        
+
         console.log('[Auth] Profile image uploaded:', url);
 
         return { url };

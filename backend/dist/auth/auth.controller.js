@@ -47,6 +47,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
+const jwt_auth_guard_1 = require("../shared/guards/jwt-auth.guard");
 const platform_express_1 = require("@nestjs/platform-express");
 const multer_1 = require("multer");
 const fs = __importStar(require("fs"));
@@ -93,6 +94,11 @@ let AuthController = class AuthController {
             return forwardedIps.split(',')[0].trim();
         }
         return request.ip || request.socket.remoteAddress || 'unknown';
+    }
+    async logout(request) {
+        const user = request.user;
+        const ipAddress = this.extractIpAddress(request);
+        return this.authService.logout(user.userId, ipAddress);
     }
     async uploadProfileImage(image) {
         if (!image) {
@@ -142,6 +148,15 @@ __decorate([
     __metadata("design:paramtypes", [login_dto_1.LoginDto, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "adminLogin", null);
+__decorate([
+    (0, common_1.Post)('logout'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "logout", null);
 __decorate([
     (0, common_1.Post)('upload-profile-image'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),

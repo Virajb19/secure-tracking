@@ -161,6 +161,10 @@ body {
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
+  /* Chart tooltip colors */
+  --tooltip-bg: #ffffff;
+  --tooltip-text: #1e293b;
+  --tooltip-border: #e2e8f0;
 }
 
 .dark {
@@ -195,12 +199,17 @@ body {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
+  /* Chart tooltip colors */
+  --tooltip-bg: #1e293b;
+  --tooltip-text: #f8fafc;
+  --tooltip-border: #334155;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -211,6 +220,7 @@ body {
   0% {
     left: -100%;
   }
+
   100% {
     left: 100%;
   }
@@ -222,16 +232,13 @@ body {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.4) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.4) 50%,
+      transparent 100%);
   transform: skewX(-15deg);
 }
 
 .group:hover .shimmer-effect {
   animation: shimmer 0.6s ease-in-out forwards;
 }
-

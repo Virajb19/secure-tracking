@@ -206,6 +206,10 @@ let AuthService = class AuthService {
             },
         };
     }
+    async logout(userId, ipAddress) {
+        await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGOUT, 'User', userId, userId, ipAddress);
+        return { message: 'Logged out successfully' };
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([

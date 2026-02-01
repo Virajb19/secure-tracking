@@ -5,12 +5,14 @@ import {
     LayoutDashboard,
     Users,
     UserCheck,
-    Headphones,
     ThumbsUp,
     Clock,
     HelpCircle
 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts';
+import AuditLogsHistogram from './AuditLogsHistogram';
+import RecentActivityFeed from './RecentActivityFeed';
+import PendingActionsWidget from './PendingActionsWidget';
 
 // Types
 interface RoleStats {
@@ -43,34 +45,70 @@ interface DistrictUserStats {
     user_count: number;
 }
 
+interface PendingActionsSummary {
+    inactive_users: number;
+    pending_form_approvals: number;
+    pending_paper_setter: number;
+    pending_helpdesk: number;
+    total: number;
+}
+
+interface AuditLog {
+    id: string;
+    action: string;
+    entity_type: string;
+    entity_id: string | null;
+    user_id: string | null;
+    ip_address: string | null;
+    created_at: string;
+}
+
 interface DashboardProps {
     roleStats: RoleStats[];
     activeUsersStats: ActiveUsersStats;
     helpdeskSummary: HelpdeskSummary;
     genderStats: GenderStats;
     districtUserStats: DistrictUserStats[];
+    pendingActions: PendingActionsSummary;
+    auditLogs: AuditLog[];
 }
 
-// Animation variants
+// Animation variants - smooth spring transitions
 const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
         opacity: 1,
-        transition: { staggerChildren: 0.1 }
+        transition: {
+            staggerChildren: 0.08,
+            delayChildren: 0.1,
+        }
     }
 };
 
 const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
+    hidden: { opacity: 0, y: 15 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        transition: {
+            type: 'spring' as const,
+            stiffness: 100,
+            damping: 15,
+            mass: 0.8,
+        }
+    }
 };
 
 const cardVariants = {
-    hidden: { opacity: 0, scale: 0.95 },
+    hidden: { opacity: 0, scale: 0.98 },
     visible: {
         opacity: 1,
         scale: 1,
-        transition: { duration: 0.3 }
+        transition: {
+            type: 'spring' as const,
+            stiffness: 120,
+            damping: 20,
+        }
     }
 };
 
@@ -118,7 +156,9 @@ export default function Dashboard({
     activeUsersStats,
     helpdeskSummary,
     genderStats,
-    districtUserStats
+    districtUserStats,
+    pendingActions,
+    auditLogs
 }: DashboardProps) {
     // Transform role stats for pie chart
     const rolePieChartData = roleStats?.map(r => ({
@@ -229,6 +269,16 @@ export default function Dashboard({
                         </div>
                     </div>
                 </motion.div>
+            </motion.div>
+
+            {/* Activity Feed, Histogram, and Pending Actions Row */}
+            <motion.div
+                className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+                variants={itemVariants}
+            >
+                <RecentActivityFeed />
+                <AuditLogsHistogram auditLogs={auditLogs} />
+                <PendingActionsWidget pendingActions={pendingActions} />
             </motion.div>
 
             {/* Charts Row - Roles and Gender */}

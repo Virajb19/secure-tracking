@@ -21,7 +21,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     loading: boolean;
     login: (email: string, password: string, phone?: string) => Promise<void>;
-    logout: () => void;
+    logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -74,9 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // ----------------------------------------
     // LOGOUT
     // ----------------------------------------
-    const logout = () => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('userRole');
+    const logout = async () => {
+        // Call API to log the logout action (async, non-blocking)
+        await authApi.logout();
 
         setToken(null);
         setRole(null);

@@ -113,7 +113,7 @@ export class AuthService {
             if (loginDto.phone && loginDto.phone.trim() !== '' && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
                 const normalizedInputPhone = loginDto.phone.replace(/[\s-]/g, '');
                 const normalizedUserPhone = user.phone.replace(/[\s-]/g, '');
-                
+
                 if (normalizedInputPhone !== normalizedUserPhone) {
                     await this.auditLogsService.log(
                         AuditAction.USER_LOGIN_FAILED,
@@ -395,5 +395,24 @@ export class AuthService {
                 role: user.role,
             },
         };
+    }
+
+    /**
+     * Log user logout action.
+     * 
+     * @param userId - The ID of the user logging out
+     * @param ipAddress - Client IP for audit logging
+     * @returns Confirmation message
+     */
+    async logout(userId: string, ipAddress: string | null): Promise<{ message: string }> {
+        await this.auditLogsService.log(
+            AuditAction.USER_LOGOUT,
+            'User',
+            userId,
+            userId,
+            ipAddress,
+        );
+
+        return { message: 'Logged out successfully' };
     }
 }

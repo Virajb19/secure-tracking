@@ -19,7 +19,7 @@ import { AnalyticsService } from './analytics.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class AnalyticsController {
-    constructor(private readonly analyticsService: AnalyticsService) {}
+    constructor(private readonly analyticsService: AnalyticsService) { }
 
     /**
      * Get dashboard statistics
@@ -100,5 +100,14 @@ export class AnalyticsController {
     @Get('helpdesk-summary')
     async getHelpdeskSummary() {
         return this.analyticsService.getHelpdeskSummary();
+    }
+
+    /**
+     * Get pending actions summary for dashboard widget
+     * GET /api/admin/analytics/pending-actions
+     */
+    @Get('pending-actions')
+    async getPendingActionsSummary() {
+        return this.analyticsService.getPendingActionsSummary();
     }
 }

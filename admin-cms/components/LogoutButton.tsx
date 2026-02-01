@@ -25,11 +25,23 @@ export function LogoutButton() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    // Delay to show loading state
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    logout();
-    // router.push('/login');
-    window.location.href = '/login'
+    try {
+      // Delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Ensure localStorage is cleared even if logout fails
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userProfilePic');
+
+      setIsLoggingOut(false);
+      // Redirect after everything is cleared
+      window.location.href = '/login';
+    }
   }
 
   return (
@@ -55,17 +67,20 @@ export function LogoutButton() {
                 </div>
                 Confirm Logout
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-red-100/90">
+              <AlertDialogDescription className="text-red-100/90 dark:text-slate-300">
                 Are you sure you want to logout? You will need to sign in again to access the dashboard.
               </AlertDialogDescription>
             </AlertDialogHeader>
           </div>
           <AlertDialogFooter className="gap-3 p-6 bg-slate-50 dark:bg-slate-900">
-            <AlertDialogCancel className="bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-all duration-200">
+            <AlertDialogCancel disabled={isLoggingOut} className="bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-all duration-200">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleLogout}
+              onClick={(e) => {
+                e.preventDefault();
+                handleLogout();
+              }}
               disabled={isLoggingOut}
               className="bg-red-600 hover:bg-red-500 text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
