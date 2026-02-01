@@ -93,4 +93,54 @@ export class AppwriteService implements OnModuleInit {
             return null;
         }
     }
+
+    /**
+     * Delete a file from Appwrite Storage.
+     * @param fileUrl - The full URL of the file to delete
+     * @returns true if deleted successfully, false otherwise
+     */
+    async deleteFile(fileUrl: string): Promise<boolean> {
+        if (!this.isInitialized || !this.storage) {
+            console.error('[AppwriteService] Storage not initialized. Check Appwrite env vars.');
+            return false;
+        }
+
+        try {
+            // Extract file ID from URL
+            // URL format: .../buckets/{bucketId}/files/{fileId}/view?project=...
+            const fileId = this.extractFileIdFromUrl(fileUrl);
+            if (!fileId) {
+                console.warn('[AppwriteService] Could not extract file ID from URL:', fileUrl);
+                return false;
+            }
+
+            console.log('[AppwriteService] Deleting file:', fileId);
+            await this.storage.deleteFile(this.bucketId, fileId);
+            console.log('[AppwriteService] File deleted successfully:', fileId);
+            return true;
+        } catch (err: any) {
+            console.error('[AppwriteService] Delete failed:', err.message || err);
+            return false;
+        }
+    }
+
+    /**
+     * Extract file ID from Appwrite file URL.
+     * @param fileUrl - The full URL of the file
+     * @returns The file ID or null if extraction fails
+     */
+    private extractFileIdFromUrl(fileUrl: string): string | null {
+        try {
+            const url = new URL(fileUrl);
+            const pathParts = url.pathname.split('/');
+            // Path format: /v1/storage/buckets/{bucketId}/files/{fileId}/view
+            const filesIndex = pathParts.indexOf('files');
+            if (filesIndex !== -1 && pathParts[filesIndex + 1]) {
+                return pathParts[filesIndex + 1];
+            }
+            return null;
+        } catch {
+            return null;
+        }
+    }
 }

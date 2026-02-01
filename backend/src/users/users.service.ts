@@ -431,6 +431,35 @@ export class UsersService {
     }
 
     /**
+     * Update user's profile photo URL.
+     * Used by admin CMS to update their profile photo.
+     * 
+     * @param userId - User ID
+     * @param profileImageUrl - New profile image URL
+     * @param ipAddress - IP address of the request
+     */
+    async updateProfilePhoto(
+        userId: string,
+        profileImageUrl: string,
+        ipAddress: string | null,
+    ): Promise<User> {
+        const updatedUser = await this.db.user.update({
+            where: { id: userId },
+            data: { profile_image_url: profileImageUrl },
+        });
+
+        await this.auditLogsService.log(
+            AuditAction.PROFILE_PHOTO_UPDATED,
+            'User',
+            userId,
+            userId,
+            ipAddress,
+        );
+
+        return updatedUser;
+    }
+
+    /**
      * Update personal details (name, phone, gender).
      * Used by mobile app users to update their basic info.
      * 

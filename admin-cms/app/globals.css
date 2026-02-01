@@ -242,3 +242,54 @@ body {
 .group:hover .shimmer-effect {
   animation: shimmer 0.6s ease-in-out forwards;
 }
+
+/* FilePond custom styles */
+.filepond-wrapper .filepond--root {
+  font-family: inherit;
+}
+
+.filepond-wrapper .filepond--drop-label {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.filepond-wrapper .filepond--drop-label label {
+  cursor: pointer;
+}
+
+.filepond-wrapper .filepond--label-action {
+  text-decoration-color: #3b82f6;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.filepond-wrapper .filepond--panel-root {
+  background-color: #f1f5f9;
+  border: 2px dashed #cbd5e1;
+  border-radius: 0.75rem;
+}
+
+.filepond-wrapper .filepond--item-panel {
+  background-color: #e2e8f0;
+}
+
+.dark .filepond-wrapper .filepond--drop-label {
+  color: #94a3b8;
+}
+
+.dark .filepond-wrapper .filepond--panel-root {
+  background-color: #1e293b;
+  border-color: #475569;
+}
+
+.dark .filepond-wrapper .filepond--item-panel {
+  background-color: #334155;
+}
+
+.dark .filepond-wrapper .filepond--drip-blob {
+  background-color: #3b82f6;
+}
+
+.filepond-wrapper .filepond--credits {
+  display: none;
+}

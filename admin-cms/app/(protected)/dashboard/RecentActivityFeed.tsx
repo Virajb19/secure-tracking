@@ -150,7 +150,7 @@ export default function RecentActivityFeed() {
                 </span>
             </div>
 
-            <div className="space-y-1 max-h-[400px] overflow-y-auto pr-1">
+            <div className="space-y-1 max-h-100 overflow-y-auto pr-1">
                 {activities.map((log: AuditLog, index: number) => {
                     const IconComponent = actionIcons[log.action] || Activity;
                     const colors = actionColors[log.action] || { bg: 'bg-slate-500/20', icon: 'text-slate-400' };

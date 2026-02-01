@@ -122,6 +122,38 @@ export const usersApi = {
     const response = await api.get<{ class_level: number; subject: string }[]>(`/admin/users/${userId}/teaching-assignments`);
     return response.data;
   },
+  updateProfilePhoto: async (profileImageUrl: string): Promise<User> => {
+    const response = await api.patch<User>('/admin/users/me/profile-photo', {
+      profile_image_url: profileImageUrl,
+    });
+    return response.data;
+  },
+  uploadProfilePhoto: async (
+    file: File,
+    onProgress?: (progress: number) => void
+  ): Promise<{ user: User; photoUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post<{ user: User; photoUrl: string }>(
+      '/admin/users/me/profile-photo/upload',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total && onProgress) {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            onProgress(percentCompleted);
+          }
+        },
+      }
+    );
+    return response.data;
+  },
 };
 
 // ============================

@@ -10,7 +10,11 @@ import {
     Req,
     HttpCode,
     HttpStatus,
+    UseInterceptors,
+    UploadedFile,
+    BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { User, UserRole } from '@prisma/client';
 import { UsersService } from './users.service';
@@ -18,6 +22,11 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { ToggleUserStatusDto } from './dto/toggle-user-status.dto';
 import { JwtAuthGuard, RolesGuard } from '../shared/guards';
 import { Roles, CurrentUser } from '../shared/decorators';
+import { AppwriteService } from '../appwrite/appwrite.service';
+
+// File validation constants
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 /**
  * Users Controller.
@@ -31,7 +40,10 @@ import { Roles, CurrentUser } from '../shared/decorators';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class UsersController {
-    constructor(private readonly usersService: UsersService) { }
+    constructor(
+        private readonly usersService: UsersService,
+        private readonly appwriteService: AppwriteService,
+    ) { }
 
     /**
      * Create a new user.
@@ -114,6 +126,98 @@ export class UsersController {
             userId,
             toggleStatusDto.is_active,
             currentUser.id,
+            ipAddress,
+        );
+    }
+
+    /**
+     * Upload profile photo file.
+     * Validates file type and size, uploads to Appwrite, updates user profile.
+     * 
+     * @param file - Uploaded file
+     * @param currentUser - Authenticated admin user
+     * @param request - HTTP request for IP extraction
+     * @returns Updated user with new profile photo URL
+     */
+    @Post('me/profile-photo/upload')
+    @HttpCode(HttpStatus.OK)
+    @UseInterceptors(FileInterceptor('file'))
+    async uploadProfilePhoto(
+        @UploadedFile() file: Express.Multer.File,
+        @CurrentUser() currentUser: User,
+        @Req() request: Request,
+    ): Promise<{ user: User; photoUrl: string }> {
+        // Validate file exists
+        if (!file) {
+            throw new BadRequestException('No file provided');
+        }
+
+        // Validate file size (server-side)
+        if (file.size > MAX_FILE_SIZE) {
+            throw new BadRequestException(
+                `File size exceeds maximum allowed size of ${MAX_FILE_SIZE / (1024 * 1024)}MB`
+            );
+        }
+
+        // Validate file type (server-side)
+        if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+            throw new BadRequestException(
+                `Invalid file type. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`
+            );
+        }
+
+        // Delete old photo from Appwrite if exists
+        if (currentUser.profile_image_url) {
+            try {
+                await this.appwriteService.deleteFile(currentUser.profile_image_url);
+            } catch (e) {
+                // Log but don't fail the upload if old photo deletion fails
+                console.error('Failed to delete old profile photo:', e);
+            }
+        }
+
+        // Upload to Appwrite
+        const photoUrl = await this.appwriteService.uploadFile(
+            file.buffer,
+            file.originalname,
+            file.mimetype,
+        );
+
+        if (!photoUrl) {
+            throw new BadRequestException('Failed to upload file to storage');
+        }
+
+        // Update user profile
+        const ipAddress = this.extractIpAddress(request);
+        const user = await this.usersService.updateProfilePhoto(
+            currentUser.id,
+            photoUrl,
+            ipAddress,
+        );
+
+        return { user, photoUrl };
+    }
+
+    /**
+     * Update current user's profile photo.
+     * Admin only endpoint.
+     * 
+     * @param body - Profile image URL
+     * @param currentUser - Authenticated admin user
+     * @param request - HTTP request for IP extraction
+     * @returns Updated user
+     */
+    @Patch('me/profile-photo')
+    @HttpCode(HttpStatus.OK)
+    async updateProfilePhoto(
+        @Body() body: { profile_image_url: string },
+        @CurrentUser() currentUser: User,
+        @Req() request: Request,
+    ): Promise<User> {
+        const ipAddress = this.extractIpAddress(request);
+        return this.usersService.updateProfilePhoto(
+            currentUser.id,
+            body.profile_image_url,
             ipAddress,
         );
     }

@@ -48,6 +48,7 @@ export declare class UsersService {
     bindDeviceId(userId: string, deviceId: string, ipAddress: string | null): Promise<User>;
     deactivate(userId: string, adminId: string, ipAddress: string | null): Promise<User>;
     toggleActiveStatus(userId: string, isActive: boolean, adminId: string, ipAddress: string | null): Promise<User>;
+    updateProfilePhoto(userId: string, profileImageUrl: string, ipAddress: string | null): Promise<User>;
     updatePersonalDetails(userId: string, data: {
         name?: string;
         phone?: string;

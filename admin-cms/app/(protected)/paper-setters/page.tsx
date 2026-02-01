@@ -206,7 +206,7 @@ export default function PaperSettersPage() {
 
         {/* Loading State with Skeleton - show when initial load OR when jumping pages (non-sequential) */}
         {isLoading || (isFetching && !isSequentialNavigation) ? (
-          <TableSkeleton rows={5} columns={7} />
+          <TableSkeleton rows={10} columns={7} />
         ) : (
           <>
             {/* Table */}

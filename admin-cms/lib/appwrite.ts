@@ -1,4 +1,4 @@
-import { Client, Storage } from "appwrite";
+import { Client, Storage, ID } from "appwrite";
 
 const client = new Client()
     .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
@@ -6,15 +6,50 @@ const client = new Client()
 
 export const storage = new Storage(client);
 
-export async function uploadFile(file: File | undefined) {
+const BUCKET_ID = process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!;
 
-    if(!file) throw new Error('File is undefined')
+/**
+ * Upload a file to Appwrite bucket with progress callback
+ */
+export async function uploadFile(
+    file: File | undefined,
+    onProgress?: (progress: number) => void
+) {
+    if (!file) throw new Error('File is undefined');
 
-    const fileKey = Date.now().toString() + "_" + file.name.replace(' ', '-')
-    const fileId = fileKey.slice(0, 15)
-    const res = await storage.createFile(process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!, fileId , file, [] ,(progress) => console.log(progress.progress))
+    const fileId = ID.unique();
+    const res = await storage.createFile(
+        BUCKET_ID,
+        fileId,
+        file,
+        undefined,
+        (progress) => onProgress?.(progress.progress)
+    );
 
-    return { fileName: res.name, fileKey}
+    return { fileName: res.name, fileKey: res.$id };
 }
 
-export const getFileURL = (fileKey: string) => storage.getFileView(process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!, fileKey.slice(0, 15))
+/**
+ * Delete a file from Appwrite bucket
+ */
+export async function deleteFile(fileKey: string) {
+    try {
+        await storage.deleteFile(BUCKET_ID, fileKey);
+        return true;
+    } catch (error) {
+        console.error('Failed to delete file:', error);
+        return false;
+    }
+}
+
+/**
+ * Get file view URL
+ */
+export const getFileURL = (fileKey: string) =>
+    storage.getFileView(BUCKET_ID, fileKey);
+
+/**
+ * Get file preview URL with optional dimensions
+ */
+export const getFilePreview = (fileKey: string, width?: number, height?: number) =>
+    storage.getFilePreview(BUCKET_ID, fileKey, width, height);

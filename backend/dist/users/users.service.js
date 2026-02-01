@@ -251,6 +251,14 @@ let UsersService = class UsersService {
         }
         return updatedUser;
     }
+    async updateProfilePhoto(userId, profileImageUrl, ipAddress) {
+        const updatedUser = await this.db.user.update({
+            where: { id: userId },
+            data: { profile_image_url: profileImageUrl },
+        });
+        await this.auditLogsService.log(audit_logs_service_1.AuditAction.PROFILE_PHOTO_UPDATED, 'User', userId, userId, ipAddress);
+        return updatedUser;
+    }
     async updatePersonalDetails(userId, data, ipAddress) {
         if (data.phone) {
             const existingUser = await this.db.user.findUnique({

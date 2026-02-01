@@ -14,15 +14,20 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const client_1 = require("@prisma/client");
 const users_service_1 = require("./users.service");
 const create_user_dto_1 = require("./dto/create-user.dto");
 const toggle_user_status_dto_1 = require("./dto/toggle-user-status.dto");
 const guards_1 = require("../shared/guards");
 const decorators_1 = require("../shared/decorators");
+const appwrite_service_1 = require("../appwrite/appwrite.service");
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 let UsersController = class UsersController {
-    constructor(usersService) {
+    constructor(usersService, appwriteService) {
         this.usersService = usersService;
+        this.appwriteService = appwriteService;
     }
     async create(createUserDto, currentUser, request) {
         const ipAddress = this.extractIpAddress(request);
@@ -44,6 +49,36 @@ let UsersController = class UsersController {
     async toggleStatus(userId, toggleStatusDto, currentUser, request) {
         const ipAddress = this.extractIpAddress(request);
         return this.usersService.toggleActiveStatus(userId, toggleStatusDto.is_active, currentUser.id, ipAddress);
+    }
+    async uploadProfilePhoto(file, currentUser, request) {
+        if (!file) {
+            throw new common_1.BadRequestException('No file provided');
+        }
+        if (file.size > MAX_FILE_SIZE) {
+            throw new common_1.BadRequestException(`File size exceeds maximum allowed size of ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+        }
+        if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+            throw new common_1.BadRequestException(`Invalid file type. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`);
+        }
+        if (currentUser.profile_image_url) {
+            try {
+                await this.appwriteService.deleteFile(currentUser.profile_image_url);
+            }
+            catch (e) {
+                console.error('Failed to delete old profile photo:', e);
+            }
+        }
+        const photoUrl = await this.appwriteService.uploadFile(file.buffer, file.originalname, file.mimetype);
+        if (!photoUrl) {
+            throw new common_1.BadRequestException('Failed to upload file to storage');
+        }
+        const ipAddress = this.extractIpAddress(request);
+        const user = await this.usersService.updateProfilePhoto(currentUser.id, photoUrl, ipAddress);
+        return { user, photoUrl };
+    }
+    async updateProfilePhoto(body, currentUser, request) {
+        const ipAddress = this.extractIpAddress(request);
+        return this.usersService.updateProfilePhoto(currentUser.id, body.profile_image_url, ipAddress);
     }
     async getTeachingAssignments(userId) {
         return this.usersService.getTeachingAssignments(userId);
@@ -95,6 +130,27 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "toggleStatus", null);
 __decorate([
+    (0, common_1.Post)('me/profile-photo/upload'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    __param(0, (0, common_1.UploadedFile)()),
+    __param(1, (0, decorators_1.CurrentUser)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "uploadProfilePhoto", null);
+__decorate([
+    (0, common_1.Patch)('me/profile-photo'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, decorators_1.CurrentUser)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "updateProfilePhoto", null);
+__decorate([
     (0, common_1.Get)(':userId/teaching-assignments'),
     __param(0, (0, common_1.Param)('userId')),
     __metadata("design:type", Function),
@@ -105,6 +161,7 @@ exports.UsersController = UsersController = __decorate([
     (0, common_1.Controller)('admin/users'),
     (0, common_1.UseGuards)(guards_1.JwtAuthGuard, guards_1.RolesGuard),
     (0, decorators_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN),
-    __metadata("design:paramtypes", [users_service_1.UsersService])
+    __metadata("design:paramtypes", [users_service_1.UsersService,
+        appwrite_service_1.AppwriteService])
 ], UsersController);
 //# sourceMappingURL=users.controller.js.map

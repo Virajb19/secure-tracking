@@ -24,6 +24,7 @@ var AuditAction;
     AuditAction["USER_UPDATED"] = "USER_UPDATED";
     AuditAction["USER_DEACTIVATED"] = "USER_DEACTIVATED";
     AuditAction["USER_ACTIVATED"] = "USER_ACTIVATED";
+    AuditAction["PROFILE_PHOTO_UPDATED"] = "PROFILE_PHOTO_UPDATED";
     AuditAction["TASK_CREATED"] = "TASK_CREATED";
     AuditAction["TASK_ASSIGNED"] = "TASK_ASSIGNED";
     AuditAction["TASK_STATUS_CHANGED"] = "TASK_STATUS_CHANGED";

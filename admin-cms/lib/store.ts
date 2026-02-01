@@ -74,6 +74,7 @@ interface AuthState {
   hydrate: () => void;
   login: (email: string, password: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfilePhoto: (photoUrl: string) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -177,5 +178,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       userProfilePic: null,
       loading: false,
     });
+  },
+
+  // ----------------------------------------
+  // UPDATE PROFILE PHOTO
+  // ----------------------------------------
+  updateProfilePhoto: (photoUrl: string) => {
+    // Update localStorage
+    localStorage.setItem('userProfilePic', photoUrl);
+
+    // Update cookie
+    setCookie('userProfilePic', photoUrl);
+
+    // Update state
+    set({ userProfilePic: photoUrl });
   },
 }));
