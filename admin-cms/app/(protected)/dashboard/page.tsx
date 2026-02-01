@@ -65,6 +65,8 @@ export default async function DashboardPage() {
         fetchWithAuth('/admin/analytics/district-user-stats', cookieStore),
     ]);
 
+    // console.log(districtUserStats)
+
     return (
         <Dashboard
             roleStats={roleStats || []}

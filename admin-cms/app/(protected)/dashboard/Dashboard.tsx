@@ -1,8 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { 
-    LayoutDashboard, 
+import {
+    LayoutDashboard,
     Users,
     UserCheck,
     Headphones,
@@ -10,7 +10,7 @@ import {
     Clock,
     HelpCircle
 } from 'lucide-react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts';
 
 // Types
 interface RoleStats {
@@ -67,8 +67,8 @@ const itemVariants = {
 
 const cardVariants = {
     hidden: { opacity: 0, scale: 0.95 },
-    visible: { 
-        opacity: 1, 
+    visible: {
+        opacity: 1,
         scale: 1,
         transition: { duration: 0.3 }
     }
@@ -113,12 +113,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return null;
 };
 
-export default function Dashboard({ 
-    roleStats, 
-    activeUsersStats, 
-    helpdeskSummary, 
-    genderStats, 
-    districtUserStats 
+export default function Dashboard({
+    roleStats,
+    activeUsersStats,
+    helpdeskSummary,
+    genderStats,
+    districtUserStats
 }: DashboardProps) {
     // Transform role stats for pie chart
     const rolePieChartData = roleStats?.map(r => ({
@@ -135,7 +135,7 @@ export default function Dashboard({
     ].filter(item => item.value > 0) : [];
 
     return (
-        <motion.div 
+        <motion.div
             className="space-y-6 p-2"
             variants={containerVariants}
             initial="hidden"
@@ -159,12 +159,12 @@ export default function Dashboard({
             </motion.div>
 
             {/* Stats Cards */}
-            <motion.div 
+            <motion.div
                 className="grid grid-cols-1 md:grid-cols-3 gap-4"
                 variants={itemVariants}
             >
                 {/* Total Users */}
-                <motion.div 
+                <motion.div
                     className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-5 shadow-sm"
                     variants={cardVariants}
                     whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
@@ -183,7 +183,7 @@ export default function Dashboard({
                 </motion.div>
 
                 {/* Active Users */}
-                <motion.div 
+                <motion.div
                     className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-500/30 rounded-xl p-5 shadow-sm"
                     variants={cardVariants}
                     whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
@@ -202,7 +202,7 @@ export default function Dashboard({
                 </motion.div>
 
                 {/* Helpdesk Tickets */}
-                <motion.div 
+                <motion.div
                     className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30 rounded-xl p-5 shadow-sm"
                     variants={cardVariants}
                     whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
@@ -232,12 +232,12 @@ export default function Dashboard({
             </motion.div>
 
             {/* Charts Row - Roles and Gender */}
-            <motion.div 
+            <motion.div
                 className="grid grid-cols-1 lg:grid-cols-2 gap-4"
                 variants={itemVariants}
             >
                 {/* User Roles Pie Chart */}
-                <motion.div 
+                <motion.div
                     className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-sm"
                     variants={cardVariants}
                 >
@@ -261,8 +261,8 @@ export default function Dashboard({
                                     ))}
                                 </Pie>
                                 <Tooltip content={<CustomTooltip />} />
-                                <Legend 
-                                    verticalAlign="middle" 
+                                <Legend
+                                    verticalAlign="middle"
                                     align="right"
                                     layout="vertical"
                                     wrapperStyle={{ paddingLeft: '20px' }}
@@ -277,7 +277,7 @@ export default function Dashboard({
                 </motion.div>
 
                 {/* Gender Pie Chart */}
-                <motion.div 
+                <motion.div
                     className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-sm"
                     variants={cardVariants}
                 >
@@ -301,8 +301,8 @@ export default function Dashboard({
                                     ))}
                                 </Pie>
                                 <Tooltip content={<CustomTooltip />} />
-                                <Legend 
-                                    verticalAlign="bottom" 
+                                <Legend
+                                    verticalAlign="bottom"
                                     align="center"
                                     layout="horizontal"
                                 />
@@ -318,41 +318,67 @@ export default function Dashboard({
 
             {/* District-wise Users - Full Width Bar Chart */}
             <motion.div variants={itemVariants}>
-                <motion.div 
+                <motion.div
                     className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-sm"
                     variants={cardVariants}
                 >
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Users by District</h3>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Users by District</h3>
+                        {districtUserStats && districtUserStats.length > 0 && (
+                            <span className="text-sm text-slate-500 dark:text-slate-400">
+                                {districtUserStats.length} districts
+                            </span>
+                        )}
+                    </div>
                     {districtUserStats && districtUserStats.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={350}>
-                            <BarChart 
-                                data={districtUserStats.map(d => ({ 
-                                    name: d.district_name, 
-                                    Users: d.user_count 
-                                }))}
-                                margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+                        <ResponsiveContainer width="100%" height={450}>
+                            <BarChart
+                                data={districtUserStats
+                                    .sort((a, b) => b.user_count - a.user_count)
+                                    .map(d => ({
+                                        name: d.district_name,
+                                        Users: d.user_count
+                                    }))}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
+                                barCategoryGap="15%"
                             >
-                                <XAxis 
-                                    dataKey="name" 
-                                    stroke="#64748b" 
-                                    fontSize={11} 
+                                <defs>
+                                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
+                                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.8} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                                <XAxis
+                                    dataKey="name"
+                                    stroke="#64748b"
+                                    fontSize={11}
                                     angle={-45}
                                     textAnchor="end"
                                     interval={0}
-                                    height={80}
+                                    height={100}
+                                    tick={{ fill: '#64748b' }}
                                 />
-                                <YAxis stroke="#64748b" fontSize={12} />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Bar 
-                                    dataKey="Users" 
-                                    fill="#60a5fa" 
-                                    radius={[4, 4, 0, 0]}
+                                <YAxis
+                                    stroke="#64748b"
+                                    fontSize={12}
+                                    tick={{ fill: '#64748b' }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                />
+                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }} />
+                                <Bar
+                                    dataKey="Users"
+                                    fill="url(#barGradient)"
+                                    radius={[6, 6, 0, 0]}
                                     name="Users"
-                                />
+                                >
+                                    {/* Labels on top of bars */}
+                                </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="flex items-center justify-center h-80 text-slate-500 dark:text-slate-400">
+                        <div className="flex items-center justify-center h-96 text-slate-500 dark:text-slate-400">
                             No data available
                         </div>
                     )}
