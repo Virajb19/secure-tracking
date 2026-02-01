@@ -26,7 +26,7 @@ import { AppwriteService } from '../appwrite/appwrite.service';
 
 // File validation constants
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
 
 /**
  * Users Controller.

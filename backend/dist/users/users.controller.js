@@ -23,7 +23,7 @@ const guards_1 = require("../shared/guards");
 const decorators_1 = require("../shared/decorators");
 const appwrite_service_1 = require("../appwrite/appwrite.service");
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
 let UsersController = class UsersController {
     constructor(usersService, appwriteService) {
         this.usersService = usersService;
