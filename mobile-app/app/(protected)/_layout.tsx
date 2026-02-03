@@ -55,7 +55,7 @@ export default function ProtectedLayout() {
         if (!isLoading && isAuthenticated && user) {
             // Check current route
             const currentRoute = segments.join('/');
-            
+
             // Route based on role
             if (user.role === 'TEACHER') {
                 // Teachers go to teacher tabs
@@ -92,8 +92,10 @@ export default function ProtectedLayout() {
                     text: 'Logout',
                     style: 'destructive',
                     onPress: async () => {
-                        await logout();
+                        // Navigate first, then logout to avoid race condition
+                        // where component unmounts before navigation completes
                         router.replace('/login');
+                        await logout();
                     },
                 },
             ]
@@ -117,11 +119,11 @@ export default function ProtectedLayout() {
                 },
                 headerRight: () => (
                     <View style={styles.headerRight}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => {
                                 setUnreadCount(0);
                                 router.push('/(protected)/notifications' as any);
-                            }} 
+                            }}
                             style={styles.notificationButton}
                         >
                             <Ionicons name="notifications-outline" size={24} color="#ffffff" />

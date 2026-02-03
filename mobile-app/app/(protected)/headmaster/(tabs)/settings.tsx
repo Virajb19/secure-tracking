@@ -43,8 +43,9 @@ export default function SettingsTabScreen() {
                     text: 'Logout',
                     style: 'destructive',
                     onPress: async () => {
-                        await logout();
+                        // Navigate first, then logout to avoid race condition
                         router.replace('/login');
+                        await logout();
                     },
                 },
             ]

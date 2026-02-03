@@ -66,7 +66,7 @@ export default function SettingsTabScreen() {
     const handlePickImage = async () => {
         try {
             const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            
+
             if (!permissionResult.granted) {
                 Alert.alert('Permission Required', 'Please allow access to your photos');
                 return;
@@ -114,8 +114,9 @@ export default function SettingsTabScreen() {
                     text: 'Logout',
                     style: 'destructive',
                     onPress: async () => {
-                        await logout();
+                        // Navigate first, then logout to avoid race condition
                         router.replace('/login');
+                        await logout();
                     },
                 },
             ]
@@ -126,8 +127,8 @@ export default function SettingsTabScreen() {
         <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
             {/* Profile Image */}
             <View style={styles.imageSection}>
-                <TouchableOpacity 
-                    style={styles.imageContainer} 
+                <TouchableOpacity
+                    style={styles.imageContainer}
                     onPress={handlePickImage}
                     disabled={isUploading}
                 >
@@ -152,10 +153,10 @@ export default function SettingsTabScreen() {
                     ]}
                     onPress={() => setGender('male')}
                 >
-                    <Ionicons 
-                        name="male" 
-                        size={18} 
-                        color={gender === 'male' ? '#ffffff' : '#6b7280'} 
+                    <Ionicons
+                        name="male"
+                        size={18}
+                        color={gender === 'male' ? '#ffffff' : '#6b7280'}
                     />
                     <Text
                         style={[
@@ -173,10 +174,10 @@ export default function SettingsTabScreen() {
                     ]}
                     onPress={() => setGender('female')}
                 >
-                    <Ionicons 
-                        name="female" 
-                        size={18} 
-                        color={gender === 'female' ? '#ffffff' : '#6b7280'} 
+                    <Ionicons
+                        name="female"
+                        size={18}
+                        color={gender === 'female' ? '#ffffff' : '#6b7280'}
                     />
                     <Text
                         style={[
@@ -220,8 +221,8 @@ export default function SettingsTabScreen() {
             </View>
 
             {/* Save Button */}
-            <TouchableOpacity 
-                style={styles.saveButton} 
+            <TouchableOpacity
+                style={styles.saveButton}
                 onPress={handleSave}
                 disabled={updateProfileMutation.isPending}
             >
