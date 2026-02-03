@@ -50,19 +50,28 @@ type CaptureState = 'ready' | 'capturing' | 'preview' | 'getting-location';
 
 /**
  * Event labels for UI.
+ * Updated for 5-step exam paper tracking workflow.
  */
 const EVENT_LABELS: Record<EventType, { title: string; instruction: string }> = {
-    PICKUP: {
-        title: '📦 Pickup Photo',
-        instruction: 'Take a clear photo of the sealed pack at pickup location',
+    PICKUP_POLICE_STATION: {
+        title: '🚔 Police Station Pickup',
+        instruction: 'Take a clear photo of the sealed question paper pack at Police Station',
     },
-    TRANSIT: {
-        title: '🚚 Transit Photo',
-        instruction: 'Take a photo confirming the pack is in transit',
+    ARRIVAL_EXAM_CENTER: {
+        title: '🏫 Exam Center Arrival',
+        instruction: 'Take a photo confirming arrival at the examination center',
     },
-    FINAL: {
-        title: '✅ Delivery Photo',
-        instruction: 'Take a photo of the delivered pack at destination',
+    OPENING_SEAL: {
+        title: '📦 Opening Seal',
+        instruction: 'Take a photo of the sealed question paper pack before opening',
+    },
+    SEALING_ANSWER_SHEETS: {
+        title: '✍️ Sealing Answer Sheets',
+        instruction: 'Take a photo of the sealed answer sheets pack',
+    },
+    SUBMISSION_POST_OFFICE: {
+        title: '📮 Post Office Submission',
+        instruction: 'Take a photo of the sealed pack at Post Office submission',
     },
 };
 

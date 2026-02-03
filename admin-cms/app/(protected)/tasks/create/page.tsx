@@ -42,11 +42,11 @@ export default function CreateTaskPage() {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                // Fetch all DEALING_ASSISTANT users with active status
+                // Fetch all SEBA_OFFICER users with active status
                 const response = await usersApi.getAll({
-                    role: UserRole.DEALING_ASSISTANT,
+                    role: UserRole.SEBA_OFFICER,
                     is_active: true,
-                    limit: 100, // Fetch up to 100 active dealing assistants
+                    limit: 100, // Fetch up to 100 active SEBA officers
                 });
                 setUsers(response.data);
             } catch {

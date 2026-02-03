@@ -31,7 +31,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <Image
-          src="/Spinner@1x-1.0s-200px-200px.png"
+          src="/Spinner@1x-1.0s-200px-200px.svg"
           alt="Loading..."
           width={100}
           height={100}

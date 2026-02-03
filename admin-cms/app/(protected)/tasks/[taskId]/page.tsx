@@ -15,15 +15,32 @@ const statusColors: Record<TaskStatus, string> = {
     [TaskStatus.SUSPICIOUS]: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
-// Event type colors
+// Event type colors for 5-step workflow
 const eventColors: Record<EventType, string> = {
-    [EventType.PICKUP]: 'bg-blue-500',
-    [EventType.TRANSIT]: 'bg-yellow-500',
-    [EventType.FINAL]: 'bg-green-500',
+    [EventType.PICKUP_POLICE_STATION]: 'bg-blue-500',
+    [EventType.ARRIVAL_EXAM_CENTER]: 'bg-purple-500',
+    [EventType.OPENING_SEAL]: 'bg-orange-500',
+    [EventType.SEALING_ANSWER_SHEETS]: 'bg-teal-500',
+    [EventType.SUBMISSION_POST_OFFICE]: 'bg-green-500',
 };
 
-// Event type order for timeline
-const eventOrder: EventType[] = [EventType.PICKUP, EventType.TRANSIT, EventType.FINAL];
+// Event type labels for UI display
+const eventLabels: Record<EventType, { title: string; icon: string }> = {
+    [EventType.PICKUP_POLICE_STATION]: { title: 'Police Station Pickup', icon: '🚔' },
+    [EventType.ARRIVAL_EXAM_CENTER]: { title: 'Exam Center Arrival', icon: '🏫' },
+    [EventType.OPENING_SEAL]: { title: 'Opening Seal', icon: '📦' },
+    [EventType.SEALING_ANSWER_SHEETS]: { title: 'Sealing Answer Sheets', icon: '✍️' },
+    [EventType.SUBMISSION_POST_OFFICE]: { title: 'Post Office Submission', icon: '📮' },
+};
+
+// Event type order for timeline (5-step workflow)
+const eventOrder: EventType[] = [
+    EventType.PICKUP_POLICE_STATION,
+    EventType.ARRIVAL_EXAM_CENTER,
+    EventType.OPENING_SEAL,
+    EventType.SEALING_ANSWER_SHEETS,
+    EventType.SUBMISSION_POST_OFFICE
+];
 
 export default function TaskDetailPage() {
     const params = useParams();
@@ -202,6 +219,7 @@ export default function TaskDetailPage() {
                                     {eventOrder.map((eventType, index) => {
                                         const event = getEventByType(eventType);
                                         const isCompleted = !!event;
+                                        const label = eventLabels[eventType];
 
                                         return (
                                             <div key={eventType} className="relative flex gap-6">
@@ -213,14 +231,17 @@ export default function TaskDetailPage() {
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                         </svg>
                                                     ) : (
-                                                        <span className="text-slate-400 font-medium">{index + 1}</span>
+                                                        <span className="text-2xl">{label.icon}</span>
                                                     )}
                                                 </div>
 
                                                 {/* Event Content */}
                                                 <div className={`flex-1 pb-2 ${!isCompleted ? 'opacity-50' : ''}`}>
                                                     <div className="flex items-center justify-between mb-2">
-                                                        <h3 className="font-semibold text-white">{eventType}</h3>
+                                                        <h3 className="font-semibold text-white flex items-center gap-2">
+                                                            <span>{label.icon}</span>
+                                                            <span>{label.title}</span>
+                                                        </h3>
                                                         {event && (
                                                             <span className="text-sm text-slate-400">
                                                                 {formatDate(event.server_timestamp)}
@@ -230,35 +251,69 @@ export default function TaskDetailPage() {
 
                                                     {event ? (
                                                         <div className="bg-slate-800/50 rounded-lg p-4">
+                                                            {/* Timestamp Badge */}
+                                                            <div className="flex items-center gap-2 text-sm text-emerald-400 mb-3">
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                                <span className="font-medium">Captured: {formatDate(event.server_timestamp)}</span>
+                                                            </div>
+
                                                             {/* Location */}
                                                             <div className="flex items-center gap-2 text-sm text-slate-300 mb-3">
-                                                                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                                                 </svg>
                                                                 <span>
-                                                                    {Number(event.latitude).toFixed(6)}, {Number(event.longitude).toFixed(6)}
+                                                                    📍 {Number(event.latitude).toFixed(6)}, {Number(event.longitude).toFixed(6)}
                                                                 </span>
+                                                                <a
+                                                                    href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-blue-400 hover:text-blue-300 text-xs ml-2"
+                                                                >
+                                                                    View on Map →
+                                                                </a>
                                                             </div>
 
                                                             {/* Image */}
                                                             {event.image_url && (
                                                                 <div className="mb-3">
-                                                                    <img
-                                                                        src={`${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${event.image_url}`}
-                                                                        alt={`${eventType} evidence`}
-                                                                        className="w-full max-w-md rounded-lg border border-slate-700"
-                                                                    />
+                                                                    <p className="text-xs text-slate-400 mb-2">📸 Evidence Photo:</p>
+                                                                    <a
+                                                                        href={`${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${event.image_url}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="block"
+                                                                    >
+                                                                        <img
+                                                                            src={`${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${event.image_url}`}
+                                                                            alt={`${label.title} evidence`}
+                                                                            className="w-full max-w-md rounded-lg border border-slate-700 hover:border-blue-500 transition-colors cursor-pointer"
+                                                                            onError={(e) => {
+                                                                                const target = e.target as HTMLImageElement;
+                                                                                target.style.display = 'none';
+                                                                                target.parentElement!.innerHTML = '<p class="text-red-400 text-sm">Failed to load image</p>';
+                                                                            }}
+                                                                        />
+                                                                    </a>
                                                                 </div>
                                                             )}
 
                                                             {/* Image Hash */}
-                                                            <div className="text-xs text-slate-500 font-mono break-all">
-                                                                SHA-256: {event.image_hash}
+                                                            <div className="text-xs text-slate-500 font-mono break-all bg-slate-900/50 p-2 rounded">
+                                                                🔐 SHA-256: {event.image_hash}
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <p className="text-sm text-slate-500">Pending...</p>
+                                                        <div className="bg-slate-800/30 rounded-lg p-4 border border-dashed border-slate-700">
+                                                            <p className="text-sm text-slate-500 flex items-center gap-2">
+                                                                <span className="animate-pulse">⏳</span>
+                                                                Pending - Waiting for NBSE Officer to submit
+                                                            </p>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>

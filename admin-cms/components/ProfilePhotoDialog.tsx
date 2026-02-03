@@ -196,7 +196,7 @@ export function ProfilePhotoDialog({ open, onOpenChange }: ProfilePhotoDialogPro
                                         labelFileProcessingComplete="Upload complete"
                                         labelTapToCancel="Tap to cancel"
                                         labelTapToRetry="Tap to retry"
-                                        stylePanelLayout="compact"
+                                        stylePanelLayout="circle"
                                         styleLoadIndicatorPosition="center bottom"
                                         styleProgressIndicatorPosition="right bottom"
                                         styleButtonRemoveItemPosition="left bottom"
