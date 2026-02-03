@@ -287,7 +287,7 @@ export class AdminNoticesService {
                         continue;
                     }
 
-                    // Create paper setter selection
+                    // Create paper setter selection with file URL if provided
                     await this.db.paperSetterSelection.create({
                         data: {
                             teacher_id: userId,
@@ -296,6 +296,7 @@ export class AdminNoticesService {
                             class_level: dto.class_level,
                             selection_type: selectionType,
                             invitation_message: dto.message,
+                            official_order_url: dto.file_url,
                             status: SelectionStatus.INVITED,
                         },
                     });

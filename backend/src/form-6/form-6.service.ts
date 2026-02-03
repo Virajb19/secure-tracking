@@ -227,7 +227,21 @@ export class Form6Service {
             },
         });
 
-        return staffList;
+        // Get form submission status
+        const formSubmission = await this.db.formSubmission.findUnique({
+            where: {
+                school_id_form_type: {
+                    school_id: faculty.school_id,
+                    form_type: '6A',
+                },
+            },
+        });
+
+        return {
+            staff: staffList,
+            form_status: formSubmission?.status || 'NOT_SUBMITTED',
+            rejection_reason: formSubmission?.rejection_reason || null,
+        };
     }
 
     /**
@@ -262,7 +276,21 @@ export class Form6Service {
             },
         });
 
-        return staffList;
+        // Get form submission status
+        const formSubmission = await this.db.formSubmission.findUnique({
+            where: {
+                school_id_form_type: {
+                    school_id: faculty.school_id,
+                    form_type: '6D',
+                },
+            },
+        });
+
+        return {
+            staff: staffList,
+            form_status: formSubmission?.status || 'NOT_SUBMITTED',
+            rejection_reason: formSubmission?.rejection_reason || null,
+        };
     }
 
     /**

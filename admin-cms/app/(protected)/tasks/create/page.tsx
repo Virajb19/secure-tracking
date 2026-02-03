@@ -2,16 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import { MainLayout } from '@/components/layout';
 import { tasksApi, usersApi } from '@/services/api';
 import { User, UserRole } from '@/types';
-
-// Dynamic import to avoid SSR issues with Leaflet
-const LocationPickerMap = dynamic(
-    () => import('@/components/LocationPickerMap').then(mod => mod.LocationPickerMap),
-    { ssr: false, loading: () => <div className="h-64 bg-slate-800 animate-pulse rounded-lg" /> }
-);
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 
 export default function CreateTaskPage() {
     const router = useRouter();
@@ -150,39 +144,53 @@ export default function CreateTaskPage() {
                         />
                     </div>
 
-                    {/* Source Location */}
-                    <div>
-                        <label htmlFor="source_location" className="block text-sm font-medium text-slate-300 mb-2">
-                            Source Location (Pickup) *
-                        </label>
-                        <textarea
-                            id="source_location"
-                            name="source_location"
-                            value={formData.source_location}
-                            onChange={handleChange}
-                            required
-                            rows={2}
-                            placeholder="Enter pickup address"
-                            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
-                        />
-                    </div>
+                    {/* Source Location with Google Places Autocomplete */}
+                    <AddressAutocomplete
+                        label="Source Location (Pickup) *"
+                        placeholder="Search for pickup address..."
+                        value={formData.source_location}
+                        coordinates={{ lat: formData.pickup_latitude, lng: formData.pickup_longitude }}
+                        onChange={(address, lat, lng) => {
+                            setFormData(prev => ({
+                                ...prev,
+                                source_location: address,
+                                pickup_latitude: lat.toFixed(7),
+                                pickup_longitude: lng.toFixed(7),
+                            }));
+                        }}
+                        onClear={() => {
+                            setFormData(prev => ({
+                                ...prev,
+                                source_location: '',
+                                pickup_latitude: '',
+                                pickup_longitude: '',
+                            }));
+                        }}
+                    />
 
-                    {/* Destination Location */}
-                    <div>
-                        <label htmlFor="destination_location" className="block text-sm font-medium text-slate-300 mb-2">
-                            Destination Location (Delivery) *
-                        </label>
-                        <textarea
-                            id="destination_location"
-                            name="destination_location"
-                            value={formData.destination_location}
-                            onChange={handleChange}
-                            required
-                            rows={2}
-                            placeholder="Enter delivery address"
-                            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
-                        />
-                    </div>
+                    {/* Destination Location with Google Places Autocomplete */}
+                    <AddressAutocomplete
+                        label="Destination Location (Delivery) *"
+                        placeholder="Search for delivery address..."
+                        value={formData.destination_location}
+                        coordinates={{ lat: formData.destination_latitude, lng: formData.destination_longitude }}
+                        onChange={(address, lat, lng) => {
+                            setFormData(prev => ({
+                                ...prev,
+                                destination_location: address,
+                                destination_latitude: lat.toFixed(7),
+                                destination_longitude: lng.toFixed(7),
+                            }));
+                        }}
+                        onClear={() => {
+                            setFormData(prev => ({
+                                ...prev,
+                                destination_location: '',
+                                destination_latitude: '',
+                                destination_longitude: '',
+                            }));
+                        }}
+                    />
 
                     {/* Assigned User */}
                     <div>
@@ -270,18 +278,17 @@ export default function CreateTaskPage() {
                         </div>
                     </div>
 
-                    {/* Geo-fence Settings (Collapsible) */}
+                    {/* Geo-fence Settings (Simplified) */}
                     <details className="bg-slate-800/50 border border-slate-700 rounded-lg">
                         <summary className="px-4 py-3 cursor-pointer text-slate-300 font-medium flex items-center gap-2">
-                            📍 Geo-fence Settings (Optional)
+                            ⚙️ Geo-fence Radius (Optional)
                         </summary>
-                        <div className="p-4 pt-0 space-y-4">
+                        <div className="p-4 pt-2">
                             <p className="text-xs text-slate-500 mb-3">
-                                Click on map to select location, or use "Use My Location" button.
+                                Geo-fence coordinates are automatically set from the addresses above.
+                                You can adjust the radius for attendance validation here.
                             </p>
-
-                            {/* Geo-fence Radius - First so it applies to map circles */}
-                            <div className="mb-4">
+                            <div>
                                 <label className="block text-xs text-slate-400 mb-1">Geo-fence Radius (meters)</label>
                                 <input
                                     type="number"
@@ -295,44 +302,6 @@ export default function CreateTaskPage() {
                                 />
                                 <span className="text-xs text-slate-500 ml-2">Default: 100m</span>
                             </div>
-
-                            {/* Pickup Location Map Picker */}
-                            <LocationPickerMap
-                                label="📍 Pickup Location (Source)"
-                                latitude={formData.pickup_latitude}
-                                longitude={formData.pickup_longitude}
-                                radius={parseInt(formData.geofence_radius) || 100}
-                                onLocationChange={(lat, lng) => {
-                                    if (lat === 0 && lng === 0) {
-                                        setFormData(prev => ({ ...prev, pickup_latitude: '', pickup_longitude: '' }));
-                                    } else {
-                                        setFormData(prev => ({
-                                            ...prev,
-                                            pickup_latitude: lat.toFixed(7),
-                                            pickup_longitude: lng.toFixed(7),
-                                        }));
-                                    }
-                                }}
-                            />
-
-                            {/* Destination Location Map Picker */}
-                            <LocationPickerMap
-                                label="🎯 Destination Location"
-                                latitude={formData.destination_latitude}
-                                longitude={formData.destination_longitude}
-                                radius={parseInt(formData.geofence_radius) || 100}
-                                onLocationChange={(lat, lng) => {
-                                    if (lat === 0 && lng === 0) {
-                                        setFormData(prev => ({ ...prev, destination_latitude: '', destination_longitude: '' }));
-                                    } else {
-                                        setFormData(prev => ({
-                                            ...prev,
-                                            destination_latitude: lat.toFixed(7),
-                                            destination_longitude: lng.toFixed(7),
-                                        }));
-                                    }
-                                }}
-                            />
                         </div>
                     </details>
 

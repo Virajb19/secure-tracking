@@ -4,9 +4,10 @@ import { NoticesService } from './notices.service';
 import { AdminNoticesController } from './admin-notices.controller';
 import { AdminNoticesService } from './admin-notices.service';
 import { PrismaModule } from '../prisma';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-    imports: [PrismaModule],
+    imports: [PrismaModule, NotificationsModule],
     controllers: [NoticesController, AdminNoticesController],
     providers: [NoticesService, AdminNoticesService],
     exports: [NoticesService, AdminNoticesService],

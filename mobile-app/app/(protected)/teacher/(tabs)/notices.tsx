@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
     View,
     Text,
@@ -10,10 +10,16 @@ import {
     Linking,
     TextInput,
     Image,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import apiClient from '../../../../src/api/client';
+import { 
+    getMyBankDetails, 
+    acceptPaperSetterNotice 
+} from '../../../../src/services/paper-setter.service';
 
 // No notices image URI
 const NO_NOTICES_IMAGE_URI = 'https://raw.githubusercontent.com/AliARIOGLU/react-native-gif/main/assets/empty-box.gif';
@@ -35,6 +41,8 @@ interface Notice {
         id: string;
         name: string;
     };
+    // Paper Setter/Checker acceptance status
+    acceptance_status?: 'PENDING' | 'ACCEPTED';
 }
 
 // Type-based styling configuration
@@ -85,6 +93,20 @@ const getTypeStyle = (type?: Notice['type']) => {
 
 export default function NoticesScreen() {
     const [searchQuery, setSearchQuery] = useState('');
+    const [hasBankDetails, setHasBankDetails] = useState<boolean>(false);
+    const [acceptingNoticeId, setAcceptingNoticeId] = useState<string | null>(null);
+    const queryClient = useQueryClient();
+    
+    // Check if user has bank details
+    useEffect(() => {
+        const checkBankDetails = async () => {
+            const result = await getMyBankDetails();
+            if (result.success) {
+                setHasBankDetails(!!result.bankDetails);
+            }
+        };
+        checkBankDetails();
+    }, []);
     
     const {
         data: notices,
@@ -166,6 +188,70 @@ export default function NoticesScreen() {
             month: 'short',
             year: 'numeric',
         });
+    };
+
+    /**
+     * Handle accepting a paper setter/checker notice
+     */
+    const handleAcceptNotice = async (notice: Notice) => {
+        // Check if user has bank details first
+        if (!hasBankDetails) {
+            Alert.alert(
+                'Bank Details Required',
+                'You must add your bank details before accepting this notice. This is required for payment processing.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Add Bank Details',
+                        onPress: () => router.push('/(protected)/teacher/bank-details' as any),
+                    },
+                ]
+            );
+            return;
+        }
+
+        // Confirm acceptance
+        Alert.alert(
+            'Accept Notice',
+            `Are you sure you want to accept this ${notice.type === 'PAPER_SETTER' ? 'Paper Setter' : 'Paper Checker'} notice for ${notice.subject || 'this subject'}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Accept',
+                    onPress: async () => {
+                        setAcceptingNoticeId(notice.id);
+                        const result = await acceptPaperSetterNotice(notice.id);
+                        setAcceptingNoticeId(null);
+
+                        if (result.success) {
+                            Alert.alert(
+                                'Notice Accepted',
+                                'You have successfully accepted the notice. The admin has been notified.',
+                                [{ text: 'OK' }]
+                            );
+                            // Refresh notices and bank details check
+                            refetch();
+                            queryClient.invalidateQueries({ queryKey: ['paper-setter-invitations'] });
+                        } else {
+                            // Check if error is about missing bank details
+                            const isBankDetailsError = result.error?.toLowerCase().includes('bank details');
+                            
+                            Alert.alert(
+                                isBankDetailsError ? 'Bank Details Required' : 'Error',
+                                result.error || 'Failed to accept notice. Please try again.',
+                                [
+                                    { text: 'OK' },
+                                    ...(isBankDetailsError ? [{
+                                        text: 'Add Bank Details',
+                                        onPress: () => router.push('/(protected)/teacher/bank-details' as any),
+                                    }] : [])
+                                ]
+                            );
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     if (isLoading) {
@@ -310,6 +396,50 @@ export default function NoticesScreen() {
                                                 {notice.file_name || 'View Attachment'}
                                             </Text>
                                         </TouchableOpacity>
+                                    )}
+
+                                    {/* Accept Button for Paper Setter/Checker */}
+                                    {(notice.type === 'PAPER_SETTER' || notice.type === 'PAPER_CHECKER') && (
+                                        <View style={styles.acceptSection}>
+                                            {notice.acceptance_status === 'ACCEPTED' ? (
+                                                <View style={styles.acceptedBadge}>
+                                                    <Ionicons name="checkmark-circle" size={18} color="#16a34a" />
+                                                    <Text style={styles.acceptedText}>Accepted</Text>
+                                                </View>
+                                            ) : (
+                                                <>
+                                                    {!hasBankDetails && (
+                                                        <TouchableOpacity
+                                                            style={styles.bankDetailsWarning}
+                                                            onPress={() => router.push('/(protected)/teacher/bank-details' as any)}
+                                                        >
+                                                            <Ionicons name="alert-circle" size={16} color="#f59e0b" />
+                                                            <Text style={styles.bankDetailsWarningText}>
+                                                                Add bank details to accept
+                                                            </Text>
+                                                            <Ionicons name="chevron-forward" size={16} color="#f59e0b" />
+                                                        </TouchableOpacity>
+                                                    )}
+                                                    <TouchableOpacity
+                                                        style={[
+                                                            styles.acceptButton,
+                                                            !hasBankDetails && styles.acceptButtonDisabled,
+                                                        ]}
+                                                        onPress={() => handleAcceptNotice(notice)}
+                                                        disabled={acceptingNoticeId === notice.id}
+                                                    >
+                                                        {acceptingNoticeId === notice.id ? (
+                                                            <ActivityIndicator size="small" color="#ffffff" />
+                                                        ) : (
+                                                            <>
+                                                                <Ionicons name="checkmark-circle" size={18} color="#ffffff" />
+                                                                <Text style={styles.acceptButtonText}>Accept Notice</Text>
+                                                            </>
+                                                        )}
+                                                    </TouchableOpacity>
+                                                </>
+                                            )}
+                                        </View>
                                     )}
 
                                     {/* Author */}
@@ -529,6 +659,62 @@ const styles = StyleSheet.create({
     fileButtonText: {
         fontSize: 13,
         color: '#3b82f6',
+        fontWeight: '500',
+    },
+    // Accept Button Styles
+    acceptSection: {
+        marginTop: 16,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+    },
+    acceptButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#16a34a',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 8,
+        gap: 8,
+    },
+    acceptButtonDisabled: {
+        backgroundColor: '#9ca3af',
+    },
+    acceptButtonText: {
+        fontSize: 14,
+        color: '#ffffff',
+        fontWeight: '600',
+    },
+    acceptedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#dcfce7',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 8,
+        gap: 8,
+    },
+    acceptedText: {
+        fontSize: 14,
+        color: '#16a34a',
+        fontWeight: '600',
+    },
+    bankDetailsWarning: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fef3c7',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 8,
+        marginBottom: 12,
+        gap: 8,
+    },
+    bankDetailsWarningText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#b45309',
         fontWeight: '500',
     },
 });

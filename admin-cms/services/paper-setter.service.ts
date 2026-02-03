@@ -1,6 +1,16 @@
 import { api } from './api';
 
 // Types for Paper Setter
+export interface BankDetailsInfo {
+  id: string;
+  account_number: string;
+  account_name: string;
+  ifsc_code: string;
+  bank_name: string;
+  branch_name?: string;
+  upi_id?: string;
+}
+
 export interface PaperSetterSelection {
   id: string;
   coordinator_id: string;
@@ -19,6 +29,7 @@ export interface PaperSetterSelection {
     name: string;
     email?: string;
     phone: string;
+    bank_details?: BankDetailsInfo | null;
     school?: {
       id: string;
       name: string;

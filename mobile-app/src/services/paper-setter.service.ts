@@ -210,3 +210,28 @@ export async function updateBankDetails(data: BankDetailsFormData): Promise<Bank
         };
     }
 }
+
+/**
+ * Accept a paper setter/checker notice from the notices screen
+ * @param noticeId - The notice ID to accept
+ */
+export async function acceptPaperSetterNotice(noticeId: string): Promise<AcceptInvitationResult> {
+    try {
+        console.log(`[PaperSetter] Accepting paper setter notice ${noticeId}...`);
+        
+        await apiClient.post(`/notices/${noticeId}/accept`);
+        
+        console.log('[PaperSetter] Notice accepted successfully');
+        
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.log('[PaperSetter] Failed to accept notice:', error);
+        
+        return {
+            success: false,
+            error: getErrorMessage(error),
+        };
+    }
+}

@@ -12,8 +12,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Search, Trash2, FileText, Loader2, AlertTriangle, Users, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
-import { paperSetterApi, PaperSetterSelection } from '@/services/paper-setter.service';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Search, Trash2, FileText, Loader2, AlertTriangle, Users, ChevronLeft, ChevronRight, MessageSquare, Eye, Landmark } from 'lucide-react';
+import { paperSetterApi, PaperSetterSelection, BankDetailsInfo } from '@/services/paper-setter.service';
 import { masterDataApi } from '@/services/api';
 import { toast } from 'sonner';
 import { RetryButton } from '@/components/RetryButton';
@@ -34,6 +40,11 @@ export default function PaperSettersPage() {
   const [page, setPage] = useState(1);
   const prevPageRef = useRef(1);
   const limit = 10;
+
+  // Bank details dialog state
+  const [bankDetailsDialogOpen, setBankDetailsDialogOpen] = useState(false);
+  const [selectedBankDetails, setSelectedBankDetails] = useState<BankDetailsInfo | null>(null);
+  const [selectedTeacherName, setSelectedTeacherName] = useState<string>('');
 
   // Debounce search input
   useEffect(() => {
@@ -255,7 +266,9 @@ export default function PaperSettersPage() {
                         </td>
                         <td className="py-4 px-4 text-slate-600 dark:text-slate-400 text-sm">
                           {selection.status === 'ACCEPTED' ? (
-                            <span className="text-green-600 dark:text-green-400">Bank details submitted</span>
+                            <span className="text-green-600 dark:text-green-400 font-medium">Accepted</span>
+                          ) : selection.teacher?.bank_details ? (
+                            <span className="text-blue-600 dark:text-blue-400">Bank details submitted</span>
                           ) : (
                             <span className="text-slate-400 dark:text-slate-500">Awaiting acceptance</span>
                           )}
@@ -265,6 +278,20 @@ export default function PaperSettersPage() {
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-2">
+                            {/* View Bank Details Button */}
+                            {selection.teacher?.bank_details && (
+                              <button
+                                onClick={() => {
+                                  setSelectedBankDetails(selection.teacher?.bank_details || null);
+                                  setSelectedTeacherName(selection.teacher?.name || 'Unknown');
+                                  setBankDetailsDialogOpen(true);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                                title="View Bank Details"
+                              >
+                                <Landmark className="h-5 w-5" />
+                              </button>
+                            )}
                             {selection.official_order_url && (
                               <a 
                                 href={selection.official_order_url} 
@@ -339,6 +366,54 @@ export default function PaperSettersPage() {
           </>
         )}
       </div>
+
+      {/* Bank Details Dialog */}
+      <Dialog open={bankDetailsDialogOpen} onOpenChange={setBankDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Landmark className="h-5 w-5 text-blue-500" />
+              Bank Details - {selectedTeacherName}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedBankDetails ? (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Account Holder</label>
+                  <p className="text-slate-900 dark:text-white font-medium">{selectedBankDetails.account_name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Account Number</label>
+                  <p className="text-slate-900 dark:text-white font-medium">{selectedBankDetails.account_number}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">IFSC Code</label>
+                  <p className="text-slate-900 dark:text-white font-medium">{selectedBankDetails.ifsc_code}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Bank Name</label>
+                  <p className="text-slate-900 dark:text-white font-medium">{selectedBankDetails.bank_name}</p>
+                </div>
+                {selectedBankDetails.branch_name && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Branch Name</label>
+                    <p className="text-slate-900 dark:text-white font-medium">{selectedBankDetails.branch_name}</p>
+                  </div>
+                )}
+                {selectedBankDetails.upi_id && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-500 dark:text-slate-400">UPI ID</label>
+                    <p className="text-slate-900 dark:text-white font-medium">{selectedBankDetails.upi_id}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-slate-500 dark:text-slate-400">No bank details available.</p>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

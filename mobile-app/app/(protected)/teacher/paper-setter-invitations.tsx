@@ -131,10 +131,19 @@ export default function PaperSetterInvitationsScreen() {
                             // Reload to update list
                             loadData();
                         } else {
+                            // Check if error is about missing bank details
+                            const isBankDetailsError = result.error?.toLowerCase().includes('bank details');
+                            
                             Alert.alert(
-                                'Error',
+                                isBankDetailsError ? 'Bank Details Required' : 'Error',
                                 result.error || 'Failed to accept invitation. Please try again.',
-                                [{ text: 'OK' }]
+                                [
+                                    { text: 'OK' },
+                                    ...(isBankDetailsError ? [{
+                                        text: 'Add Bank Details',
+                                        onPress: () => router.push('/(protected)/teacher/bank-details' as any),
+                                    }] : [])
+                                ]
                             );
                         }
                     },

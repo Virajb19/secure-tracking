@@ -159,21 +159,41 @@ function FacultyCard({ faculty, expanded, onToggle, onVerify, isUpdating }: Facu
     );
 }
 
+type FormStatus = 'NOT_SUBMITTED' | 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+
+interface FormDataResponse {
+    staff: Faculty[];
+    form_status: FormStatus;
+    rejection_reason: string | null;
+}
+
 export default function Form6DScreen() {
     const insets = useSafeAreaInsets();
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
     const [confirmed, setConfirmed] = useState(false);
+    const [formStatus, setFormStatus] = useState<FormStatus>('NOT_SUBMITTED');
+    const [rejectionReason, setRejectionReason] = useState<string | null>(null);
     const queryClient = useQueryClient();
 
     // Fetch teaching faculty (Class 11 & 12)
-    const { data: facultyList, isLoading, refetch, isRefetching } = useQuery<Faculty[]>({
+    const { data: formData, isLoading, refetch, isRefetching } = useQuery<FormDataResponse>({
         queryKey: ['form-6d-faculty'],
         queryFn: async () => {
             const response = await apiClient.get('/form-6/teaching-staff-higher');
             return response.data;
         },
     });
+
+    // Update state when data changes
+    React.useEffect(() => {
+        if (formData) {
+            setFormStatus(formData.form_status || 'NOT_SUBMITTED');
+            setRejectionReason(formData.rejection_reason || null);
+        }
+    }, [formData]);
+
+    const facultyList = formData?.staff || [];
 
     // Fetch school info
     const { data: profile } = useQuery({
@@ -217,7 +237,10 @@ export default function Form6DScreen() {
             return response.data;
         },
         onSuccess: () => {
-            Alert.alert('Success', 'Form 6D submitted successfully!');
+            Alert.alert('Success', formStatus === 'REJECTED' ? 'Form 6D resubmitted successfully!' : 'Form 6D submitted successfully!');
+            queryClient.invalidateQueries({ queryKey: ['form-6d-faculty'] });
+            queryClient.invalidateQueries({ queryKey: ['my-form-submissions'] });
+            refetch();
         },
         onError: (error: any) => {
             Alert.alert('Error', error.response?.data?.message || 'Failed to submit Form 6D');
@@ -311,31 +334,92 @@ export default function Form6DScreen() {
                         </View>
                     )}
 
-                    {/* Confirmation Checkbox */}
-                    <TouchableOpacity 
-                        style={styles.confirmRow}
-                        onPress={() => setConfirmed(!confirmed)}
-                    >
-                        <View style={[styles.checkbox, confirmed && styles.checkboxChecked]}>
-                            {confirmed && <Ionicons name="checkmark" size={14} color="#ffffff" />}
-                        </View>
-                        <Text style={styles.confirmText}>
-                            I confirm that all the mentioned faculties are part of the school as of 22nd January, 2026
-                        </Text>
-                    </TouchableOpacity>
+                    {/* Status-based UI */}
+                    {formStatus === 'APPROVED' ? (
+                        <>
+                            <TouchableOpacity style={styles.approvedButton} disabled>
+                                <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
+                                <Text style={styles.approvedButtonText}>Form 6D Approved</Text>
+                            </TouchableOpacity>
+                            <View style={styles.approvedBanner}>
+                                <Text style={styles.approvedBannerText}>Your Form 6D submission has been approved</Text>
+                            </View>
+                        </>
+                    ) : formStatus === 'REJECTED' ? (
+                        <>
+                            <View style={styles.rejectedBanner}>
+                                <Ionicons name="alert-circle" size={20} color="#dc2626" />
+                                <Text style={styles.rejectedText}>Your Form 6D submission was rejected</Text>
+                            </View>
+                            {rejectionReason && (
+                                <View style={styles.rejectionReasonBox}>
+                                    <Text style={styles.rejectionReasonLabel}>Reason:</Text>
+                                    <Text style={styles.rejectionReasonText}>{rejectionReason}</Text>
+                                </View>
+                            )}
+                            {/* Confirmation Checkbox */}
+                            <TouchableOpacity 
+                                style={styles.confirmRow}
+                                onPress={() => setConfirmed(!confirmed)}
+                            >
+                                <View style={[styles.checkbox, confirmed && styles.checkboxChecked]}>
+                                    {confirmed && <Ionicons name="checkmark" size={14} color="#ffffff" />}
+                                </View>
+                                <Text style={styles.confirmText}>
+                                    I confirm that all the mentioned faculties are part of the school as of 22nd January, 2026
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={[styles.submitButton, !confirmed && styles.submitButtonDisabled]}
+                                onPress={handleSubmit}
+                                disabled={!confirmed || submitMutation.isPending}
+                            >
+                                {submitMutation.isPending ? (
+                                    <ActivityIndicator size="small" color="#ffffff" />
+                                ) : (
+                                    <Text style={styles.submitButtonText}>Resubmit Form 6D</Text>
+                                )}
+                            </TouchableOpacity>
+                        </>
+                    ) : formStatus === 'SUBMITTED' ? (
+                        <>
+                            <TouchableOpacity style={styles.pendingButton} disabled>
+                                <Ionicons name="time-outline" size={20} color="#d97706" />
+                                <Text style={styles.pendingButtonText}>Form 6D Submitted</Text>
+                            </TouchableOpacity>
+                            <View style={styles.pendingBanner}>
+                                <Text style={styles.pendingBannerText}>Your Form 6D submission is pending approval</Text>
+                            </View>
+                        </>
+                    ) : (
+                        <>
+                            {/* Confirmation Checkbox */}
+                            <TouchableOpacity 
+                                style={styles.confirmRow}
+                                onPress={() => setConfirmed(!confirmed)}
+                            >
+                                <View style={[styles.checkbox, confirmed && styles.checkboxChecked]}>
+                                    {confirmed && <Ionicons name="checkmark" size={14} color="#ffffff" />}
+                                </View>
+                                <Text style={styles.confirmText}>
+                                    I confirm that all the mentioned faculties are part of the school as of 22nd January, 2026
+                                </Text>
+                            </TouchableOpacity>
 
-                    {/* Submit Button */}
-                    <TouchableOpacity 
-                        style={[styles.submitButton, !confirmed && styles.submitButtonDisabled]}
-                        onPress={handleSubmit}
-                        disabled={!confirmed || submitMutation.isPending}
-                    >
-                        {submitMutation.isPending ? (
-                            <ActivityIndicator size="small" color="#ffffff" />
-                        ) : (
-                            <Text style={styles.submitButtonText}>Submit Form 6D</Text>
-                        )}
-                    </TouchableOpacity>
+                            {/* Submit Button */}
+                            <TouchableOpacity 
+                                style={[styles.submitButton, !confirmed && styles.submitButtonDisabled]}
+                                onPress={handleSubmit}
+                                disabled={!confirmed || submitMutation.isPending}
+                            >
+                                {submitMutation.isPending ? (
+                                    <ActivityIndicator size="small" color="#ffffff" />
+                                ) : (
+                                    <Text style={styles.submitButtonText}>Submit Form 6D</Text>
+                                )}
+                            </TouchableOpacity>
+                        </>
+                    )}
                 </ScrollView>
             </View>
         </View>
@@ -597,5 +681,89 @@ const styles = StyleSheet.create({
         color: '#9ca3af',
         marginTop: 12,
         textAlign: 'center',
+    },
+    // Status banner styles
+    approvedButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#dcfce7',
+        borderRadius: 8,
+        paddingVertical: 16,
+        marginTop: 16,
+        gap: 8,
+    },
+    approvedButtonText: {
+        color: '#22c55e',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    approvedBanner: {
+        backgroundColor: '#f0fdf4',
+        borderRadius: 8,
+        padding: 12,
+        marginTop: 8,
+    },
+    approvedBannerText: {
+        color: '#15803d',
+        fontSize: 14,
+        textAlign: 'center',
+    },
+    pendingButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fef3c7',
+        borderRadius: 8,
+        paddingVertical: 16,
+        marginTop: 16,
+        gap: 8,
+    },
+    pendingButtonText: {
+        color: '#d97706',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    pendingBanner: {
+        backgroundColor: '#fffbeb',
+        borderRadius: 8,
+        padding: 12,
+        marginTop: 8,
+    },
+    pendingBannerText: {
+        color: '#b45309',
+        fontSize: 14,
+        textAlign: 'center',
+    },
+    rejectedBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fef2f2',
+        borderRadius: 8,
+        padding: 12,
+        marginTop: 16,
+        gap: 8,
+    },
+    rejectedText: {
+        color: '#dc2626',
+        fontSize: 14,
+        fontWeight: '500',
+        flex: 1,
+    },
+    rejectionReasonBox: {
+        backgroundColor: '#fee2e2',
+        borderRadius: 8,
+        padding: 12,
+        marginTop: 8,
+    },
+    rejectionReasonLabel: {
+        color: '#b91c1c',
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    rejectionReasonText: {
+        color: '#991b1b',
+        fontSize: 14,
     },
 });

@@ -275,6 +275,7 @@ export class PaperSetterService {
 
     /**
      * Accept paper setter invitation (NO REJECT OPTION)
+     * REQUIREMENT: Teacher must have submitted bank details before accepting
      */
     async acceptInvitation(teacherId: string, selectionId: string) {
         const selection = await this.db.paperSetterSelection.findUnique({
@@ -294,6 +295,17 @@ export class PaperSetterService {
 
         if (selection.status === SelectionStatus.ACCEPTED) {
             throw new BadRequestException('Already accepted');
+        }
+
+        // Check if teacher has submitted bank details
+        const hasBankDetails = await this.db.bankDetails.findUnique({
+            where: { user_id: teacherId },
+        });
+
+        if (!hasBankDetails) {
+            throw new BadRequestException(
+                'You must submit your bank details before accepting this invitation. Bank details are required for payment processing.'
+            );
         }
 
         // Update status
