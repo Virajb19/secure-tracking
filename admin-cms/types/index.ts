@@ -45,6 +45,11 @@ export enum EventType {
     SUBMISSION_POST_OFFICE = 'SUBMISSION_POST_OFFICE',
 }
 
+export enum ExamType {
+    REGULAR = 'REGULAR',
+    COMPARTMENTAL = 'COMPARTMENTAL',
+}
+
 // ========================================
 // ENTITIES
 // ========================================
@@ -113,6 +118,7 @@ export interface Task {
     start_time: string;
     end_time: string;
     status: TaskStatus;
+    exam_type: ExamType;
     created_at: string;
     events?: TaskEvent[];
 }
@@ -166,6 +172,7 @@ export interface CreateTaskDto {
     assigned_user_id: string;
     start_time: string;
     end_time: string;
+    exam_type?: 'REGULAR' | 'COMPARTMENTAL';
 }
 
 // ========================================

@@ -5,6 +5,7 @@ import {
     Patch,
     Body,
     Param,
+    Query,
     UseGuards,
     Req,
     HttpCode,
@@ -14,7 +15,7 @@ import {
     forwardRef,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { User, Task, TaskEvent, UserRole } from '@prisma/client';
+import { User, Task, TaskEvent, UserRole, ExamType } from '@prisma/client';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { JwtAuthGuard, RolesGuard } from '../shared/guards';
@@ -67,10 +68,34 @@ export class AdminTasksController {
     /**
      * Get all tasks.
      * Admin only endpoint.
+     * @param exam_type - Optional filter by REGULAR or COMPARTMENTAL
      */
     @Get()
-    async findAll(): Promise<Task[]> {
-        return this.tasksService.findAll();
+    async findAll(
+        @Query('exam_type') examType?: string,
+    ): Promise<Task[]> {
+        const validExamType = examType && ['REGULAR', 'COMPARTMENTAL'].includes(examType)
+            ? (examType as ExamType)
+            : undefined;
+        return this.tasksService.findAll(validExamType);
+    }
+
+    /**
+     * Get all tasks with their events for overview display.
+     * Used by Question Paper Tracking pages.
+     * @param exam_type - Filter by REGULAR or COMPARTMENTAL
+     * @param date - Filter by date (YYYY-MM-DD format)
+     */
+    @Get('overview')
+    async findAllWithEvents(
+        @Query('exam_type') examType?: string,
+        @Query('date') dateStr?: string,
+    ): Promise<(Task & { events: TaskEvent[] })[]> {
+        const validExamType = examType && ['REGULAR', 'COMPARTMENTAL'].includes(examType)
+            ? (examType as ExamType)
+            : undefined;
+        const date = dateStr ? new Date(dateStr) : undefined;
+        return this.tasksService.findAllWithEvents(validExamType, date);
     }
 
     /**

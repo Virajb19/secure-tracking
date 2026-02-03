@@ -29,8 +29,18 @@ let AdminTasksController = class AdminTasksController {
         const ipAddress = this.extractIpAddress(request);
         return this.tasksService.create(createTaskDto, currentUser.id, ipAddress);
     }
-    async findAll() {
-        return this.tasksService.findAll();
+    async findAll(examType) {
+        const validExamType = examType && ['REGULAR', 'COMPARTMENTAL'].includes(examType)
+            ? examType
+            : undefined;
+        return this.tasksService.findAll(validExamType);
+    }
+    async findAllWithEvents(examType, dateStr) {
+        const validExamType = examType && ['REGULAR', 'COMPARTMENTAL'].includes(examType)
+            ? examType
+            : undefined;
+        const date = dateStr ? new Date(dateStr) : undefined;
+        return this.tasksService.findAllWithEvents(validExamType, date);
     }
     async findOne(taskId) {
         return this.tasksService.findById(taskId);
@@ -64,10 +74,19 @@ __decorate([
 ], AdminTasksController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('exam_type')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AdminTasksController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('overview'),
+    __param(0, (0, common_1.Query)('exam_type')),
+    __param(1, (0, common_1.Query)('date')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], AdminTasksController.prototype, "findAllWithEvents", null);
 __decorate([
     (0, common_1.Get)(':taskId'),
     __param(0, (0, common_1.Param)('taskId', new common_1.ParseUUIDPipe({ version: '4' }))),

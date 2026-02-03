@@ -52,6 +52,7 @@ let TasksService = class TasksService {
                 assigned_user_id: createTaskDto.assigned_user_id,
                 start_time: startTime,
                 end_time: endTime,
+                exam_type: createTaskDto.exam_type || client_1.ExamType.REGULAR,
                 status: client_1.TaskStatus.PENDING,
             },
         });
@@ -60,10 +61,37 @@ let TasksService = class TasksService {
         await this.notificationsService.notifyTaskAssigned(createTaskDto.assigned_user_id, createTaskDto.sealed_pack_code);
         return savedTask;
     }
-    async findAll() {
+    async findAll(examType) {
         return this.db.task.findMany({
+            where: examType ? { exam_type: examType } : undefined,
             orderBy: { created_at: 'desc' },
             include: { assigned_user: true },
+        });
+    }
+    async findAllWithEvents(examType, date) {
+        const whereClause = {};
+        if (examType) {
+            whereClause.exam_type = examType;
+        }
+        if (date) {
+            const startOfDay = new Date(date);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(date);
+            endOfDay.setHours(23, 59, 59, 999);
+            whereClause.start_time = {
+                gte: startOfDay,
+                lte: endOfDay,
+            };
+        }
+        return this.db.task.findMany({
+            where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+            orderBy: { created_at: 'desc' },
+            include: {
+                assigned_user: true,
+                events: {
+                    orderBy: { created_at: 'asc' }
+                }
+            },
         });
     }
     async findMyTasks(userId) {

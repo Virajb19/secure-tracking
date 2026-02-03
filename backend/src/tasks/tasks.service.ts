@@ -5,7 +5,7 @@ import {
     BadRequestException,
     ForbiddenException,
 } from '@nestjs/common';
-import { Task, TaskStatus, UserRole } from '@prisma/client';
+import { Task, TaskStatus, UserRole, ExamType } from '@prisma/client';
 import { PrismaService } from '../prisma';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UsersService } from '../users/users.service';
@@ -90,6 +90,7 @@ export class TasksService {
                 assigned_user_id: createTaskDto.assigned_user_id,
                 start_time: startTime,
                 end_time: endTime,
+                exam_type: (createTaskDto.exam_type as ExamType) || ExamType.REGULAR,
                 status: TaskStatus.PENDING,
                 // created_at is auto-generated
             },
@@ -125,11 +126,50 @@ export class TasksService {
     /**
      * Get all tasks (Admin view).
      * Returns all tasks ordered by creation date.
+     * Optionally filter by exam type.
      */
-    async findAll(): Promise<TaskWithUser[]> {
+    async findAll(examType?: ExamType): Promise<TaskWithUser[]> {
         return this.db.task.findMany({
+            where: examType ? { exam_type: examType } : undefined,
             orderBy: { created_at: 'desc' },
             include: { assigned_user: true },
+        });
+    }
+
+    /**
+     * Get all tasks with their events for overview display.
+     * Useful for Question Paper Tracking overview.
+     * 
+     * @param examType - Optional filter by exam type
+     * @param date - Optional filter by date (tasks created on this date)
+     */
+    async findAllWithEvents(examType?: ExamType, date?: Date): Promise<(TaskWithUser & { events: any[] })[]> {
+        const whereClause: any = {};
+
+        if (examType) {
+            whereClause.exam_type = examType;
+        }
+
+        if (date) {
+            const startOfDay = new Date(date);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(date);
+            endOfDay.setHours(23, 59, 59, 999);
+            whereClause.start_time = {
+                gte: startOfDay,
+                lte: endOfDay,
+            };
+        }
+
+        return this.db.task.findMany({
+            where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+            orderBy: { created_at: 'desc' },
+            include: {
+                assigned_user: true,
+                events: {
+                    orderBy: { created_at: 'asc' }
+                }
+            },
         });
     }
 

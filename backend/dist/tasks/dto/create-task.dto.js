@@ -23,6 +23,10 @@ exports.CreateTaskSchema = zod_1.z.object({
     end_time: zod_1.z.iso.datetime({
         message: 'End time must be a valid ISO 8601 date string',
     }),
+    exam_type: zod_1.z
+        .enum(['REGULAR', 'COMPARTMENTAL'])
+        .optional()
+        .default('REGULAR'),
 })
     .refine((data) => new Date(data.end_time) > new Date(data.start_time), {
     message: 'End time must be after start time',

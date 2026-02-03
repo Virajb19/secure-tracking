@@ -7,7 +7,6 @@ generator client {
 //   output   = "./erd.svg"
 // }
 
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -29,6 +28,12 @@ enum TaskStatus {
   SUSPICIOUS
 }
 
+// Exam Types for Question Paper Tracking
+enum ExamType {
+  REGULAR // Regular exam schedule
+  COMPARTMENTAL // Compartmental/Supplementary exams
+}
+
 // Event Types - includes both old (legacy) and new 5-step tracking
 enum EventType {
   // Legacy values (for existing data - DO NOT REMOVE)
@@ -36,11 +41,11 @@ enum EventType {
   TRANSIT
   FINAL
   // New 5-Step Tracking for Exam Papers
-  PICKUP_POLICE_STATION    // Step 1: Pickup from Police Station
-  ARRIVAL_EXAM_CENTER      // Step 2: Arrival at Exam Center
-  OPENING_SEAL             // Step 3: Opening Seal
-  SEALING_ANSWER_SHEETS    // Step 4: Sealing Answer Sheets
-  SUBMISSION_POST_OFFICE   // Step 5: Submission at Post Office
+  PICKUP_POLICE_STATION // Step 1: Pickup from Police Station
+  ARRIVAL_EXAM_CENTER // Step 2: Arrival at Exam Center
+  OPENING_SEAL // Step 3: Opening Seal
+  SEALING_ANSWER_SHEETS // Step 4: Sealing Answer Sheets
+  SUBMISSION_POST_OFFICE // Step 5: Submission at Post Office
 }
 
 // Paper Setter Selection Status
@@ -99,42 +104,41 @@ enum SchoolEventType {
   OTHER
 }
 
-
 model User {
-  id         String   @id @default(uuid()) @db.Uuid
-  name       String   @db.VarChar(255)
-  email      String?  @unique @db.VarChar(255)
-  password   String   @db.VarChar(255)
-  phone      String   @unique @db.VarChar(50)
-  role       UserRole @default(SEBA_OFFICER)
-  gender     Gender?   
-  profile_image_url String? @db.Text
-  device_id  String?  @db.VarChar(255)
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now()) @db.Timestamp()
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String   @db.VarChar(255)
+  email             String?  @unique @db.VarChar(255)
+  password          String   @db.VarChar(255)
+  phone             String   @unique @db.VarChar(50)
+  role              UserRole @default(SEBA_OFFICER)
+  gender            Gender?
+  profile_image_url String?  @db.Text
+  device_id         String?  @db.VarChar(255)
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now()) @db.Timestamp()
 
   // for notifications
-  push_token        String?  @db.Text
-  notifications     NotificationLog[]
+  push_token    String?           @db.Text
+  notifications NotificationLog[]
 
-  tasks   Task[]  // ONLY for SEBA_OFFICER
-  faculty Faculty?  // ONLY for HEADMASTER / TEACHER
-  created_events    Event[]    @relation("EventCreator")
+  tasks             Task[] // ONLY for SEBA_OFFICER
+  faculty           Faculty? // ONLY for HEADMASTER / TEACHER
+  created_events    Event[]           @relation("EventCreator")
   event_invitations EventInvitation[]
-  created_notices   Notice[]   @relation("NoticeCreator")
-  created_circulars Circular[] @relation("CircularCreator")
+  created_notices   Notice[]          @relation("NoticeCreator")
+  created_circulars Circular[]        @relation("CircularCreator")
   helpdesk_tickets  Helpdesk[]
-  
+
   // Paper Setter Relations
   paper_setter_selections PaperSetterSelection[] @relation("SelectedTeacher")
   coordinator_selections  PaperSetterSelection[] @relation("Coordinator")
   bank_details            BankDetails?
   starred_by              UserStar[]             @relation("StarredUser")
   starred_users           UserStar[]             @relation("StarringAdmin")
-  
+
   // Subject Coordinator: which subject/class they coordinate
-  coordinator_subject     String?    @db.VarChar(100)
-  coordinator_class       Int?
+  coordinator_subject String? @db.VarChar(100)
+  coordinator_class   Int?
 
   @@map("users")
 }
@@ -151,9 +155,10 @@ model Task {
   start_time           DateTime   @db.Timestamp()
   end_time             DateTime   @db.Timestamp()
   status               TaskStatus @default(PENDING)
-  is_double_shift      Boolean    @default(false)  // Afternoon shift - skip PICKUP and ARRIVAL steps
-  shift_type           String?    @db.VarChar(20)  // MORNING or AFTERNOON
-  expected_travel_time Int?       // Expected travel time in minutes (for red flag detection)
+  exam_type            ExamType   @default(REGULAR) // REGULAR or COMPARTMENTAL exam
+  is_double_shift      Boolean    @default(false) // Afternoon shift - skip PICKUP and ARRIVAL steps
+  shift_type           String?    @db.VarChar(20) // MORNING or AFTERNOON
+  expected_travel_time Int? // Expected travel time in minutes (for red flag detection)
   created_at           DateTime   @default(now()) @db.Timestamp()
 
   assigned_user User        @relation(fields: [assigned_user_id], references: [id])
@@ -297,24 +302,24 @@ model Event {
   title               String          @db.VarChar(255)
   description         String?         @db.Text
   event_date          DateTime        @db.Date
-  event_end_date      DateTime?       @db.Date         // For multi-day events
-  event_time          String?         @db.VarChar(20)  // e.g. "10:00 AM"
+  event_end_date      DateTime?       @db.Date // For multi-day events
+  event_time          String?         @db.VarChar(20) // e.g. "10:00 AM"
   location            String?         @db.VarChar(255)
   event_type          SchoolEventType @default(OTHER)
   activity_type       String?         @db.VarChar(100) // e.g. "Seminar", "Training Program"
-  flyer_url           String?         @db.Text         // Event flyer/poster image URL
-  male_participants   Int?            // Number of male participants
-  female_participants Int?            // Number of female participants
+  flyer_url           String?         @db.Text // Event flyer/poster image URL
+  male_participants   Int? // Number of male participants
+  female_participants Int? // Number of female participants
   is_active           Boolean         @default(true)
   school_id           String?         @db.Uuid
-  district_id         String?         @db.Uuid         // For district-wide events
+  district_id         String?         @db.Uuid // For district-wide events
   created_by          String?         @db.Uuid
   created_at          DateTime        @default(now())
   updated_at          DateTime        @default(now()) @updatedAt
 
-  school      School?   @relation(fields: [school_id], references: [id])
-  district    District? @relation(fields: [district_id], references: [id])
-  creator     User?     @relation("EventCreator", fields: [created_by], references: [id])
+  school      School?           @relation(fields: [school_id], references: [id])
+  district    District?         @relation(fields: [district_id], references: [id])
+  creator     User?             @relation("EventCreator", fields: [created_by], references: [id])
   invitations EventInvitation[]
 
   @@index([school_id])
@@ -347,26 +352,26 @@ model EventInvitation {
 // CRITICAL CONSTRAINT: Notices can ONLY be created by ADMIN or SUPER_ADMIN users
 // The created_by field MUST reference a user with role ADMIN or SUPER_ADMIN
 model Notice {
-  id           String    @id @default(uuid()) @db.Uuid
-  title        String    @db.VarChar(255)
-  content      String    @db.Text
-  type         NoticeType    @default(GENERAL)  // General, Paper Setter, Paper Checker, Invitation, Push Notification
-  subject      String?   @db.VarChar(100)  // For Paper Setter/Checker
-  venue        String?   @db.VarChar(255)  // For Invitation
-  event_time   String?   @db.VarChar(20)   // For Invitation (HH:MM format)
-  event_date   DateTime? @db.Date          // For Invitation
-  published_at DateTime  @default(now())
+  id           String     @id @default(uuid()) @db.Uuid
+  title        String     @db.VarChar(255)
+  content      String     @db.Text
+  type         NoticeType @default(GENERAL) // General, Paper Setter, Paper Checker, Invitation, Push Notification
+  subject      String?    @db.VarChar(100) // For Paper Setter/Checker
+  venue        String?    @db.VarChar(255) // For Invitation
+  event_time   String?    @db.VarChar(20) // For Invitation (HH:MM format)
+  event_date   DateTime?  @db.Date // For Invitation
+  published_at DateTime   @default(now())
   expires_at   DateTime?
-  is_active    Boolean   @default(true)
-  school_id    String?   @db.Uuid
-  created_by   String?   @db.Uuid
-  file_url     String?   @db.Text          // Appwrite bucket URL for uploaded file
-  file_name    String?   @db.VarChar(255)
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @default(now()) @updatedAt
+  is_active    Boolean    @default(true)
+  school_id    String?    @db.Uuid
+  created_by   String?    @db.Uuid
+  file_url     String?    @db.Text // Appwrite bucket URL for uploaded file
+  file_name    String?    @db.VarChar(255)
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @default(now()) @updatedAt
 
-  school       School?   @relation(fields: [school_id], references: [id])
-  creator      User?     @relation("NoticeCreator", fields: [created_by], references: [id])
+  school  School? @relation(fields: [school_id], references: [id])
+  creator User?   @relation("NoticeCreator", fields: [created_by], references: [id])
 
   @@index([school_id])
   @@index([type])
@@ -386,15 +391,15 @@ model Circular {
   issued_date    DateTime  @db.Date
   effective_date DateTime? @db.Date
   is_active      Boolean   @default(true)
-  district_id    String?   @db.Uuid  // For district-level circulars
-  school_id      String?   @db.Uuid  // For school-level circulars
+  district_id    String?   @db.Uuid // For district-level circulars
+  school_id      String?   @db.Uuid // For school-level circulars
   created_by     String?   @db.Uuid
   created_at     DateTime  @default(now())
   updated_at     DateTime  @default(now()) @updatedAt
 
-  district       District? @relation(fields: [district_id], references: [id])
-  school         School?   @relation(fields: [school_id], references: [id])
-  creator        User?     @relation("CircularCreator", fields: [created_by], references: [id])
+  district District? @relation(fields: [district_id], references: [id])
+  school   School?   @relation(fields: [school_id], references: [id])
+  creator  User?     @relation("CircularCreator", fields: [created_by], references: [id])
 
   @@index([district_id])
   @@index([school_id])
@@ -416,17 +421,18 @@ model Helpdesk {
   @@index([user_id])
   @@map("helpdesk_tickets")
 }
+
 // Notification History (App ke andar dikhane ke liye)
 model NotificationLog {
-  id          String   @id @default(uuid()) @db.Uuid
-  user_id     String   @db.Uuid
-  title       String   @db.VarChar(255)
-  body        String   @db.Text
-  type        String?  @db.VarChar(50) // e.g. TASK, PROFILE, NOTICE
-  is_read     Boolean  @default(false)
-  created_at  DateTime @default(now()) @db.Timestamp()
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  title      String   @db.VarChar(255)
+  body       String   @db.Text
+  type       String?  @db.VarChar(50) // e.g. TASK, PROFILE, NOTICE
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamp()
 
-  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@map("notification_logs")
@@ -434,22 +440,22 @@ model NotificationLog {
 
 // Paper Setter Selection - Confidential teacher selection for exam papers
 model PaperSetterSelection {
-  id                  String          @id @default(uuid()) @db.Uuid
-  teacher_id          String          @db.Uuid
-  coordinator_id      String          @db.Uuid
-  subject             String          @db.VarChar(100)
-  class_level         Int             // e.g., 10, 12
-  selection_type      String          @db.VarChar(50)  // PAPER_SETTER or EXAMINER
-  status              SelectionStatus @default(INVITED)
-  official_order_url  String?         @db.Text  // PDF upload by coordinator
-  invitation_message  String?         @db.Text
-  accepted_at         DateTime?       @db.Timestamp
-  created_at          DateTime        @default(now()) @db.Timestamp
+  id                 String          @id @default(uuid()) @db.Uuid
+  teacher_id         String          @db.Uuid
+  coordinator_id     String          @db.Uuid
+  subject            String          @db.VarChar(100)
+  class_level        Int // e.g., 10, 12
+  selection_type     String          @db.VarChar(50) // PAPER_SETTER or EXAMINER
+  status             SelectionStatus @default(INVITED)
+  official_order_url String?         @db.Text // PDF upload by coordinator
+  invitation_message String?         @db.Text
+  accepted_at        DateTime?       @db.Timestamp
+  created_at         DateTime        @default(now()) @db.Timestamp
 
   teacher     User @relation("SelectedTeacher", fields: [teacher_id], references: [id], onDelete: Cascade)
   coordinator User @relation("Coordinator", fields: [coordinator_id], references: [id], onDelete: Cascade)
 
-  @@unique([teacher_id, subject, class_level])  // One teacher per subject per class
+  @@unique([teacher_id, subject, class_level]) // One teacher per subject per class
   @@index([teacher_id])
   @@index([coordinator_id])
   @@index([subject, class_level])
@@ -458,16 +464,16 @@ model PaperSetterSelection {
 
 // Bank Details for Paper Setters (submitted after acceptance)
 model BankDetails {
-  id              String   @id @default(uuid()) @db.Uuid
-  user_id         String   @unique @db.Uuid
-  account_number  String   @db.VarChar(30)
-  account_name    String   @db.VarChar(255)
-  ifsc_code       String   @db.VarChar(15)
-  bank_name       String   @db.VarChar(150)
-  branch_name     String?  @db.VarChar(150)
-  upi_id          String?  @db.VarChar(100)
-  created_at      DateTime @default(now()) @db.Timestamp
-  updated_at      DateTime @updatedAt
+  id             String   @id @default(uuid()) @db.Uuid
+  user_id        String   @unique @db.Uuid
+  account_number String   @db.VarChar(30)
+  account_name   String   @db.VarChar(255)
+  ifsc_code      String   @db.VarChar(15)
+  bank_name      String   @db.VarChar(150)
+  branch_name    String?  @db.VarChar(150)
+  upi_id         String?  @db.VarChar(100)
+  created_at     DateTime @default(now()) @db.Timestamp
+  updated_at     DateTime @updatedAt
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -476,12 +482,12 @@ model BankDetails {
 
 // User Stars - Admin bookmarks important users
 model UserStar {
-  id            String   @id @default(uuid()) @db.Uuid
-  admin_id      String   @db.Uuid
-  starred_user_id String @db.Uuid
-  created_at    DateTime @default(now()) @db.Timestamp
+  id              String   @id @default(uuid()) @db.Uuid
+  admin_id        String   @db.Uuid
+  starred_user_id String   @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamp
 
-  admin       User @relation("StarringAdmin", fields: [admin_id], references: [id], onDelete: Cascade)
+  admin        User @relation("StarringAdmin", fields: [admin_id], references: [id], onDelete: Cascade)
   starred_user User @relation("StarredUser", fields: [starred_user_id], references: [id], onDelete: Cascade)
 
   @@unique([admin_id, starred_user_id])
@@ -491,22 +497,21 @@ model UserStar {
 
 // Form Submissions - Track form 6A/6B/6C/6D submissions with approval
 model FormSubmission {
-  id              String               @id @default(uuid()) @db.Uuid
-  school_id       String               @db.Uuid
-  submitted_by    String               @db.Uuid
-  form_type       String               @db.VarChar(10)  // 6A, 6B, 6C_LOWER, 6C_HIGHER, 6D
-  status          FormSubmissionStatus @default(DRAFT)
-  rejection_reason String?             @db.Text
-  approved_by     String?              @db.Uuid
-  submitted_at    DateTime?            @db.Timestamp
-  approved_at     DateTime?            @db.Timestamp
-  created_at      DateTime             @default(now()) @db.Timestamp
+  id               String               @id @default(uuid()) @db.Uuid
+  school_id        String               @db.Uuid
+  submitted_by     String               @db.Uuid
+  form_type        String               @db.VarChar(10) // 6A, 6B, 6C_LOWER, 6C_HIGHER, 6D
+  status           FormSubmissionStatus @default(DRAFT)
+  rejection_reason String?              @db.Text
+  approved_by      String?              @db.Uuid
+  submitted_at     DateTime?            @db.Timestamp
+  approved_at      DateTime?            @db.Timestamp
+  created_at       DateTime             @default(now()) @db.Timestamp
 
-  school          School               @relation(fields: [school_id], references: [id])
+  school School @relation(fields: [school_id], references: [id])
 
-  @@unique([school_id, form_type])  // One submission per form per school
+  @@unique([school_id, form_type]) // One submission per form per school
   @@index([school_id])
   @@index([submitted_by])
   @@map("form_submissions")
-  
 }

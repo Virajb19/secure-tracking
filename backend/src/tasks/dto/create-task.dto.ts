@@ -53,14 +53,23 @@ export const CreateTaskSchema = z.object({
   end_time: z.iso.datetime({
     message: 'End time must be a valid ISO 8601 date string',
   }),
+
+  /**
+   * Type of exam - REGULAR or COMPARTMENTAL.
+   * Defaults to REGULAR if not specified.
+   */
+  exam_type: z
+    .enum(['REGULAR', 'COMPARTMENTAL'])
+    .optional()
+    .default('REGULAR'),
 })
-.refine(
-  (data) => new Date(data.end_time) > new Date(data.start_time),
-  {
-    message: 'End time must be after start time',
-    path: ['end_time'],
-  },
-);
+  .refine(
+    (data) => new Date(data.end_time) > new Date(data.start_time),
+    {
+      message: 'End time must be after start time',
+      path: ['end_time'],
+    },
+  );
 
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
-export class CreateTaskDto extends createZodDto(CreateTaskSchema) {}
+export class CreateTaskDto extends createZodDto(CreateTaskSchema) { }

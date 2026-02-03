@@ -182,9 +182,17 @@ export const masterDataApi = {
 // ============================
 // TASKS API
 // ============================
+export interface TaskFilterParams {
+  exam_type?: 'REGULAR' | 'COMPARTMENTAL';
+  date?: string;  // YYYY-MM-DD format
+}
+
 export const tasksApi = {
-  getAll: async (): Promise<Task[]> => {
-    const response = await api.get<Task[]>('/admin/tasks');
+  getAll: async (filters?: TaskFilterParams): Promise<Task[]> => {
+    const params: Record<string, string> = {};
+    if (filters?.exam_type) params.exam_type = filters.exam_type;
+    if (filters?.date) params.date = filters.date;
+    const response = await api.get<Task[]>('/admin/tasks', { params });
     return response.data;
   },
 
@@ -197,6 +205,18 @@ export const tasksApi = {
     const response = await api.get<TaskEvent[]>(
       `/admin/tasks/${taskId}/events`
     );
+    return response.data;
+  },
+
+  /**
+   * Get all tasks with their events for overview display.
+   * Used by Question Paper Tracking pages.
+   */
+  getOverview: async (filters?: TaskFilterParams): Promise<Task[]> => {
+    const params: Record<string, string> = {};
+    if (filters?.exam_type) params.exam_type = filters.exam_type;
+    if (filters?.date) params.date = filters.date;
+    const response = await api.get<Task[]>('/admin/tasks/overview', { params });
     return response.data;
   },
 

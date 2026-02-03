@@ -1,4 +1,4 @@
-import { Task, TaskStatus, UserRole } from '@prisma/client';
+import { Task, TaskStatus, UserRole, ExamType } from '@prisma/client';
 import { PrismaService } from '../prisma';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UsersService } from '../users/users.service';
@@ -20,7 +20,10 @@ export declare class TasksService {
     private readonly notificationsService;
     constructor(db: PrismaService, usersService: UsersService, auditLogsService: AuditLogsService, notificationsService: NotificationsService);
     create(createTaskDto: CreateTaskDto, adminId: string, ipAddress: string | null): Promise<Task>;
-    findAll(): Promise<TaskWithUser[]>;
+    findAll(examType?: ExamType): Promise<TaskWithUser[]>;
+    findAllWithEvents(examType?: ExamType, date?: Date): Promise<(TaskWithUser & {
+        events: any[];
+    })[]>;
     findMyTasks(userId: string): Promise<Task[]>;
     findById(taskId: string): Promise<TaskWithUser>;
     findByIdForUser(taskId: string, userId: string): Promise<TaskWithUser>;

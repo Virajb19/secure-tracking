@@ -6,6 +6,10 @@ export declare const CreateTaskSchema: z.ZodObject<{
     assigned_user_id: z.ZodUUID;
     start_time: z.ZodISODateTime;
     end_time: z.ZodISODateTime;
+    exam_type: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
+        REGULAR: "REGULAR";
+        COMPARTMENTAL: "COMPARTMENTAL";
+    }>>>;
 }, z.core.$strip>;
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
 declare const CreateTaskDto_base: import("nestjs-zod").ZodDto<z.ZodObject<{
@@ -15,6 +19,10 @@ declare const CreateTaskDto_base: import("nestjs-zod").ZodDto<z.ZodObject<{
     assigned_user_id: z.ZodUUID;
     start_time: z.ZodISODateTime;
     end_time: z.ZodISODateTime;
+    exam_type: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
+        REGULAR: "REGULAR";
+        COMPARTMENTAL: "COMPARTMENTAL";
+    }>>>;
 }, z.core.$strip>, false>;
 export declare class CreateTaskDto extends CreateTaskDto_base {
 }

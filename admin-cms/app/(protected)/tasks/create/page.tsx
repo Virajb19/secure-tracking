@@ -34,6 +34,7 @@ export default function CreateTaskPage() {
         source_location: '',
         destination_location: '',
         assigned_user_id: '',
+        exam_type: 'REGULAR' as 'REGULAR' | 'COMPARTMENTAL',
         start_time: getDefaultStartTime(),
         end_time: getDefaultEndTime(),
     });
@@ -187,6 +188,26 @@ export default function CreateTaskPage() {
                                 ))}
                             </select>
                         )}
+                    </div>
+
+                    {/* Exam Type */}
+                    <div>
+                        <label htmlFor="exam_type" className="block text-sm font-medium text-slate-300 mb-2">
+                            Exam Type *
+                        </label>
+                        <select
+                            id="exam_type"
+                            name="exam_type"
+                            value={formData.exam_type}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            <option value="REGULAR">Regular Exam</option>
+                            <option value="COMPARTMENTAL">Compartmental Exam</option>
+                        </select>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Determines which tracking page will show this task
+                        </p>
                     </div>
 
                     {/* Time Window */}
