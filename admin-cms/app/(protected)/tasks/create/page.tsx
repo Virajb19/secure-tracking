@@ -2,9 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { MainLayout } from '@/components/layout';
 import { tasksApi, usersApi } from '@/services/api';
 import { User, UserRole } from '@/types';
+
+// Dynamic import to avoid SSR issues with Leaflet
+const LocationPickerMap = dynamic(
+    () => import('@/components/LocationPickerMap').then(mod => mod.LocationPickerMap),
+    { ssr: false, loading: () => <div className="h-64 bg-slate-800 animate-pulse rounded-lg" /> }
+);
 
 export default function CreateTaskPage() {
     const router = useRouter();
@@ -37,6 +44,12 @@ export default function CreateTaskPage() {
         exam_type: 'REGULAR' as 'REGULAR' | 'COMPARTMENTAL',
         start_time: getDefaultStartTime(),
         end_time: getDefaultEndTime(),
+        // Geo-fence coordinates (optional)
+        pickup_latitude: '',
+        pickup_longitude: '',
+        destination_latitude: '',
+        destination_longitude: '',
+        geofence_radius: '100',
     });
 
     // Load delivery users on mount
@@ -72,13 +85,26 @@ export default function CreateTaskPage() {
 
         try {
             // Convert local datetime to ISO string
-            const payload = {
+            const payload: Record<string, any> = {
                 ...formData,
                 start_time: new Date(formData.start_time).toISOString(),
                 end_time: new Date(formData.end_time).toISOString(),
             };
 
-            await tasksApi.create(payload);
+            // Add coordinates only if provided
+            if (formData.pickup_latitude && formData.pickup_longitude) {
+                payload.pickup_latitude = parseFloat(formData.pickup_latitude);
+                payload.pickup_longitude = parseFloat(formData.pickup_longitude);
+            }
+            if (formData.destination_latitude && formData.destination_longitude) {
+                payload.destination_latitude = parseFloat(formData.destination_latitude);
+                payload.destination_longitude = parseFloat(formData.destination_longitude);
+            }
+            if (formData.geofence_radius) {
+                payload.geofence_radius = parseInt(formData.geofence_radius);
+            }
+
+            await tasksApi.create(payload as any);
             router.push('/tasks');
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string | string[] } } };
@@ -243,6 +269,72 @@ export default function CreateTaskPage() {
                             />
                         </div>
                     </div>
+
+                    {/* Geo-fence Settings (Collapsible) */}
+                    <details className="bg-slate-800/50 border border-slate-700 rounded-lg">
+                        <summary className="px-4 py-3 cursor-pointer text-slate-300 font-medium flex items-center gap-2">
+                            📍 Geo-fence Settings (Optional)
+                        </summary>
+                        <div className="p-4 pt-0 space-y-4">
+                            <p className="text-xs text-slate-500 mb-3">
+                                Click on map to select location, or use "Use My Location" button.
+                            </p>
+
+                            {/* Geo-fence Radius - First so it applies to map circles */}
+                            <div className="mb-4">
+                                <label className="block text-xs text-slate-400 mb-1">Geo-fence Radius (meters)</label>
+                                <input
+                                    type="number"
+                                    name="geofence_radius"
+                                    value={formData.geofence_radius}
+                                    onChange={handleChange}
+                                    min="10"
+                                    max="1000"
+                                    placeholder="100"
+                                    className="w-32 px-3 py-2 bg-slate-900 border border-slate-600 rounded text-white text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                                />
+                                <span className="text-xs text-slate-500 ml-2">Default: 100m</span>
+                            </div>
+
+                            {/* Pickup Location Map Picker */}
+                            <LocationPickerMap
+                                label="📍 Pickup Location (Source)"
+                                latitude={formData.pickup_latitude}
+                                longitude={formData.pickup_longitude}
+                                radius={parseInt(formData.geofence_radius) || 100}
+                                onLocationChange={(lat, lng) => {
+                                    if (lat === 0 && lng === 0) {
+                                        setFormData(prev => ({ ...prev, pickup_latitude: '', pickup_longitude: '' }));
+                                    } else {
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            pickup_latitude: lat.toFixed(7),
+                                            pickup_longitude: lng.toFixed(7),
+                                        }));
+                                    }
+                                }}
+                            />
+
+                            {/* Destination Location Map Picker */}
+                            <LocationPickerMap
+                                label="🎯 Destination Location"
+                                latitude={formData.destination_latitude}
+                                longitude={formData.destination_longitude}
+                                radius={parseInt(formData.geofence_radius) || 100}
+                                onLocationChange={(lat, lng) => {
+                                    if (lat === 0 && lng === 0) {
+                                        setFormData(prev => ({ ...prev, destination_latitude: '', destination_longitude: '' }));
+                                    } else {
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            destination_latitude: lat.toFixed(7),
+                                            destination_longitude: lng.toFixed(7),
+                                        }));
+                                    }
+                                }}
+                            />
+                        </div>
+                    </details>
 
                     {/* Actions */}
                     <div className="flex gap-4 pt-4">

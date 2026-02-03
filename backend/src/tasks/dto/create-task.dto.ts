@@ -62,6 +62,26 @@ export const CreateTaskSchema = z.object({
     .enum(['REGULAR', 'COMPARTMENTAL'])
     .optional()
     .default('REGULAR'),
+
+  // ===== GEO-FENCE COORDINATES (OPTIONAL) =====
+
+  /**
+   * Pickup location coordinates for geo-fence validation.
+   */
+  pickup_latitude: z.coerce.number().min(-90).max(90).optional(),
+  pickup_longitude: z.coerce.number().min(-180).max(180).optional(),
+
+  /**
+   * Destination location coordinates for geo-fence validation.
+   */
+  destination_latitude: z.coerce.number().min(-90).max(90).optional(),
+  destination_longitude: z.coerce.number().min(-180).max(180).optional(),
+
+  /**
+   * Geo-fence radius in meters.
+   * Default is 100 meters if not specified.
+   */
+  geofence_radius: z.coerce.number().min(10).max(1000).optional().default(100),
 })
   .refine(
     (data) => new Date(data.end_time) > new Date(data.start_time),

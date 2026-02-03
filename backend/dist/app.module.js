@@ -34,6 +34,7 @@ const bank_details_module_1 = require("./bank-details/bank-details.module");
 const user_stars_module_1 = require("./user-stars/user-stars.module");
 const analytics_module_1 = require("./analytics/analytics.module");
 const form_submissions_module_1 = require("./form-submissions/form-submissions.module");
+const attendance_module_1 = require("./attendance/attendance.module");
 const middlewares_1 = require("./shared/middlewares");
 let AppModule = class AppModule {
     constructor(configService) {
@@ -81,6 +82,7 @@ exports.AppModule = AppModule = __decorate([
             user_stars_module_1.UserStarsModule,
             analytics_module_1.AnalyticsModule,
             form_submissions_module_1.FormSubmissionsModule,
+            attendance_module_1.AttendanceModule,
         ],
         providers: [
             {

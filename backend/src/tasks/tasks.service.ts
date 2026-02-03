@@ -92,6 +92,12 @@ export class TasksService {
                 end_time: endTime,
                 exam_type: (createTaskDto.exam_type as ExamType) || ExamType.REGULAR,
                 status: TaskStatus.PENDING,
+                // Geo-fence coordinates (optional)
+                pickup_latitude: createTaskDto.pickup_latitude,
+                pickup_longitude: createTaskDto.pickup_longitude,
+                destination_latitude: createTaskDto.destination_latitude,
+                destination_longitude: createTaskDto.destination_longitude,
+                geofence_radius: createTaskDto.geofence_radius ?? 100,
                 // created_at is auto-generated
             },
         });

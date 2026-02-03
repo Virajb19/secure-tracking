@@ -42,12 +42,25 @@ const eventOrder: EventType[] = [
     EventType.SUBMISSION_POST_OFFICE
 ];
 
+// Types for attendance record
+interface AttendanceRecord {
+    id: string;
+    location_type: 'PICKUP' | 'DESTINATION';
+    image_url: string;
+    latitude: number;
+    longitude: number;
+    is_within_geofence: boolean;
+    distance_from_target: string | null;
+    timestamp: string;
+}
+
 export default function TaskDetailPage() {
     const params = useParams();
     const taskId = params.taskId as string;
 
     const [task, setTask] = useState<Task | null>(null);
     const [events, setEvents] = useState<TaskEvent[]>([]);
+    const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -59,6 +72,19 @@ export default function TaskDetailPage() {
             ]);
             setTask(taskData);
             setEvents(eventsData);
+
+            // Fetch attendance records
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/tasks/${taskId}/attendance`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setAttendance(data.attendance || []);
+                }
+            } catch (e) {
+                console.log('Failed to fetch attendance:', e);
+            }
         } catch {
             setError('Failed to load task details');
         } finally {
@@ -325,6 +351,81 @@ export default function TaskDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Attendance Records Section */}
+            {attendance.length > 0 && (
+                <div className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-6">
+                    <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        📍 Attendance Records
+                        <span className="text-xs font-normal text-slate-400">({attendance.length} record{attendance.length > 1 ? 's' : ''})</span>
+                    </h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {attendance.map((record) => (
+                            <div key={record.id} className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                                {/* Header with location type */}
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="text-white font-medium flex items-center gap-2">
+                                        {record.location_type === 'PICKUP' ? '📍' : '🎯'}
+                                        {record.location_type === 'PICKUP' ? 'Pickup Location' : 'Destination'}
+                                    </span>
+                                    {/* Geo-fence badge */}
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${record.is_within_geofence
+                                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                            : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                                        }`}>
+                                        {record.is_within_geofence ? '✅ Within Area' : '⚠️ Outside Area'}
+                                    </span>
+                                </div>
+
+                                {/* Timestamp */}
+                                <div className="text-sm text-slate-300 mb-2">
+                                    🕐 {formatDate(record.timestamp)}
+                                </div>
+
+                                {/* Distance */}
+                                {record.distance_from_target && (
+                                    <div className="text-xs text-slate-400 mb-3">
+                                        Distance from target: {record.distance_from_target}m
+                                    </div>
+                                )}
+
+                                {/* Coordinates */}
+                                <div className="flex items-center gap-2 text-sm text-slate-400 mb-3">
+                                    <span>📍 {Number(record.latitude).toFixed(6)}, {Number(record.longitude).toFixed(6)}</span>
+                                    <a
+                                        href={`https://www.google.com/maps?q=${record.latitude},${record.longitude}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-400 hover:text-blue-300 text-xs"
+                                    >
+                                        View →
+                                    </a>
+                                </div>
+
+                                {/* Photo */}
+                                {record.image_url && (
+                                    <a
+                                        href={`${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${record.image_url}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block"
+                                    >
+                                        <img
+                                            src={`${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${record.image_url}`}
+                                            alt="Attendance photo"
+                                            className="w-full h-32 object-cover rounded-lg border border-slate-600 hover:border-blue-500 transition-colors"
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).style.display = 'none';
+                                            }}
+                                        />
+                                    </a>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </MainLayout>
     );
 }

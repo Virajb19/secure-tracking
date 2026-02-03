@@ -137,8 +137,9 @@ model User {
   starred_users           UserStar[]             @relation("StarringAdmin")
 
   // Subject Coordinator: which subject/class they coordinate
-  coordinator_subject String? @db.VarChar(100)
-  coordinator_class   Int?
+  coordinator_subject  String?               @db.VarChar(100)
+  coordinator_class    Int?
+  agentCurrentLocation AgentCurrentLocation?
 
   @@map("users")
 }
@@ -159,10 +160,20 @@ model Task {
   is_double_shift      Boolean    @default(false) // Afternoon shift - skip PICKUP and ARRIVAL steps
   shift_type           String?    @db.VarChar(20) // MORNING or AFTERNOON
   expected_travel_time Int? // Expected travel time in minutes (for red flag detection)
-  created_at           DateTime   @default(now()) @db.Timestamp()
 
-  assigned_user User        @relation(fields: [assigned_user_id], references: [id])
-  events        TaskEvent[]
+  // Location coordinates for geo-fence validation
+  pickup_latitude       Decimal? @db.Decimal(10, 7)
+  pickup_longitude      Decimal? @db.Decimal(10, 7)
+  destination_latitude  Decimal? @db.Decimal(10, 7)
+  destination_longitude Decimal? @db.Decimal(10, 7)
+  geofence_radius       Int      @default(100) // Radius in meters
+
+  created_at DateTime @default(now()) @db.Timestamp()
+
+  assigned_user         User                   @relation(fields: [assigned_user_id], references: [id])
+  events                TaskEvent[]
+  attendances           Attendance[]
+  agentCurrentLocations AgentCurrentLocation[]
 
   @@index([assigned_user_id])
   @@map("tasks")
@@ -187,6 +198,38 @@ model TaskEvent {
   @@unique([task_id, event_type])
   @@index([task_id])
   @@map("task_events")
+}
+
+// Attendance entity for NBSE officer attendance with geo-fencing.
+// Officers can mark attendance at pickup/destination locations.
+// Geo-fence validation ensures they are physically present at the location.
+model Attendance {
+  id         String @id @default(uuid()) @db.Uuid
+  task_id    String @db.Uuid
+  user_id    String @db.Uuid
+  image_url  String @db.Text
+  image_hash String @db.VarChar(64)
+
+  // Officer's actual GPS location when marking attendance
+  latitude  Decimal @db.Decimal(10, 7)
+  longitude Decimal @db.Decimal(10, 7)
+
+  // Geo-fence validation result
+  is_within_geofence   Boolean  @default(false)
+  distance_from_target Decimal? @db.Decimal(10, 2) // Distance in meters
+
+  // Location type: PICKUP or DESTINATION
+  location_type String @db.VarChar(20)
+
+  server_timestamp DateTime @db.Timestamp()
+  created_at       DateTime @default(now()) @db.Timestamp()
+
+  task Task @relation(fields: [task_id], references: [id])
+
+  @@unique([task_id, location_type]) // One attendance per location per task
+  @@index([task_id])
+  @@index([user_id])
+  @@map("attendances")
 }
 
 // Audit Log entity for tracking all sensitive actions.
@@ -514,4 +557,43 @@ model FormSubmission {
   @@index([school_id])
   @@index([submitted_by])
   @@map("form_submissions")
+}
+
+// Agent's current location for real-time tracking.
+// Upserted on every location update (one row per agent).
+model AgentCurrentLocation {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @unique @db.Uuid
+  task_id    String   @db.Uuid
+  latitude   Decimal  @db.Decimal(10, 7)
+  longitude  Decimal  @db.Decimal(10, 7)
+  accuracy   Float?
+  heading    Float?
+  speed      Float?
+  updated_at DateTime @default(now()) @db.Timestamp()
+
+  user User @relation(fields: [user_id], references: [id])
+  task Task @relation(fields: [task_id], references: [id])
+
+  @@index([task_id])
+  @@map("agent_current_locations")
+}
+
+// Agent location history for audit trail.
+// Only stored when required (e.g., last 15 mins of task).
+model AgentLocationHistory {
+  id          String   @id @default(uuid()) @db.Uuid
+  user_id     String   @db.Uuid
+  task_id     String   @db.Uuid
+  latitude    Decimal  @db.Decimal(10, 7)
+  longitude   Decimal  @db.Decimal(10, 7)
+  accuracy    Float?
+  heading     Float?
+  speed       Float?
+  recorded_at DateTime @db.Timestamp()
+  created_at  DateTime @default(now()) @db.Timestamp()
+
+  @@index([task_id])
+  @@index([user_id])
+  @@map("agent_location_history")
 }

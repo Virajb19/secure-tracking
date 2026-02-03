@@ -22,7 +22,7 @@ async function bootstrap() {
         prefix: '/uploads/',
     });
     const port = configService.get('PORT', 3001);
-    await app.listen(3001);
+    await app.listen(port, '0.0.0.0');
     console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║   SECURE QUESTION PAPER DELIVERY TRACKING SYSTEM              ║

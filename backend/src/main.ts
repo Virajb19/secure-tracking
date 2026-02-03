@@ -43,7 +43,8 @@ async function bootstrap() {
     });
 
     const port = configService.get<number>('PORT', 3001);
-    await app.listen(3001);
+    // Listen on 0.0.0.0 to allow connections from mobile devices on the same network
+    await app.listen(port, '0.0.0.0');
 
     console.log(`
 ╔═══════════════════════════════════════════════════════════════╗

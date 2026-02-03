@@ -10,6 +10,11 @@ export declare const CreateTaskSchema: z.ZodObject<{
         REGULAR: "REGULAR";
         COMPARTMENTAL: "COMPARTMENTAL";
     }>>>;
+    pickup_latitude: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    pickup_longitude: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    destination_latitude: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    destination_longitude: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    geofence_radius: z.ZodDefault<z.ZodOptional<z.ZodCoercedNumber<unknown>>>;
 }, z.core.$strip>;
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
 declare const CreateTaskDto_base: import("nestjs-zod").ZodDto<z.ZodObject<{
@@ -23,6 +28,11 @@ declare const CreateTaskDto_base: import("nestjs-zod").ZodDto<z.ZodObject<{
         REGULAR: "REGULAR";
         COMPARTMENTAL: "COMPARTMENTAL";
     }>>>;
+    pickup_latitude: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    pickup_longitude: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    destination_latitude: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    destination_longitude: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    geofence_radius: z.ZodDefault<z.ZodOptional<z.ZodCoercedNumber<unknown>>>;
 }, z.core.$strip>, false>;
 export declare class CreateTaskDto extends CreateTaskDto_base {
 }

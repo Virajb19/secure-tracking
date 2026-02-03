@@ -22,6 +22,7 @@ import { BankDetailsModule } from './bank-details/bank-details.module';
 import { UserStarsModule } from './user-stars/user-stars.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { FormSubmissionsModule } from './form-submissions/form-submissions.module';
+import { AttendanceModule } from './attendance/attendance.module';
 import { DevDelayMiddleware } from './shared/middlewares';
 
 /**
@@ -74,13 +75,14 @@ import { DevDelayMiddleware } from './shared/middlewares';
         NoticesModule,
         CircularsModule,
         HelpdeskModule,
-        
+
         // New Feature Modules
         PaperSetterModule,
         BankDetailsModule,
         UserStarsModule,
         AnalyticsModule,
         FormSubmissionsModule,
+        AttendanceModule,
     ],
     providers: [
         // Apply ThrottlerGuard globally to all routes
@@ -91,11 +93,11 @@ import { DevDelayMiddleware } from './shared/middlewares';
     ],
 })
 export class AppModule implements NestModule {
-    constructor(private configService: ConfigService) {}
+    constructor(private configService: ConfigService) { }
 
     configure(consumer: MiddlewareConsumer) {
         const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
-        
+
         // Only apply delay middleware in development mode
         if (nodeEnv !== 'production') {
             consumer

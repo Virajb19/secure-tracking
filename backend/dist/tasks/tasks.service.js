@@ -54,6 +54,11 @@ let TasksService = class TasksService {
                 end_time: endTime,
                 exam_type: createTaskDto.exam_type || client_1.ExamType.REGULAR,
                 status: client_1.TaskStatus.PENDING,
+                pickup_latitude: createTaskDto.pickup_latitude,
+                pickup_longitude: createTaskDto.pickup_longitude,
+                destination_latitude: createTaskDto.destination_latitude,
+                destination_longitude: createTaskDto.destination_longitude,
+                geofence_radius: createTaskDto.geofence_radius ?? 100,
             },
         });
         await this.auditLogsService.log(audit_logs_service_1.AuditAction.TASK_CREATED, 'Task', savedTask.id, adminId, ipAddress);

@@ -27,6 +27,11 @@ exports.CreateTaskSchema = zod_1.z.object({
         .enum(['REGULAR', 'COMPARTMENTAL'])
         .optional()
         .default('REGULAR'),
+    pickup_latitude: zod_1.z.coerce.number().min(-90).max(90).optional(),
+    pickup_longitude: zod_1.z.coerce.number().min(-180).max(180).optional(),
+    destination_latitude: zod_1.z.coerce.number().min(-90).max(90).optional(),
+    destination_longitude: zod_1.z.coerce.number().min(-180).max(180).optional(),
+    geofence_radius: zod_1.z.coerce.number().min(10).max(1000).optional().default(100),
 })
     .refine((data) => new Date(data.end_time) > new Date(data.start_time), {
     message: 'End time must be after start time',
