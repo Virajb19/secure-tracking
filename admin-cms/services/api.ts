@@ -154,6 +154,10 @@ export const usersApi = {
     );
     return response.data;
   },
+  resetDevice: async (userId: string): Promise<User> => {
+    const response = await api.patch<User>(`/admin/users/${userId}/reset-device`);
+    return response.data;
+  },
 };
 
 // ============================

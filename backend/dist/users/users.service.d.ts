@@ -46,6 +46,7 @@ export declare class UsersService {
     findByEmail(email: string): Promise<User | null>;
     registerUser(data: RegisterUserData, ipAddress: string | null): Promise<User>;
     bindDeviceId(userId: string, deviceId: string, ipAddress: string | null): Promise<User>;
+    resetDeviceId(userId: string, adminId: string, ipAddress: string | null): Promise<User>;
     deactivate(userId: string, adminId: string, ipAddress: string | null): Promise<User>;
     toggleActiveStatus(userId: string, isActive: boolean, adminId: string, ipAddress: string | null): Promise<User>;
     updateProfilePhoto(userId: string, profileImageUrl: string, ipAddress: string | null): Promise<User>;

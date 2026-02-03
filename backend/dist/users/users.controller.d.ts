@@ -24,6 +24,7 @@ export declare class UsersController {
     updateProfilePhoto(body: {
         profile_image_url: string;
     }, currentUser: User, request: Request): Promise<User>;
+    resetDevice(userId: string, currentUser: User, request: Request): Promise<User>;
     getTeachingAssignments(userId: string): Promise<{
         class_level: number;
         subject: string;

@@ -80,6 +80,10 @@ let UsersController = class UsersController {
         const ipAddress = this.extractIpAddress(request);
         return this.usersService.updateProfilePhoto(currentUser.id, body.profile_image_url, ipAddress);
     }
+    async resetDevice(userId, currentUser, request) {
+        const ipAddress = this.extractIpAddress(request);
+        return this.usersService.resetDeviceId(userId, currentUser.id, ipAddress);
+    }
     async getTeachingAssignments(userId) {
         return this.usersService.getTeachingAssignments(userId);
     }
@@ -150,6 +154,16 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object, Object]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "updateProfilePhoto", null);
+__decorate([
+    (0, common_1.Patch)(':userId/reset-device'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Param)('userId')),
+    __param(1, (0, decorators_1.CurrentUser)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "resetDevice", null);
 __decorate([
     (0, common_1.Get)(':userId/teaching-assignments'),
     __param(0, (0, common_1.Param)('userId')),

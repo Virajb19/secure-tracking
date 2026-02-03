@@ -118,6 +118,10 @@ let AuthService = class AuthService {
         };
     }
     async validateDeliveryUserDevice(user, deviceId, ipAddress) {
+        if (env_validation_1.env.NODE_ENV === 'development') {
+            console.log('[DEV] Device binding skipped for development mode');
+            return;
+        }
         if (!deviceId) {
             throw new common_1.BadRequestException('device_id is required for DELIVERY users');
         }

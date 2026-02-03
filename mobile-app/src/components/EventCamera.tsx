@@ -136,9 +136,11 @@ export default function EventCamera({
             console.log('[Camera] Launching camera...');
 
             const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ['images'],
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 quality: 0.8,
                 allowsEditing: false,
+                base64: false,
+                exif: false,
             });
 
             console.log('[Camera] Camera result:', result.canceled ? 'Canceled' : 'Success');

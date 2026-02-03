@@ -228,6 +228,15 @@ let UsersService = class UsersService {
         await this.auditLogsService.log(audit_logs_service_1.AuditAction.DEVICE_ID_BOUND, 'User', userId, userId, ipAddress);
         return updatedUser;
     }
+    async resetDeviceId(userId, adminId, ipAddress) {
+        const user = await this.findById(userId);
+        const updatedUser = await this.db.user.update({
+            where: { id: userId },
+            data: { device_id: null },
+        });
+        await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_UPDATED, 'User', userId, adminId, ipAddress);
+        return updatedUser;
+    }
     async deactivate(userId, adminId, ipAddress) {
         const updatedUser = await this.db.user.update({
             where: { id: userId },

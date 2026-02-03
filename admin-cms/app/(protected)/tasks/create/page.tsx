@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/layout';
 import { tasksApi, usersApi } from '@/services/api';
 import { User, UserRole } from '@/types';
-import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 
 export default function CreateTaskPage() {
     const router = useRouter();
@@ -144,53 +143,39 @@ export default function CreateTaskPage() {
                         />
                     </div>
 
-                    {/* Source Location with Google Places Autocomplete */}
-                    <AddressAutocomplete
-                        label="Source Location (Pickup) *"
-                        placeholder="Search for pickup address..."
-                        value={formData.source_location}
-                        coordinates={{ lat: formData.pickup_latitude, lng: formData.pickup_longitude }}
-                        onChange={(address, lat, lng) => {
-                            setFormData(prev => ({
-                                ...prev,
-                                source_location: address,
-                                pickup_latitude: lat.toFixed(7),
-                                pickup_longitude: lng.toFixed(7),
-                            }));
-                        }}
-                        onClear={() => {
-                            setFormData(prev => ({
-                                ...prev,
-                                source_location: '',
-                                pickup_latitude: '',
-                                pickup_longitude: '',
-                            }));
-                        }}
-                    />
+                    {/* Source Location */}
+                    <div>
+                        <label htmlFor="source_location" className="block text-sm font-medium text-slate-300 mb-2">
+                            Source Location (Pickup) *
+                        </label>
+                        <input
+                            type="text"
+                            id="source_location"
+                            name="source_location"
+                            value={formData.source_location}
+                            onChange={handleChange}
+                            required
+                            placeholder="Enter pickup address..."
+                            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        />
+                    </div>
 
-                    {/* Destination Location with Google Places Autocomplete */}
-                    <AddressAutocomplete
-                        label="Destination Location (Delivery) *"
-                        placeholder="Search for delivery address..."
-                        value={formData.destination_location}
-                        coordinates={{ lat: formData.destination_latitude, lng: formData.destination_longitude }}
-                        onChange={(address, lat, lng) => {
-                            setFormData(prev => ({
-                                ...prev,
-                                destination_location: address,
-                                destination_latitude: lat.toFixed(7),
-                                destination_longitude: lng.toFixed(7),
-                            }));
-                        }}
-                        onClear={() => {
-                            setFormData(prev => ({
-                                ...prev,
-                                destination_location: '',
-                                destination_latitude: '',
-                                destination_longitude: '',
-                            }));
-                        }}
-                    />
+                    {/* Destination Location */}
+                    <div>
+                        <label htmlFor="destination_location" className="block text-sm font-medium text-slate-300 mb-2">
+                            Destination Location (Delivery) *
+                        </label>
+                        <input
+                            type="text"
+                            id="destination_location"
+                            name="destination_location"
+                            value={formData.destination_location}
+                            onChange={handleChange}
+                            required
+                            placeholder="Enter delivery address..."
+                            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        />
+                    </div>
 
                     {/* Assigned User */}
                     <div>

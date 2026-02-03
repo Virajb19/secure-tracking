@@ -223,6 +223,31 @@ export class UsersController {
     }
 
     /**
+     * Reset user's device binding.
+     * Allows the user to login from a new device.
+     * Admin only endpoint.
+     * 
+     * @param userId - User ID to reset device
+     * @param currentUser - Authenticated admin user
+     * @param request - HTTP request for IP extraction
+     * @returns Updated user
+     */
+    @Patch(':userId/reset-device')
+    @HttpCode(HttpStatus.OK)
+    async resetDevice(
+        @Param('userId') userId: string,
+        @CurrentUser() currentUser: User,
+        @Req() request: Request,
+    ): Promise<User> {
+        const ipAddress = this.extractIpAddress(request);
+        return this.usersService.resetDeviceId(
+            userId,
+            currentUser.id,
+            ipAddress,
+        );
+    }
+
+    /**
      * Get user's teaching assignments.
      * Returns class levels the user teaches.
      * 

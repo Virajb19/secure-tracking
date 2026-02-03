@@ -200,6 +200,7 @@ export class AuthService {
      * - DELIVERY users MUST provide device_id
      * - First login binds device_id permanently
      * - Subsequent logins MUST match bound device_id
+     * - IN DEVELOPMENT MODE: Device binding is disabled for easier testing
      * 
      * @param user - The DELIVERY user
      * @param deviceId - Device ID from login request
@@ -210,6 +211,12 @@ export class AuthService {
         deviceId: string | undefined,
         ipAddress: string | null,
     ): Promise<void> {
+        // DEVELOPMENT MODE: Skip device binding validation
+        if (env.NODE_ENV === 'development') {
+            console.log('[DEV] Device binding skipped for development mode');
+            return;
+        }
+
         // DELIVERY users MUST provide device_id
         if (!deviceId) {
             throw new BadRequestException('device_id is required for DELIVERY users');

@@ -22,6 +22,17 @@ export const useToggleUserStatus = () => {
   });
 }
 
+export const useResetDevice = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (userId: string) => usersApi.resetDevice(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"], exact: false });
+    },
+  });
+}
+
 export const useGetDistricts = () => {
   return useQuery({
     queryKey: ["districts"],

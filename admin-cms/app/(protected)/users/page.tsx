@@ -43,6 +43,7 @@ import { StarButton } from '@/components/StarButton';
 import { SendNotificationDialog } from '@/components/SendNotificationDialog';
 import { RetryButton } from '@/components/RetryButton';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
+import { ResetDeviceButton } from '@/components/ResetDeviceButton';
 
 // Animation variants
 const containerVariants = {
@@ -375,6 +376,7 @@ export default function UsersPage() {
                 >
                   <Mail className="h-5 w-5" />
                 </motion.button>
+                <ResetDeviceButton userId={user.id} userName={user.name} />
                 <StarButton 
                   userId={user.id} 
                   isStarred={starredUserIds.includes(user.id)} 

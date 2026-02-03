@@ -362,6 +362,37 @@ export class UsersService {
     }
 
     /**
+     * Reset user's device_id.
+     * Used by admin to allow user to login from a new device.
+     * 
+     * @param userId - User ID
+     * @param adminId - Admin performing the action
+     * @param ipAddress - IP address of the request
+     */
+    async resetDeviceId(
+        userId: string,
+        adminId: string,
+        ipAddress: string | null,
+    ): Promise<User> {
+        const user = await this.findById(userId);
+
+        const updatedUser = await this.db.user.update({
+            where: { id: userId },
+            data: { device_id: null },
+        });
+
+        await this.auditLogsService.log(
+            AuditAction.USER_UPDATED,
+            'User',
+            userId,
+            adminId,
+            ipAddress,
+        );
+
+        return updatedUser;
+    }
+
+    /**
      * Deactivate a user.
      * Prevents the user from logging in.
      * 
