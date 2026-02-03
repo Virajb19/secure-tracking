@@ -139,7 +139,7 @@ let AuthService = class AuthService {
         if (existingPhone) {
             throw new common_1.ConflictException('Phone number already registered');
         }
-        const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+        const hashedPassword = env_validation_1.env.NODE_ENV === 'development' ? registerDto.password : await bcrypt.hash(registerDto.password, 10);
         const user = await this.usersService.registerUser({
             name: registerDto.name,
             email: registerDto.email,

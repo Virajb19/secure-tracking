@@ -264,7 +264,7 @@ export class AuthService {
         }
 
         // Hash password
-        const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+        const hashedPassword = env.NODE_ENV === 'development' ? registerDto.password : await bcrypt.hash(registerDto.password, 10);
 
         // Create user with inactive status (requires admin approval)
         const user = await this.usersService.registerUser({

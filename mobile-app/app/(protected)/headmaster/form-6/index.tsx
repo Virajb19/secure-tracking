@@ -28,18 +28,57 @@ interface FormCardProps {
     title: string;
     subtitle: string;
     color: string;
+    status?: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'DRAFT';
+    rejectionReason?: string | null;
     onPress: () => void;
 }
 
-function FormCard({ formCode, title, subtitle, color, onPress }: FormCardProps) {
+function FormCard({ formCode, title, subtitle, color, status, rejectionReason, onPress }: FormCardProps) {
+    const getStatusBadge = () => {
+        if (!status) return null;
+
+        let badgeColor = '#9ca3af'; // gray for draft
+        let badgeText = 'Draft';
+
+        switch (status) {
+            case 'SUBMITTED':
+                badgeColor = '#f59e0b'; // orange
+                badgeText = 'Pending';
+                break;
+            case 'APPROVED':
+                badgeColor = '#22c55e'; // green
+                badgeText = 'Approved';
+                break;
+            case 'REJECTED':
+                badgeColor = '#ef4444'; // red
+                badgeText = 'Rejected';
+                break;
+        }
+
+        return (
+            <View style={[styles.statusBadge, { backgroundColor: badgeColor }]}>
+                <Text style={styles.statusBadgeText}>{badgeText}</Text>
+            </View>
+        );
+    };
+
     return (
         <TouchableOpacity style={styles.formCard} onPress={onPress}>
             <View style={[styles.formCodeBadge, { backgroundColor: color }]}>
                 <Text style={styles.formCodeText}>{formCode}</Text>
             </View>
             <View style={styles.formInfo}>
-                <Text style={styles.formTitle}>{title}</Text>
+                <View style={styles.formTitleRow}>
+                    <Text style={styles.formTitle}>{title}</Text>
+                    {getStatusBadge()}
+                </View>
                 <Text style={styles.formSubtitle}>{subtitle}</Text>
+                {status === 'REJECTED' && rejectionReason && (
+                    <View style={styles.rejectionContainer}>
+                        <Ionicons name="alert-circle" size={14} color="#ef4444" />
+                        <Text style={styles.rejectionText}>{rejectionReason}</Text>
+                    </View>
+                )}
             </View>
             <Ionicons name="chevron-forward" size={20} color="#0d9488" />
         </TouchableOpacity>
@@ -58,9 +97,28 @@ export default function Form6MenuScreen() {
         },
     });
 
-    const schoolName = profile?.faculty?.school 
+    // Fetch form submissions to get status
+    const { data: formSubmissions } = useQuery({
+        queryKey: ['my-form-submissions'],
+        queryFn: async () => {
+            const response = await apiClient.get('/form-submissions/my');
+            return response.data;
+        },
+    });
+
+    const schoolName = profile?.faculty?.school
         ? `${profile.faculty.school.registration_code} - ${profile.faculty.school.name}`
         : 'Your School';
+
+    // Helper to get status and rejection reason for a specific form type
+    const getFormInfo = (formType: string) => {
+        if (!formSubmissions) return { status: undefined, rejectionReason: undefined };
+        const submission = formSubmissions.find((s: any) => s.form_type === formType);
+        return {
+            status: submission?.status,
+            rejectionReason: submission?.rejection_reason
+        };
+    };
 
     return (
         <View style={styles.container}>
@@ -86,38 +144,48 @@ export default function Form6MenuScreen() {
                         title="Teaching Staff"
                         subtitle="Pre-Primary to Class 10"
                         color="#0d9488"
+                        status={getFormInfo('6A').status}
+                        rejectionReason={getFormInfo('6A').rejectionReason}
                         onPress={() => router.push('/(protected)/headmaster/form-6/form-6a')}
                     />
-                    
+
                     <FormCard
                         formCode="6B"
                         title="Non-Teaching Staff"
                         subtitle="Including Fourth Grade Staff"
                         color="#0d9488"
+                        status={getFormInfo('6B').status}
+                        rejectionReason={getFormInfo('6B').rejectionReason}
                         onPress={() => router.push('/(protected)/headmaster/form-6/form-6b')}
                     />
-                    
+
                     <FormCard
                         formCode="6C"
                         title="Students (Upto Class X)"
                         subtitle="Pre-Primary to Class 10"
                         color="#0d9488"
+                        status={getFormInfo('6C_LOWER').status}
+                        rejectionReason={getFormInfo('6C_LOWER').rejectionReason}
                         onPress={() => router.push('/(protected)/headmaster/form-6/form-6c-lower')}
                     />
-                    
+
                     <FormCard
                         formCode="6C"
                         title="Students (Class XI & XII)"
                         subtitle="Class 11 & Class 12"
                         color="#0d9488"
+                        status={getFormInfo('6C_HIGHER').status}
+                        rejectionReason={getFormInfo('6C_HIGHER').rejectionReason}
                         onPress={() => router.push('/(protected)/headmaster/form-6/form-6c-higher')}
                     />
-                    
+
                     <FormCard
                         formCode="6D"
                         title="Teaching Staff"
                         subtitle="Class 11 & 12"
                         color="#0d9488"
+                        status={getFormInfo('6D').status}
+                        rejectionReason={getFormInfo('6D').rejectionReason}
                         onPress={() => router.push('/(protected)/headmaster/form-6/form-6d')}
                     />
                 </ScrollView>
@@ -200,14 +268,40 @@ const styles = StyleSheet.create({
     formInfo: {
         flex: 1,
     },
+    formTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     formTitle: {
         fontSize: 16,
         fontWeight: '600',
         color: '#1f2937',
-        marginBottom: 2,
     },
     formSubtitle: {
         fontSize: 13,
         color: '#0d9488',
+        marginTop: 2,
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 10,
+    },
+    statusBadgeText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#ffffff',
+    },
+    rejectionContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginTop: 6,
+        gap: 4,
+    },
+    rejectionText: {
+        fontSize: 12,
+        color: '#ef4444',
+        flex: 1,
     },
 });

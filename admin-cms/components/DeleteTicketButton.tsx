@@ -48,7 +48,7 @@ export function DeleteTicketButton({ ticketId }: DeleteTicketButtonProps) {
           {deleteMutation.isPending ? (
              <div className='size-4 border-2 border-t-[3px] border-white/20 border-t-red-600 rounded-full animate-spin'/>
           ) : (
-            <Trash2 className="h-5 w-5" />
+            <Trash2 className="h-5 w-5 text-red-600" />
           )}
         </motion.button>
       </AlertDialogTrigger>

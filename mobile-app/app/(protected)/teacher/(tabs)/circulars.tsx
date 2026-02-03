@@ -52,7 +52,8 @@ export default function CircularsTabScreen() {
         queryFn: async () => {
             try {
                 const response = await apiClient.get('/circulars');
-                return response.data;
+                // Backend returns { data, total, hasMore } - extract the data array
+                return response.data?.data || response.data || [];
             } catch (err: any) {
                 if (err.response?.status === 404) {
                     return [];
@@ -65,7 +66,7 @@ export default function CircularsTabScreen() {
     const filteredCirculars = React.useMemo(() => {
         if (!circulars) return [];
         if (!searchQuery.trim()) return circulars;
-        
+
         const query = searchQuery.toLowerCase();
         return circulars.filter(
             circular =>
@@ -84,11 +85,11 @@ export default function CircularsTabScreen() {
         const date = new Date(dateString);
         const now = new Date();
         const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         if (diffInDays === 0) return 'Today';
         if (diffInDays === 1) return 'Yesterday';
         if (diffInDays < 7) return `${diffInDays} days ago`;
-        
+
         return date.toLocaleDateString('en-IN', {
             day: 'numeric',
             month: 'short',
@@ -155,7 +156,7 @@ export default function CircularsTabScreen() {
                 {filteredCirculars && filteredCirculars.length > 0 ? (
                     filteredCirculars.map((circular) => {
                         const typeStyle = getCircularStyle();
-                        
+
                         return (
                             <View
                                 key={circular.id}
@@ -192,23 +193,23 @@ export default function CircularsTabScreen() {
                                         {formatDate(circular.issued_date)}
                                     </Text>
                                 </View>
-                                
+
                                 <Text style={styles.circularTitle}>{circular.title}</Text>
                                 {circular.description && (
                                     <Text style={styles.circularContent} numberOfLines={3}>
                                         {circular.description}
                                     </Text>
                                 )}
-                                
+
                                 <View style={styles.metaInfo}>
                                     <Text style={styles.issuedByText}>Issued by: {circular.issued_by}</Text>
                                     {circular.school?.name && (
                                         <Text style={styles.schoolText}>{circular.school.name}</Text>
                                     )}
                                 </View>
-                                
+
                                 {circular.file_url && (
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={styles.attachmentButton}
                                         onPress={() => handleViewFile(circular.file_url!)}
                                     >

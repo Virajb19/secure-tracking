@@ -89,13 +89,13 @@ export default function Form6Page() {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Debounce the search
   const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
-  
-  const [viewDialog, setViewDialog] = useState<{ open: boolean; schoolId: string | null; formType: string | null; schoolName: string }>({ 
-    open: false, 
-    schoolId: null, 
+
+  const [viewDialog, setViewDialog] = useState<{ open: boolean; schoolId: string | null; formType: string | null; schoolName: string }>({
+    open: false,
+    schoolId: null,
     formType: null,
     schoolName: ''
   });
@@ -147,7 +147,7 @@ export default function Form6Page() {
   const handleDownloadXlsx = async () => {
     if (downloadingXlsx || submissions.length === 0) return;
     setDownloadingXlsx(true);
-    
+
     try {
       // Create worksheet data
       const wsData = submissions.map((sub, index) => ({
@@ -156,14 +156,14 @@ export default function Form6Page() {
         'Registration Code': sub.school?.registration_code || '-',
         'District': sub.school?.district?.name || '-',
         'Form Type': formTypes.find(f => f.value === sub.form_type)?.label || sub.form_type,
-        'Submitted At': sub.submitted_at 
+        'Submitted At': sub.submitted_at
           ? new Date(sub.submitted_at).toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
           : '-',
         'Status': sub.status,
       }));
@@ -186,14 +186,14 @@ export default function Form6Page() {
   const handleDownloadPdf = async () => {
     if (downloadingPdf || submissions.length === 0) return;
     setDownloadingPdf(true);
-    
+
     try {
       const doc = new jsPDF();
-      
+
       // Title
       doc.setFontSize(18);
       doc.text('Form 6 Submissions Report', 14, 22);
-      
+
       // Date
       doc.setFontSize(10);
       doc.text(`Generated: ${new Date().toLocaleDateString('en-IN', {
@@ -211,12 +211,12 @@ export default function Form6Page() {
         sub.school?.registration_code || '-',
         sub.school?.district?.name || '-',
         formTypes.find(f => f.value === sub.form_type)?.label?.replace(/Form \d[A-Z]? \(|\)/g, '') || sub.form_type,
-        sub.submitted_at 
+        sub.submitted_at
           ? new Date(sub.submitted_at).toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            })
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })
           : '-',
         sub.status,
       ]);
@@ -268,7 +268,7 @@ export default function Form6Page() {
   const submissions = useMemo(() => {
     if (!searchQuery.trim()) return allSubmissions;
     const query = searchQuery.toLowerCase();
-    return allSubmissions.filter((sub: FormSubmission) => 
+    return allSubmissions.filter((sub: FormSubmission) =>
       sub.school?.name?.toLowerCase().includes(query) ||
       sub.school?.registration_code?.toLowerCase().includes(query)
     );
@@ -490,7 +490,7 @@ export default function Form6Page() {
               <span
                 className="pointer-events-none absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-[200%] transition-transform duration-700"
                 style={{ width: "50%" }}
-              /> 
+              />
             )}
             <span
               className={
@@ -621,9 +621,9 @@ export default function Form6Page() {
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" /> Loading...
           </div>
         ) : error ? (
-          <RetryButton 
-            queryKey={['form-submissions']} 
-            message="Failed to load form submissions" 
+          <RetryButton
+            queryKey={['form-submissions']}
+            message="Failed to load form submissions"
           />
         ) : (
           /* Table */
@@ -641,80 +641,80 @@ export default function Form6Page() {
               </thead>
               <tbody>
                 <AnimatePresence mode="popLayout">
-                {submissions.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8 text-slate-500">
-                      No form submissions found
-                    </td>
-                  </tr>
-                ) : (
-                  submissions.map((submission, index) => (
-                    <motion.tr 
-                      key={submission.id} 
-                      custom={index}
-                      variants={tableRowVariants}
-                      initial="hidden"
-                      animate="visible"
-                      exit="exit"
-                      layout
-                      className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                    >
-                      <td className="py-4 px-4 text-slate-700 dark:text-slate-300">{(page - 1) * 20 + index + 1}</td>
-                      <td className="py-4 px-4">
-                        <div>
-                          <p className="text-blue-600 dark:text-blue-400 font-medium">
-                            {submission.school?.name || 'School Name'}
-                          </p>
-                          <p className="text-slate-400 dark:text-slate-500 text-sm">
-                            {submission.school?.district?.name || 'District'}
-                          </p>
-                        </div>
+                  {submissions.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-slate-500">
+                        No form submissions found
                       </td>
-                      <td className="py-4 px-4 text-slate-700 dark:text-slate-300">
-                        {formTypes.find(f => f.value === submission.form_type)?.label || submission.form_type}
-                      </td>
-                      <td className="py-4 px-4 text-slate-700 dark:text-slate-300">
-                        {submission.submitted_at 
-                          ? new Date(submission.submitted_at).toLocaleDateString('en-IN', {
+                    </tr>
+                  ) : (
+                    submissions.map((submission, index) => (
+                      <motion.tr
+                        key={submission.id}
+                        custom={index}
+                        variants={tableRowVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        layout
+                        className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                      >
+                        <td className="py-4 px-4 text-slate-700 dark:text-slate-300">{(page - 1) * 20 + index + 1}</td>
+                        <td className="py-4 px-4">
+                          <div>
+                            <p className="text-blue-600 dark:text-blue-400 font-medium">
+                              {submission.school?.name || 'School Name'}
+                            </p>
+                            <p className="text-slate-400 dark:text-slate-500 text-sm">
+                              {submission.school?.district?.name || 'District'}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-slate-700 dark:text-slate-300">
+                          {formTypes.find(f => f.value === submission.form_type)?.label || submission.form_type}
+                        </td>
+                        <td className="py-4 px-4 text-slate-700 dark:text-slate-300">
+                          {submission.submitted_at
+                            ? new Date(submission.submitted_at).toLocaleDateString('en-IN', {
                               day: '2-digit',
                               month: 'short',
                               year: 'numeric',
                               hour: '2-digit',
                               minute: '2-digit',
                             })
-                          : '-'
-                        }
-                      </td>
-                      <td className="py-4 px-4">
-                        {getStatusBadge(submission.status)}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-blue-400 border-blue-400 hover:bg-blue-400/10"
-                            onClick={() => handleView(submission)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" /> View
-                          </Button>
-                          {submission.status === 'SUBMITTED' && (
-                            <>
-                              <ApproveFormButton 
-                                submissionId={submission.id} 
-                                formType={submission.form_type} 
-                              />
-                              <RejectFormButton 
-                                submissionId={submission.id} 
-                                formType={submission.form_type} 
-                              />
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))
-                )}
+                            : '-'
+                          }
+                        </td>
+                        <td className="py-4 px-4">
+                          {getStatusBadge(submission.status)}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-blue-400 border-blue-400 hover:bg-blue-400/10"
+                              onClick={() => handleView(submission)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" /> View
+                            </Button>
+                            {submission.status === 'SUBMITTED' && (
+                              <>
+                                <ApproveFormButton
+                                  submissionId={submission.id}
+                                  formType={submission.form_type}
+                                />
+                                <RejectFormButton
+                                  submissionId={submission.id}
+                                  formType={submission.form_type}
+                                />
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))
+                  )}
                 </AnimatePresence>
               </tbody>
             </table>
@@ -728,16 +728,16 @@ export default function Form6Page() {
               Showing {(page - 1) * 20 + 1} to {Math.min(page * 20, total)} of {total}
             </p>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 disabled={page === 1}
                 onClick={() => setPage(p => p - 1)}
               >
                 Previous
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 disabled={page * 20 >= total}
                 onClick={() => setPage(p => p + 1)}
@@ -751,7 +751,7 @@ export default function Form6Page() {
 
       {/* View Form Details Dialog */}
       <Dialog open={viewDialog.open} onOpenChange={(open) => setViewDialog({ ...viewDialog, open })}>
-        <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 max-w-4xl">
+        <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 max-w-6xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-slate-900 dark:text-white">
               {formTypes.find(f => f.value === viewDialog.formType)?.label || 'Form'} Details
@@ -760,7 +760,7 @@ export default function Form6Page() {
               {viewDialog.schoolName} | {formTypes.find(f => f.value === viewDialog.formType)?.label || viewDialog.formType}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 flex-1 overflow-auto min-h-0">
             {renderViewDialogContent()}
           </div>
           <DialogFooter>

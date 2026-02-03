@@ -10,7 +10,7 @@ export class Form6Service {
         private readonly db: PrismaService,
         private readonly auditLogsService: AuditLogsService,
         private readonly notificationsService: NotificationsService,
-    ) {}
+    ) { }
 
     // ===========================
     // ADMIN ENDPOINTS
@@ -199,7 +199,7 @@ export class Form6Service {
      */
     async getTeachingStaffLower(userId: string) {
         const faculty = await this.getUserFaculty(userId);
-        
+
         // Get all faculty at the same school who teach classes <= 10
         const staffList = await this.db.faculty.findMany({
             where: {
@@ -235,7 +235,7 @@ export class Form6Service {
      */
     async getTeachingStaffHigher(userId: string) {
         const faculty = await this.getUserFaculty(userId);
-        
+
         const staffList = await this.db.faculty.findMany({
             where: {
                 school_id: faculty.school_id,
@@ -275,7 +275,7 @@ export class Form6Service {
         ipAddress: string | null,
     ) {
         const headmaster = await this.getUserFaculty(userId);
-        
+
         // Verify the faculty belongs to the same school
         const targetFaculty = await this.db.faculty.findUnique({
             where: { id: facultyId },
@@ -321,7 +321,7 @@ export class Form6Service {
      */
     async getNonTeachingStaff(userId: string) {
         const faculty = await this.getUserFaculty(userId);
-        
+
         const staffList = await this.db.nonTeachingStaff.findMany({
             where: {
                 school_id: faculty.school_id,
@@ -435,7 +435,7 @@ export class Form6Service {
      */
     async getStudentStrengthLower(userId: string) {
         const faculty = await this.getUserFaculty(userId);
-        
+
         const strengths = await this.db.studentStrength.findMany({
             where: {
                 school_id: faculty.school_id,
@@ -467,7 +467,7 @@ export class Form6Service {
      */
     async getStudentStrengthHigher(userId: string) {
         const faculty = await this.getUserFaculty(userId);
-        
+
         const strengths = await this.db.studentStrength.findMany({
             where: {
                 school_id: faculty.school_id,
@@ -532,6 +532,28 @@ export class Form6Service {
             });
         }
 
+        // Create or update FormSubmission record
+        await this.db.formSubmission.upsert({
+            where: {
+                school_id_form_type: {
+                    school_id: faculty.school_id,
+                    form_type: '6C_LOWER',
+                },
+            },
+            create: {
+                school_id: faculty.school_id,
+                submitted_by: userId,
+                form_type: '6C_LOWER',
+                status: 'SUBMITTED',
+                submitted_at: new Date(),
+            },
+            update: {
+                status: 'SUBMITTED',
+                submitted_at: new Date(),
+                rejection_reason: null,
+            },
+        });
+
         await this.auditLogsService.log(
             'FORM_6C_LOWER_SUBMITTED',
             'StudentStrength',
@@ -586,6 +608,28 @@ export class Form6Service {
             });
         }
 
+        // Create or update FormSubmission record
+        await this.db.formSubmission.upsert({
+            where: {
+                school_id_form_type: {
+                    school_id: faculty.school_id,
+                    form_type: '6C_HIGHER',
+                },
+            },
+            create: {
+                school_id: faculty.school_id,
+                submitted_by: userId,
+                form_type: '6C_HIGHER',
+                status: 'SUBMITTED',
+                submitted_at: new Date(),
+            },
+            update: {
+                status: 'SUBMITTED',
+                submitted_at: new Date(),
+                rejection_reason: null,
+            },
+        });
+
         await this.auditLogsService.log(
             'FORM_6C_HIGHER_SUBMITTED',
             'StudentStrength',
@@ -602,6 +646,28 @@ export class Form6Service {
      */
     async submitForm6A(userId: string, ipAddress: string | null) {
         const faculty = await this.getUserFaculty(userId);
+
+        // Create or update FormSubmission record
+        await this.db.formSubmission.upsert({
+            where: {
+                school_id_form_type: {
+                    school_id: faculty.school_id,
+                    form_type: '6A',
+                },
+            },
+            create: {
+                school_id: faculty.school_id,
+                submitted_by: userId,
+                form_type: '6A',
+                status: 'SUBMITTED',
+                submitted_at: new Date(),
+            },
+            update: {
+                status: 'SUBMITTED',
+                submitted_at: new Date(),
+                rejection_reason: null, // Clear any previous rejection
+            },
+        });
 
         await this.auditLogsService.log(
             'FORM_6A_SUBMITTED',
@@ -620,6 +686,28 @@ export class Form6Service {
     async submitForm6B(userId: string, ipAddress: string | null) {
         const faculty = await this.getUserFaculty(userId);
 
+        // Create or update FormSubmission record
+        await this.db.formSubmission.upsert({
+            where: {
+                school_id_form_type: {
+                    school_id: faculty.school_id,
+                    form_type: '6B',
+                },
+            },
+            create: {
+                school_id: faculty.school_id,
+                submitted_by: userId,
+                form_type: '6B',
+                status: 'SUBMITTED',
+                submitted_at: new Date(),
+            },
+            update: {
+                status: 'SUBMITTED',
+                submitted_at: new Date(),
+                rejection_reason: null,
+            },
+        });
+
         await this.auditLogsService.log(
             'FORM_6B_SUBMITTED',
             'School',
@@ -637,6 +725,28 @@ export class Form6Service {
     async submitForm6D(userId: string, ipAddress: string | null) {
         const faculty = await this.getUserFaculty(userId);
 
+        // Create or update FormSubmission record
+        await this.db.formSubmission.upsert({
+            where: {
+                school_id_form_type: {
+                    school_id: faculty.school_id,
+                    form_type: '6D',
+                },
+            },
+            create: {
+                school_id: faculty.school_id,
+                submitted_by: userId,
+                form_type: '6D',
+                status: 'SUBMITTED',
+                submitted_at: new Date(),
+            },
+            update: {
+                status: 'SUBMITTED',
+                submitted_at: new Date(),
+                rejection_reason: null,
+            },
+        });
+
         await this.auditLogsService.log(
             'FORM_6D_SUBMITTED',
             'School',
@@ -653,7 +763,7 @@ export class Form6Service {
      */
     async getSchoolStaffs(userId: string) {
         const faculty = await this.getUserFaculty(userId);
-        
+
         return this.db.faculty.findMany({
             where: {
                 school_id: faculty.school_id,
