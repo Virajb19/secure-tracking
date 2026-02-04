@@ -12,17 +12,19 @@
  */
 // import 'react-native-get-random-values';
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform, StatusBar, Image } from 'react-native';
 import { Stack, router, useSegments, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { notificationService } from '../../src/services/notification.service';
+import { getImagePreviewUrl } from '../../src/services/storage.service';
 
 export default function ProtectedLayout() {
     const { isAuthenticated, isLoading, user, logout } = useAuth();
     const segments = useSegments();
     const insets = useSafeAreaInsets();
+    const profileImageUrl = getImagePreviewUrl(user?.profile_image_url);
     const [unreadCount, setUnreadCount] = useState(0);
 
     // Fetch unread notification count
@@ -153,10 +155,29 @@ export default function ProtectedLayout() {
             <Stack.Screen
                 name="tasks/index"
                 options={{
-                    title: 'My Tasks',
+                    title: '',
+                    headerTitle: () => (
+                        <View style={styles.headerCenter}>
+                            <Text style={styles.headerTitle}>My Tasks</Text>
+                        </View>
+                    ),
                     headerLeft: () => (
                         <View style={styles.userInfo}>
-                            <Text style={styles.userName}>{user?.name || 'User'}</Text>
+                            {profileImageUrl ? (
+                                <Image
+                                    source={{ uri: profileImageUrl }}
+                                    style={styles.avatarImage}
+                                />
+                            ) : (
+                                <View style={styles.avatarCircle}>
+                                    <Text style={styles.avatarText}>
+                                        {(user?.name || 'O').charAt(0).toUpperCase()}
+                                    </Text>
+                                </View>
+                            )}
+                            <Text style={styles.userName} numberOfLines={1}>
+                                {user?.name || 'Officer'}
+                            </Text>
                         </View>
                     ),
                 }}
@@ -186,7 +207,7 @@ export default function ProtectedLayout() {
                 }}
             />
             <Stack.Screen
-                name="notifications/index"
+                name="notifications"
                 options={{
                     title: 'Notifications',
                 }}
@@ -233,10 +254,43 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     userInfo: {
-        paddingLeft: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingLeft: 4,
+    },
+    avatarCircle: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#4f8cff',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarImage: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: '#4f8cff',
+    },
+    avatarText: {
+        color: '#ffffff',
+        fontSize: 14,
+        fontWeight: '700',
     },
     userName: {
-        color: '#9ca3af',
-        fontSize: 12,
+        color: '#ffffff',
+        fontSize: 14,
+        fontWeight: '500',
+        maxWidth: 100,
+    },
+    headerCenter: {
+        alignItems: 'center',
+    },
+    headerTitle: {
+        color: '#ffffff',
+        fontSize: 17,
+        fontWeight: '600',
     },
 });

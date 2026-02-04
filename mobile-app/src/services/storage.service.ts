@@ -78,8 +78,9 @@ export async function uploadProfileImage(imageUri: string): Promise<UploadResult
 
         console.log('[Storage] Upload successful:', data.url);
 
-        // Build full URL
-        const fullUrl = `${API_CONFIG.BASE_URL}${data.url}`;
+        // Build full URL - remove /api from BASE_URL since static files are served from root
+        const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
+        const fullUrl = `${baseUrl}${data.url}`;
 
         return {
             success: true,
@@ -109,6 +110,7 @@ export function getImagePreviewUrl(imageUrl: string | undefined | null): string 
         return imageUrl;
     }
     
-    // If it's a relative path, prepend API base URL
-    return `${API_CONFIG.BASE_URL}${imageUrl}`;
+    // If it's a relative path, prepend base URL (without /api)
+    const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
+    return `${baseUrl}${imageUrl}`;
 }

@@ -236,6 +236,17 @@ export default function EventsPage() {
     });
   };
 
+  // Get full image URL (handles both Appwrite URLs and local relative paths)
+  const getImageUrl = (url: string | null | undefined): string | null => {
+    if (!url) return null;
+    // If already a full URL, return as is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    // For relative paths (local storage fallback), prepend API base URL
+    return `${process.env.NEXT_PUBLIC_API_BASE_URL}${url}`;
+  };
+
   // Download PDF function
   const handleDownloadPDF = () => {
     try {
@@ -533,9 +544,12 @@ export default function EventsPage() {
                       <td className="py-4 px-5">
                         {event.flyer_url ? (
                           <img 
-                            src={event.flyer_url} 
+                            src={getImageUrl(event.flyer_url) || ''} 
                             alt={event.title}
                             className="w-16 h-12 rounded-lg object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
                           />
                         ) : (
                           <div className="w-16 h-12 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
@@ -659,9 +673,12 @@ export default function EventsPage() {
               {eventDetails.flyer_url && (
                 <div className="px-6">
                   <img 
-                    src={eventDetails.flyer_url} 
+                    src={getImageUrl(eventDetails.flyer_url) || ''} 
                     alt={eventDetails.title}
                     className="w-full h-64 object-cover rounded-lg"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 </div>
               )}

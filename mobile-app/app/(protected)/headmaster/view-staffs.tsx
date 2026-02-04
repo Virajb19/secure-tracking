@@ -16,10 +16,11 @@ import {
     ActivityIndicator,
     RefreshControl,
     TextInput,
+    Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../src/api/client';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -44,9 +45,12 @@ interface StaffCardProps {
     staff: Staff;
     expanded: boolean;
     onToggle: () => void;
+    onApprove: () => void;
+    onReject: () => void;
+    isUpdating: boolean;
 }
 
-function StaffCard({ staff, expanded, onToggle }: StaffCardProps) {
+function StaffCard({ staff, expanded, onToggle, onApprove, onReject, isUpdating }: StaffCardProps) {
     const getStatusColor = () => {
         switch (staff.approval_status) {
             case 'APPROVED': return '#22c55e';
@@ -137,6 +141,32 @@ function StaffCard({ staff, expanded, onToggle }: StaffCardProps) {
                             ))}
                         </View>
                     )}
+
+                    {/* Approve/Reject Buttons - Only for PENDING teachers (not self) */}
+                    {staff.approval_status === 'PENDING' && staff.user.role === 'TEACHER' && (
+                        <View style={styles.actionButtons}>
+                            {isUpdating ? (
+                                <ActivityIndicator size="small" color="#0d9488" />
+                            ) : (
+                                <>
+                                    <TouchableOpacity
+                                        style={styles.approveButton}
+                                        onPress={onApprove}
+                                    >
+                                        <Ionicons name="checkmark-circle" size={18} color="#ffffff" />
+                                        <Text style={styles.approveButtonText}>Approve</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.rejectButton}
+                                        onPress={onReject}
+                                    >
+                                        <Ionicons name="close-circle" size={18} color="#ffffff" />
+                                        <Text style={styles.rejectButtonText}>Reject</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                        </View>
+                    )}
                 </View>
             )}
         </View>
@@ -145,8 +175,10 @@ function StaffCard({ staff, expanded, onToggle }: StaffCardProps) {
 
 export default function ViewStaffsScreen() {
     const insets = useSafeAreaInsets();
+    const queryClient = useQueryClient();
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [updatingFacultyId, setUpdatingFacultyId] = useState<string | null>(null);
 
     // Fetch all staff
     const { data: staffList, isLoading, refetch, isRefetching } = useQuery<Staff[]>({
@@ -165,6 +197,61 @@ export default function ViewStaffsScreen() {
             return response.data;
         },
     });
+
+    // Mutation to verify/reject faculty
+    const verifyMutation = useMutation({
+        mutationFn: async ({ facultyId, status }: { facultyId: string; status: 'APPROVED' | 'REJECTED' }) => {
+            const response = await apiClient.patch(`/form-6/verify-faculty/${facultyId}`, { status });
+            return response.data;
+        },
+        onSuccess: (_, variables) => {
+            const statusText = variables.status === 'APPROVED' ? 'approved' : 'rejected';
+            Alert.alert('Success', `Teacher has been ${statusText} successfully!`);
+            queryClient.invalidateQueries({ queryKey: ['school-staffs'] });
+            setUpdatingFacultyId(null);
+        },
+        onError: (error: any) => {
+            const message = error.response?.data?.message || 'Failed to update teacher status';
+            Alert.alert('Error', Array.isArray(message) ? message[0] : message);
+            setUpdatingFacultyId(null);
+        },
+    });
+
+    const handleApprove = (staff: Staff) => {
+        Alert.alert(
+            'Approve Teacher',
+            `Are you sure you want to approve ${staff.user.name}? They will be able to access all teacher features.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Approve',
+                    style: 'default',
+                    onPress: () => {
+                        setUpdatingFacultyId(staff.id);
+                        verifyMutation.mutate({ facultyId: staff.id, status: 'APPROVED' });
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleReject = (staff: Staff) => {
+        Alert.alert(
+            'Reject Teacher',
+            `Are you sure you want to reject ${staff.user.name}? They will need to submit their profile again.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Reject',
+                    style: 'destructive',
+                    onPress: () => {
+                        setUpdatingFacultyId(staff.id);
+                        verifyMutation.mutate({ facultyId: staff.id, status: 'REJECTED' });
+                    },
+                },
+            ]
+        );
+    };
 
     const schoolName = profile?.faculty?.school 
         ? `${profile.faculty.school.registration_code} - ${profile.faculty.school.name}`
@@ -235,6 +322,9 @@ export default function ViewStaffsScreen() {
                                 staff={staff}
                                 expanded={expandedId === staff.id}
                                 onToggle={() => setExpandedId(expandedId === staff.id ? null : staff.id)}
+                                onApprove={() => handleApprove(staff)}
+                                onReject={() => handleReject(staff)}
+                                isUpdating={updatingFacultyId === staff.id}
                             />
                         ))
                     ) : (
@@ -439,5 +529,40 @@ const styles = StyleSheet.create({
         color: '#9ca3af',
         marginTop: 12,
         textAlign: 'center',
+    },
+    // Approve/Reject button styles
+    actionButtons: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginTop: 16,
+        gap: 10,
+    },
+    approveButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#22c55e',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 8,
+        gap: 6,
+    },
+    approveButtonText: {
+        color: '#ffffff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    rejectButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ef4444',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 8,
+        gap: 6,
+    },
+    rejectButtonText: {
+        color: '#ffffff',
+        fontSize: 14,
+        fontWeight: '600',
     },
 });

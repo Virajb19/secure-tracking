@@ -3,7 +3,7 @@ import { User, UserRole, Gender } from '@prisma/client';
 import { PrismaService } from '../prisma';
 import { CreateUserDto } from './dto/create-user.dto';
 import { AuditLogsService, AuditAction } from '../audit-logs/audit-logs.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 import * as bcrypt from 'bcrypt';
 
 /**
@@ -121,6 +121,7 @@ export class UsersService {
         subject?: string;
         search?: string;
         is_active?: boolean;
+        approval_status?: string;
     }): Promise<{
         data: User[];
         total: number;
@@ -128,7 +129,7 @@ export class UsersService {
         limit: number;
         totalPages: number;
     }> {
-        const { page, limit, role, district_id, school_id, class_level, subject, search, is_active } = params;
+        const { page, limit, role, district_id, school_id, class_level, subject, search, is_active, approval_status } = params;
         
         // Build where clause
         const where: any = {
@@ -146,6 +147,14 @@ export class UsersService {
         // Active status filter
         if (is_active !== undefined) {
             where.is_active = is_active;
+        }
+
+        // Approval status filter (through faculty)
+        if (approval_status) {
+            where.faculty = {
+                ...where.faculty,
+                approval_status: approval_status,
+            };
         }
 
         // Search filter (name, phone, email)
@@ -531,5 +540,89 @@ export class UsersService {
         );
 
         return updatedUser;
+    }
+
+    /**
+     * Update approval status of a user's faculty record.
+     * Admin only - approves or rejects faculty members.
+     * 
+     * @param userId - User ID whose faculty to update
+     * @param status - APPROVED or REJECTED
+     * @param adminId - Admin performing the action
+     * @param ipAddress - IP address of the request
+     * @param rejectionReason - Optional reason for rejection
+     */
+    async updateApprovalStatus(
+        userId: string,
+        status: 'APPROVED' | 'REJECTED',
+        adminId: string,
+        ipAddress: string | null,
+        rejectionReason?: string,
+    ): Promise<User> {
+        // Find user with faculty
+        const user = await this.db.user.findUnique({
+            where: { id: userId },
+            include: { faculty: true },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        if (!user.faculty) {
+            throw new NotFoundException('User does not have a faculty profile');
+        }
+
+        // Update faculty approval status
+        await this.db.faculty.update({
+            where: { id: user.faculty.id },
+            data: {
+                approval_status: status,
+                approved_by: adminId,
+            },
+        });
+
+        // Log the action
+        await this.auditLogsService.log(
+            status === 'APPROVED' 
+                ? AuditAction.USER_APPROVED 
+                : AuditAction.USER_REJECTED,
+            'Faculty',
+            user.faculty.id,
+            adminId,
+            ipAddress,
+        );
+
+        // Send notification to user
+        const notificationTitle = status === 'APPROVED' 
+            ? 'Profile Approved' 
+            : 'Profile Rejected';
+        const notificationBody = status === 'APPROVED'
+            ? 'Your profile has been approved. You now have full access to the app.'
+            : `Your profile has been rejected.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`;
+
+        await this.notificationsService.sendToUser({
+            userId,
+            title: notificationTitle,
+            body: notificationBody,
+            type: status === 'APPROVED' ? NotificationType.PROFILE_APPROVED : NotificationType.PROFILE_REJECTED,
+        });
+
+        // Return updated user
+        return this.db.user.findUnique({
+            where: { id: userId },
+            include: {
+                faculty: {
+                    include: {
+                        school: {
+                            include: {
+                                district: true,
+                            },
+                        },
+                        teaching_assignments: true,
+                    },
+                },
+            },
+        }) as Promise<User>;
     }
 }

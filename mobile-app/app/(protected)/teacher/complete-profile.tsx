@@ -9,7 +9,7 @@
  * - Teaching classes and subjects
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -28,6 +28,90 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../src/api/client';
 import { District, School } from '../../../src/types';
+
+// Multi-select modal for subjects
+interface MultiSelectModalProps {
+    visible: boolean;
+    title: string;
+    data: string[];
+    selectedValues: string[];
+    onSelect: (values: string[]) => void;
+    onClose: () => void;
+    loading?: boolean;
+}
+
+function MultiSelectModal({ visible, title, data, selectedValues, onSelect, onClose, loading }: MultiSelectModalProps) {
+    const [tempSelected, setTempSelected] = useState<string[]>(selectedValues);
+
+    useEffect(() => {
+        if (visible) {
+            setTempSelected(selectedValues);
+        }
+    }, [visible, selectedValues]);
+
+    const toggleItem = (item: string) => {
+        setTempSelected(prev => 
+            prev.includes(item) 
+                ? prev.filter(v => v !== item) 
+                : [...prev, item]
+        );
+    };
+
+    const handleDone = () => {
+        onSelect(tempSelected);
+        onClose();
+    };
+
+    return (
+        <Modal visible={visible} transparent animationType="slide">
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>{title}</Text>
+                        <TouchableOpacity onPress={onClose}>
+                            <Ionicons name="close" size={24} color="#374151" />
+                        </TouchableOpacity>
+                    </View>
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#3b82f6" style={{ padding: 40 }} />
+                    ) : (
+                        <>
+                            <FlatList
+                                data={data}
+                                keyExtractor={(item) => item}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalItem,
+                                            tempSelected.includes(item) && styles.modalItemSelected,
+                                        ]}
+                                        onPress={() => toggleItem(item)}
+                                    >
+                                        <View style={styles.checkboxRow}>
+                                            <View style={[
+                                                styles.checkbox,
+                                                tempSelected.includes(item) && styles.checkboxSelected,
+                                            ]}>
+                                                {tempSelected.includes(item) && (
+                                                    <Ionicons name="checkmark" size={14} color="#fff" />
+                                                )}
+                                            </View>
+                                            <Text style={styles.modalItemText}>{item}</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                )}
+                                style={{ maxHeight: 300 }}
+                            />
+                            <TouchableOpacity style={styles.doneButton} onPress={handleDone}>
+                                <Text style={styles.doneButtonText}>Done ({tempSelected.length} selected)</Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
+                </View>
+            </View>
+        </Modal>
+    );
+}
 
 // Predefined class levels
 const CLASS_LEVELS = [
@@ -140,6 +224,18 @@ export default function CompleteProfileScreen() {
         enabled: !!selectedDistrict,
     });
 
+    // Fetch subjects for teaching classes
+    const { data: subjects = [], isLoading: loadingSubjects } = useQuery<string[]>({
+        queryKey: ['subjects'],
+        queryFn: async () => {
+            const response = await apiClient.get('/master-data/subjects');
+            return response.data;
+        },
+    });
+
+    // Subject modal state - which class level is being edited
+    const [subjectModalClass, setSubjectModalClass] = useState<{ key: string; value: number } | null>(null);
+
     // Get selected district and school names for display
     const selectedDistrictName = districts.find(d => d.id === selectedDistrict)?.name || '';
     const selectedSchoolName = schools.find(s => s.id === selectedSchool)?.name || '';
@@ -168,11 +264,19 @@ export default function CompleteProfileScreen() {
         },
     });
 
-    const toggleTeachingClass = (key: string) => {
+    const toggleTeachingClass = (key: string, value: number, turnOn: boolean) => {
         setTeachingClasses(prev => ({
             ...prev,
-            [key]: !prev[key],
+            [key]: turnOn,
         }));
+        // Clear selected subjects when turning off
+        if (!turnOn) {
+            setSelectedSubjects(prev => {
+                const newSubjects = { ...prev };
+                delete newSubjects[value];
+                return newSubjects;
+            });
+        }
     };
 
     const handleSubmit = () => {
@@ -186,15 +290,26 @@ export default function CompleteProfileScreen() {
             return;
         }
 
+        // Check if at least one subject is selected for each enabled class
+        for (const level of CLASS_LEVELS) {
+            if (teachingClasses[level.key] && level.value > 0) {
+                const subjectsForLevel = selectedSubjects[level.value] || [];
+                if (subjectsForLevel.length === 0) {
+                    Alert.alert('Error', `Please select at least one subject for ${level.label}`);
+                    return;
+                }
+            }
+        }
+
         // Build teaching classes array
         const teachingClassesData: TeachingClass[] = [];
         
         CLASS_LEVELS.forEach(level => {
             if (teachingClasses[level.key] && level.value > 0) {
-                const subjects = selectedSubjects[level.value] || ['General'];
+                const subjectsForClass = selectedSubjects[level.value] || [];
                 teachingClassesData.push({
                     class_level: level.value,
-                    subjects,
+                    subjects: subjectsForClass,
                 });
             }
         });
@@ -318,7 +433,7 @@ export default function CompleteProfileScreen() {
                     <View style={styles.radioGroup}>
                         <TouchableOpacity
                             style={styles.radioOption}
-                            onPress={() => toggleTeachingClass(level.key)}
+                            onPress={() => toggleTeachingClass(level.key, level.value, true)}
                         >
                             <View style={[
                                 styles.radioCircle,
@@ -332,10 +447,7 @@ export default function CompleteProfileScreen() {
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.radioOption}
-                            onPress={() => setTeachingClasses(prev => ({
-                                ...prev,
-                                [level.key]: false,
-                            }))}
+                            onPress={() => toggleTeachingClass(level.key, level.value, false)}
                         >
                             <View style={[
                                 styles.radioCircle,
@@ -348,8 +460,67 @@ export default function CompleteProfileScreen() {
                             <Text style={styles.radioText}>No</Text>
                         </TouchableOpacity>
                     </View>
+                    
+                    {/* Subject Selection - appears when Yes is selected */}
+                    {teachingClasses[level.key] && (
+                        <View style={styles.subjectSection}>
+                            <Text style={styles.subjectLabel}>Select subjects you teach:</Text>
+                            <TouchableOpacity
+                                style={styles.subjectPickerButton}
+                                onPress={() => setSubjectModalClass(level)}
+                            >
+                                <Text style={
+                                    (selectedSubjects[level.value]?.length ?? 0) > 0
+                                        ? styles.subjectPickerText
+                                        : styles.subjectPickerPlaceholder
+                                }>
+                                    {(selectedSubjects[level.value]?.length ?? 0) > 0
+                                        ? selectedSubjects[level.value].join(', ')
+                                        : 'Select Subjects'}
+                                </Text>
+                                <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                            </TouchableOpacity>
+                            {(selectedSubjects[level.value]?.length ?? 0) > 0 && (
+                                <View style={styles.selectedSubjectTags}>
+                                    {selectedSubjects[level.value].map(subj => (
+                                        <View key={subj} style={styles.subjectTag}>
+                                            <Text style={styles.subjectTagText}>{subj}</Text>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    setSelectedSubjects(prev => ({
+                                                        ...prev,
+                                                        [level.value]: prev[level.value].filter(s => s !== subj),
+                                                    }));
+                                                }}
+                                            >
+                                                <Ionicons name="close-circle" size={16} color="#6b7280" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+                    )}
                 </View>
             ))}
+
+            {/* Subject Multi-Select Modal */}
+            <MultiSelectModal
+                visible={subjectModalClass !== null}
+                title={`Select Subjects for ${subjectModalClass?.key ? CLASS_LEVELS.find(l => l.key === subjectModalClass.key)?.label : ''}`}
+                data={subjects}
+                selectedValues={subjectModalClass ? (selectedSubjects[subjectModalClass.value] || []) : []}
+                onSelect={(values) => {
+                    if (subjectModalClass) {
+                        setSelectedSubjects(prev => ({
+                            ...prev,
+                            [subjectModalClass.value]: values,
+                        }));
+                    }
+                }}
+                onClose={() => setSubjectModalClass(null)}
+                loading={loadingSubjects}
+            />
 
             {/* Divider */}
             <View style={styles.divider} />
@@ -613,5 +784,88 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#856404',
         lineHeight: 18,
+    },
+    // Subject selection styles
+    subjectSection: {
+        marginTop: 12,
+        paddingLeft: 8,
+        borderLeftWidth: 3,
+        borderLeftColor: '#3b82f6',
+    },
+    subjectLabel: {
+        fontSize: 13,
+        color: '#6b7280',
+        marginBottom: 8,
+    },
+    subjectPickerButton: {
+        backgroundColor: '#ffffff',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    subjectPickerText: {
+        fontSize: 14,
+        color: '#1f2937',
+        flex: 1,
+    },
+    subjectPickerPlaceholder: {
+        fontSize: 14,
+        color: '#9ca3af',
+        flex: 1,
+    },
+    selectedSubjectTags: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: 8,
+        gap: 6,
+    },
+    subjectTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#eff6ff',
+        borderRadius: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        gap: 4,
+    },
+    subjectTagText: {
+        fontSize: 12,
+        color: '#3b82f6',
+    },
+    // Multi-select modal styles
+    checkboxRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    checkbox: {
+        width: 22,
+        height: 22,
+        borderRadius: 4,
+        borderWidth: 2,
+        borderColor: '#d1d5db',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    checkboxSelected: {
+        backgroundColor: '#3b82f6',
+        borderColor: '#3b82f6',
+    },
+    doneButton: {
+        backgroundColor: '#3b82f6',
+        margin: 16,
+        padding: 14,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    doneButtonText: {
+        color: '#ffffff',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });

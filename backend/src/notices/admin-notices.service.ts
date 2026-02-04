@@ -243,7 +243,7 @@ export class AdminNoticesService {
             throw new BadRequestException('One or more user IDs are invalid');
         }
 
-        // Create a global notice (no school_id means it's visible to everyone)
+        // Create a TARGETED notice (only visible to specific users)
         const notice = await this.db.notice.create({
             data: {
                 title: dto.title,
@@ -254,9 +254,16 @@ export class AdminNoticesService {
                 event_time: dto.event_time,
                 event_date: dto.event_date ? new Date(dto.event_date) : null,
                 is_active: true,
+                is_targeted: true, // Mark as targeted notice
                 created_by: createdBy,
                 file_url: dto.file_url,
                 file_name: dto.file_name,
+                // Create recipient records for each user
+                recipients: {
+                    createMany: {
+                        data: dto.user_ids.map(userId => ({ user_id: userId })),
+                    },
+                },
             },
             include: {
                 creator: {
@@ -265,6 +272,9 @@ export class AdminNoticesService {
                         name: true,
                         email: true,
                     },
+                },
+                recipients: {
+                    select: { user_id: true },
                 },
             },
         });

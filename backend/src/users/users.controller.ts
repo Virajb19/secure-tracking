@@ -89,6 +89,7 @@ export class UsersController {
         @Query('subject') subject?: string,
         @Query('search') search?: string,
         @Query('is_active') is_active?: string,
+        @Query('approval_status') approval_status?: string,
     ) {
         return this.usersService.findAllPaginated({
             page: page ? parseInt(page, 10) : 1,
@@ -100,6 +101,7 @@ export class UsersController {
             subject,
             search,
             is_active: is_active === 'true' ? true : is_active === 'false' ? false : undefined,
+            approval_status,
         });
     }
 
@@ -259,6 +261,35 @@ export class UsersController {
         @Param('userId') userId: string,
     ): Promise<{ class_level: number; subject: string }[]> {
         return this.usersService.getTeachingAssignments(userId);
+    }
+
+    /**
+     * Approve or reject a faculty member.
+     * Admin only endpoint.
+     * Updates the approval_status of the user's faculty record.
+     * 
+     * @param userId - User ID to approve/reject
+     * @param body - Status (APPROVED or REJECTED) and optional rejection_reason
+     * @param currentUser - Authenticated admin user
+     * @param request - HTTP request for IP extraction
+     * @returns Updated user with faculty
+     */
+    @Patch(':userId/approve')
+    @HttpCode(HttpStatus.OK)
+    async approveUser(
+        @Param('userId') userId: string,
+        @Body() body: { status: 'APPROVED' | 'REJECTED'; rejection_reason?: string },
+        @CurrentUser() currentUser: User,
+        @Req() request: Request,
+    ) {
+        const ipAddress = this.extractIpAddress(request);
+        return this.usersService.updateApprovalStatus(
+            userId,
+            body.status,
+            currentUser.id,
+            ipAddress,
+            body.rejection_reason,
+        );
     }
 
     /**

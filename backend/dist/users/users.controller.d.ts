@@ -9,7 +9,7 @@ export declare class UsersController {
     private readonly appwriteService;
     constructor(usersService: UsersService, appwriteService: AppwriteService);
     create(createUserDto: CreateUserDto, currentUser: User, request: Request): Promise<User>;
-    findAll(page?: string, limit?: string, role?: string, district_id?: string, school_id?: string, class_level?: string, subject?: string, search?: string, is_active?: string): Promise<{
+    findAll(page?: string, limit?: string, role?: string, district_id?: string, school_id?: string, class_level?: string, subject?: string, search?: string, is_active?: string, approval_status?: string): Promise<{
         data: User[];
         total: number;
         page: number;
@@ -29,5 +29,24 @@ export declare class UsersController {
         class_level: number;
         subject: string;
     }[]>;
+    approveUser(userId: string, body: {
+        status: 'APPROVED' | 'REJECTED';
+        rejection_reason?: string;
+    }, currentUser: User, request: Request): Promise<{
+        email: string | null;
+        name: string;
+        phone: string;
+        password: string;
+        role: import("@prisma/client").$Enums.UserRole;
+        is_active: boolean;
+        id: string;
+        created_at: Date;
+        gender: import("@prisma/client").$Enums.Gender | null;
+        profile_image_url: string | null;
+        device_id: string | null;
+        push_token: string | null;
+        coordinator_subject: string | null;
+        coordinator_class: number | null;
+    }>;
     private extractIpAddress;
 }

@@ -30,6 +30,7 @@ export declare class UsersService {
         subject?: string;
         search?: string;
         is_active?: boolean;
+        approval_status?: string;
     }): Promise<{
         data: User[];
         total: number;
@@ -55,4 +56,5 @@ export declare class UsersService {
         phone?: string;
         gender?: Gender;
     }, ipAddress: string | null): Promise<User>;
+    updateApprovalStatus(userId: string, status: 'APPROVED' | 'REJECTED', adminId: string, ipAddress: string | null, rejectionReason?: string): Promise<User>;
 }

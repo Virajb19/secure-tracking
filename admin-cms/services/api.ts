@@ -86,6 +86,7 @@ export interface UserFilterParams {
   subject?: string;
   search?: string;
   is_active?: boolean;
+  approval_status?: string;
 }
 
 export interface PaginatedUsersResponse {
@@ -108,6 +109,7 @@ export const usersApi = {
     if (filters?.subject) params.subject = filters.subject;
     if (filters?.search) params.search = filters.search;
     if (filters?.is_active !== undefined) params.is_active = String(filters.is_active);
+    if (filters?.approval_status) params.approval_status = filters.approval_status;
 
     const response = await api.get<PaginatedUsersResponse>('/admin/users', { params });
     return response.data;
@@ -115,6 +117,13 @@ export const usersApi = {
   toggleStatus: async (userId: string, isActive: boolean): Promise<User> => {
     const response = await api.patch<User>(`/admin/users/${userId}/status`, {
       is_active: isActive,
+    });
+    return response.data;
+  },
+  approveUser: async (userId: string, status: 'APPROVED' | 'REJECTED', rejectionReason?: string): Promise<User> => {
+    const response = await api.patch<User>(`/admin/users/${userId}/approve`, {
+      status,
+      rejection_reason: rejectionReason,
     });
     return response.data;
   },

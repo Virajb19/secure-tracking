@@ -459,6 +459,53 @@ export class Form6Service {
     }
 
     /**
+     * Delete non-teaching staff.
+     */
+    async deleteNonTeachingStaff(
+        userId: string,
+        staffId: string,
+        ipAddress: string | null,
+    ) {
+        const faculty = await this.getUserFaculty(userId);
+
+        // Check if form is already submitted
+        const formSubmission = await this.db.formSubmission.findUnique({
+            where: {
+                school_id_form_type: {
+                    school_id: faculty.school_id,
+                    form_type: '6B',
+                },
+            },
+        });
+
+        if (formSubmission?.status === 'SUBMITTED' || formSubmission?.status === 'APPROVED') {
+            throw new BadRequestException('Cannot delete staff after form has been submitted');
+        }
+
+        const existing = await this.db.nonTeachingStaff.findUnique({
+            where: { id: staffId },
+        });
+
+        if (!existing || existing.school_id !== faculty.school_id) {
+            throw new NotFoundException('Staff not found');
+        }
+
+        await this.db.nonTeachingStaff.delete({
+            where: { id: staffId },
+        });
+
+        await this.auditLogsService.log(
+            'NON_TEACHING_STAFF_DELETED',
+            'NonTeachingStaff',
+            staffId,
+            userId,
+            ipAddress,
+        );
+
+        return { success: true, message: 'Staff deleted successfully' };
+    }
+
+    /**
      * Get student strength for lower classes (Form 6C lower).
      */
     async getStudentStrengthLower(userId: string) {

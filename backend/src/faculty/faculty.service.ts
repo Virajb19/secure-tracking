@@ -42,6 +42,10 @@ export class FacultyService {
 
         const facultyType = user.role === UserRole.TEACHER ? 'TEACHING' : 'NON_TEACHING';
 
+        // Headmasters are auto-approved (admin already verified them)
+        // Teachers need approval from headmaster
+        const approvalStatus = user.role === UserRole.HEADMASTER ? 'APPROVED' : 'PENDING';
+
         // Build teaching assignments data
         const teachingAssignments = dto.teaching_classes.flatMap(tc => 
             tc.subjects.map(subject => ({
@@ -59,7 +63,7 @@ export class FacultyService {
                 designation: dto.designation || user.role,
                 highest_qualification: dto.highest_qualification,
                 years_of_experience: dto.years_of_experience,
-                approval_status: 'PENDING',
+                approval_status: approvalStatus,
                 is_profile_locked: true, // Profile is locked immediately
                 teaching_assignments: {
                     create: teachingAssignments,

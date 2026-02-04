@@ -94,7 +94,7 @@ let UsersService = class UsersService {
         });
     }
     async findAllPaginated(params) {
-        const { page, limit, role, district_id, school_id, class_level, subject, search, is_active } = params;
+        const { page, limit, role, district_id, school_id, class_level, subject, search, is_active, approval_status } = params;
         const where = {
             role: {
                 notIn: [client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN],
@@ -105,6 +105,12 @@ let UsersService = class UsersService {
         }
         if (is_active !== undefined) {
             where.is_active = is_active;
+        }
+        if (approval_status) {
+            where.faculty = {
+                ...where.faculty,
+                approval_status: approval_status,
+            };
         }
         if (search) {
             where.OR = [
@@ -287,6 +293,55 @@ let UsersService = class UsersService {
         });
         await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_UPDATED, 'User', userId, userId, ipAddress);
         return updatedUser;
+    }
+    async updateApprovalStatus(userId, status, adminId, ipAddress, rejectionReason) {
+        const user = await this.db.user.findUnique({
+            where: { id: userId },
+            include: { faculty: true },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        if (!user.faculty) {
+            throw new common_1.NotFoundException('User does not have a faculty profile');
+        }
+        await this.db.faculty.update({
+            where: { id: user.faculty.id },
+            data: {
+                approval_status: status,
+                approved_by: adminId,
+            },
+        });
+        await this.auditLogsService.log(status === 'APPROVED'
+            ? audit_logs_service_1.AuditAction.USER_APPROVED
+            : audit_logs_service_1.AuditAction.USER_REJECTED, 'Faculty', user.faculty.id, adminId, ipAddress);
+        const notificationTitle = status === 'APPROVED'
+            ? 'Profile Approved'
+            : 'Profile Rejected';
+        const notificationBody = status === 'APPROVED'
+            ? 'Your profile has been approved. You now have full access to the app.'
+            : `Your profile has been rejected.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`;
+        await this.notificationsService.sendToUser({
+            userId,
+            title: notificationTitle,
+            body: notificationBody,
+            type: status === 'APPROVED' ? notifications_service_1.NotificationType.PROFILE_APPROVED : notifications_service_1.NotificationType.PROFILE_REJECTED,
+        });
+        return this.db.user.findUnique({
+            where: { id: userId },
+            include: {
+                faculty: {
+                    include: {
+                        school: {
+                            include: {
+                                district: true,
+                            },
+                        },
+                        teaching_assignments: true,
+                    },
+                },
+            },
+        });
     }
 };
 exports.UsersService = UsersService;

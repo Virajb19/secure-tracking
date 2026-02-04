@@ -136,6 +136,12 @@ model User {
   starred_by              UserStar[]             @relation("StarredUser")
   starred_users           UserStar[]             @relation("StarringAdmin")
 
+  // Notice recipients (for targeted notices)
+  received_notices NoticeRecipient[]
+
+  // Exam Tracker Events submitted by Center Superintendents
+  tracker_submissions ExamTrackerEvent[] @relation("TrackerSubmitter")
+
   // Subject Coordinator: which subject/class they coordinate
   coordinator_subject  String?               @db.VarChar(100)
   coordinator_class    Int?
@@ -273,6 +279,7 @@ model School {
   notices           Notice[]
   circulars         Circular[]
   formSubmissions   FormSubmission[]
+  trackerEvents     ExamTrackerEvent[]
 
   @@index([district_id])
 }
@@ -406,6 +413,7 @@ model Notice {
   published_at DateTime   @default(now())
   expires_at   DateTime?
   is_active    Boolean    @default(true)
+  is_targeted  Boolean    @default(false) // True if notice is for specific users only
   school_id    String?    @db.Uuid
   created_by   String?    @db.Uuid
   file_url     String?    @db.Text // Appwrite bucket URL for uploaded file
@@ -413,12 +421,30 @@ model Notice {
   created_at   DateTime   @default(now())
   updated_at   DateTime   @default(now()) @updatedAt
 
-  school  School? @relation(fields: [school_id], references: [id])
-  creator User?   @relation("NoticeCreator", fields: [created_by], references: [id])
+  school     School?           @relation(fields: [school_id], references: [id])
+  creator    User?             @relation("NoticeCreator", fields: [created_by], references: [id])
+  recipients NoticeRecipient[]
 
   @@index([school_id])
   @@index([type])
+  @@index([is_targeted])
   @@map("notices")
+}
+
+// Recipients for targeted notices (security: only listed users can see these notices)
+model NoticeRecipient {
+  id        String   @id @default(uuid()) @db.Uuid
+  notice_id String   @db.Uuid
+  user_id   String   @db.Uuid
+  is_read   Boolean  @default(false)
+  read_at   DateTime?
+
+  notice Notice @relation(fields: [notice_id], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([notice_id, user_id])
+  @@index([user_id])
+  @@map("notice_recipients")
 }
 
 // Official Circulars/Documents
@@ -596,4 +622,55 @@ model AgentLocationHistory {
   @@index([task_id])
   @@index([user_id])
   @@map("agent_location_history")
+}
+
+// ============================================================
+// EXAM CENTER TRACKER
+// For Center Superintendents to track question paper events
+// ============================================================
+
+enum ExamTrackerEventType {
+  TREASURY_ARRIVAL        // CS at Treasury Office/Bank
+  CUSTODIAN_HANDOVER      // Receiving from Custodian
+  OPENING_MORNING         // Opening QP - Morning Shift
+  PACKING_MORNING         // Packing Answerbooks - Morning
+  DELIVERY_MORNING        // Post Office Delivery - Morning
+  OPENING_AFTERNOON       // Opening QP - Afternoon Shift
+  PACKING_AFTERNOON       // Packing Answerbooks - Afternoon
+  DELIVERY_AFTERNOON      // Post Office Delivery - Afternoon
+}
+
+// Exam Tracker Submission by Center Superintendent
+model ExamTrackerEvent {
+  id              String               @id @default(uuid()) @db.Uuid
+  user_id         String               @db.Uuid    // Center Superintendent
+  school_id       String               @db.Uuid    // Exam Center (School)
+  event_type      ExamTrackerEventType
+  exam_date       DateTime             @db.Date    // Date of exam
+  shift           String?              @db.VarChar(20) // MORNING/AFTERNOON/GENERAL
+  
+  // Evidence
+  image_url       String               @db.Text
+  image_hash      String               @db.VarChar(64)
+  
+  // Location
+  latitude        Decimal              @db.Decimal(10, 7)
+  longitude       Decimal              @db.Decimal(10, 7)
+  
+  // Timestamps
+  captured_at     DateTime             @db.Timestamp() // When photo was taken
+  submitted_at    DateTime             @default(now()) @db.Timestamp()
+  
+  // Status
+  is_verified     Boolean              @default(false)
+  verified_by     String?              @db.Uuid
+  verified_at     DateTime?            @db.Timestamp()
+  
+  user   User   @relation("TrackerSubmitter", fields: [user_id], references: [id])
+  school School @relation(fields: [school_id], references: [id])
+
+  @@unique([user_id, school_id, event_type, exam_date])
+  @@index([school_id])
+  @@index([exam_date])
+  @@map("exam_tracker_events")
 }

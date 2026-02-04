@@ -24,6 +24,14 @@ import {
   Briefcase,
   BookOpen,
   Bell,
+  Eye,
+  Check,
+  X,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Phone,
+  User as UserIcon,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,7 +41,8 @@ import {
   useGetDistricts, 
   useGetSchools, 
   useGetClasses, 
-  useGetSubjects 
+  useGetSubjects,
+  useApproveUser,
 } from '@/services/user.service';
 import { userStarsApi } from '@/services/paper-setter.service';
 import { UserRole, User } from '@/types';
@@ -44,6 +53,16 @@ import { SendNotificationDialog } from '@/components/SendNotificationDialog';
 import { RetryButton } from '@/components/RetryButton';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
 import { ResetDeviceButton } from '@/components/ResetDeviceButton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 
 // Animation variants
 const containerVariants = {
@@ -111,9 +130,20 @@ export default function UsersPage() {
   const [schoolFilter, setSchoolFilter] = useState('all');
   const [classFilter, setClassFilter] = useState('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState<string>('all');
   const [showOnlyInactive, setShowOnlyInactive] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
+
+  // Dialogs state
+  const [userDetailDialogOpen, setUserDetailDialogOpen] = useState(false);
+  const [selectedUserForDetail, setSelectedUserForDetail] = useState<User | null>(null);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [selectedUserForReject, setSelectedUserForReject] = useState<User | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  // Approve/Reject mutation
+  const approveUserMutation = useApproveUser();
   
   // Debounce search input using useDebounceCallback
   const debouncedSetSearch = useDebounceCallback((value: string) => {
@@ -132,10 +162,11 @@ export default function UsersPage() {
     if (schoolFilter !== 'all') filters.school_id = schoolFilter;
     if (classFilter !== 'all') filters.class_level = parseInt(classFilter);
     if (subjectFilter !== 'all') filters.subject = subjectFilter;
+    if (approvalStatusFilter !== 'all') filters.approval_status = approvalStatusFilter;
     if (debouncedSearch) filters.search = debouncedSearch;
     if (showOnlyInactive) filters.is_active = false;
     return filters;
-  }, [currentPage, roleFilter, districtFilter, schoolFilter, classFilter, subjectFilter, debouncedSearch, showOnlyInactive]);
+  }, [currentPage, roleFilter, districtFilter, schoolFilter, classFilter, subjectFilter, approvalStatusFilter, debouncedSearch, showOnlyInactive]);
 
   
   // ❌ Never use useInfiniteQuery for textbook-style paginated tables
@@ -226,6 +257,35 @@ export default function UsersPage() {
     setNotificationDialogOpen(true);
   };
 
+  // Handle approve user
+  const handleApprove = async (userId: string) => {
+    try {
+      await approveUserMutation.mutateAsync({ userId, status: 'APPROVED' });
+      toast.success('User approved successfully');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to approve user');
+    }
+  };
+
+  // Handle reject user
+  const handleReject = async () => {
+    if (!selectedUserForReject) return;
+    
+    try {
+      await approveUserMutation.mutateAsync({ 
+        userId: selectedUserForReject.id, 
+        status: 'REJECTED',
+        rejectionReason: rejectionReason || undefined
+      });
+      toast.success('User rejected');
+      setRejectDialogOpen(false);
+      setSelectedUserForReject(null);
+      setRejectionReason('');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to reject user');
+    }
+  };
+
   // Export users as CSV and trigger download
   const exportUsersAsCSV = (usersToExport: User[]) => {
     if (!usersToExport || usersToExport.length === 0) return;
@@ -276,7 +336,7 @@ export default function UsersPage() {
     if (isLoading || isFetching) {
       return (
         <tr>
-          <td colSpan={7} className="py-16">
+          <td colSpan={8} className="py-16">
             <div className="flex flex-col items-center justify-center gap-4">
               <motion.div
                 animate={{ rotate: 360 }}
@@ -294,7 +354,7 @@ export default function UsersPage() {
     if (isError) {
       return (
         <tr>
-          <td colSpan={7} className="py-16">
+          <td colSpan={8} className="py-16">
             <RetryButton 
               queryKey={['users', apiFilters]} 
               message="Failed to load users" 
@@ -308,7 +368,7 @@ export default function UsersPage() {
     if (users.length === 0) {
       return (
         <tr>
-          <td colSpan={7} className="py-16">
+          <td colSpan={8} className="py-16">
             <motion.div 
               className="text-center"
               initial={{ opacity: 0, scale: 0.9 }}
@@ -365,7 +425,73 @@ export default function UsersPage() {
               <span className="line-clamp-2">{getClassesAndSubjects(user)}</span>
             </td>
             <td className="py-4 px-5">
+              {user.faculty?.approval_status === 'PENDING' && (
+                <Badge className="bg-amber-500/20 text-amber-500 border border-amber-500/30 flex items-center gap-1 w-fit">
+                  <Clock className="h-3 w-3" />
+                  Pending
+                </Badge>
+              )}
+              {user.faculty?.approval_status === 'APPROVED' && (
+                <Badge className="bg-green-500/20 text-green-500 border border-green-500/30 flex items-center gap-1 w-fit">
+                  <CheckCircle className="h-3 w-3" />
+                  Approved
+                </Badge>
+              )}
+              {user.faculty?.approval_status === 'REJECTED' && (
+                <Badge className="bg-red-500/20 text-red-500 border border-red-500/30 flex items-center gap-1 w-fit">
+                  <XCircle className="h-3 w-3" />
+                  Rejected
+                </Badge>
+              )}
+              {!user.faculty?.approval_status && (
+                <span className="text-slate-500 text-sm">-</span>
+              )}
+            </td>
+            <td className="py-4 px-5">
               <div className="flex items-center gap-2">
+                {/* View Details Button */}
+                <motion.button
+                  onClick={() => {
+                    setSelectedUserForDetail(user);
+                    setUserDetailDialogOpen(true);
+                  }}
+                  className="p-2 text-slate-500 dark:text-slate-400 hover:text-purple-500 dark:hover:text-purple-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-all"
+                  title="View Details"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <Eye className="h-5 w-5" />
+                </motion.button>
+                
+                {/* Approve/Reject buttons for PENDING users */}
+                {user.faculty?.approval_status === 'PENDING' && (
+                  <>
+                    <motion.button
+                      onClick={() => handleApprove(user.id)}
+                      disabled={approveUserMutation.isPending}
+                      className="p-2 text-green-500 hover:text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-all disabled:opacity-50"
+                      title="Approve User"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <Check className="h-5 w-5" />
+                    </motion.button>
+                    <motion.button
+                      onClick={() => {
+                        setSelectedUserForReject(user);
+                        setRejectDialogOpen(true);
+                      }}
+                      disabled={approveUserMutation.isPending}
+                      className="p-2 text-red-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all disabled:opacity-50"
+                      title="Reject User"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <X className="h-5 w-5" />
+                    </motion.button>
+                  </>
+                )}
+                
                 <UserStatusToggle userId={user.id} isActive={user.is_active} />
                 <motion.button
                   onClick={() => openNotificationDialog(user.id)}
@@ -452,7 +578,7 @@ export default function UsersPage() {
         </motion.div>
 
         {/* Filter Dropdowns */}
-        <motion.div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" variants={itemVariants}>
+        <motion.div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4" variants={itemVariants}>
           <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); resetPage(); }}>
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="User Type" />
@@ -523,6 +649,33 @@ export default function UsersPage() {
                   </SelectItem>
                 );
               })}
+            </SelectContent>
+          </Select>
+
+          <Select value={approvalStatusFilter} onValueChange={(v) => { setApprovalStatusFilter(v); resetPage(); }}>
+            <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
+              <SelectValue placeholder="Approval Status" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
+              <SelectItem value="all" className="text-white hover:bg-slate-700">All Statuses</SelectItem>
+              <SelectItem value="PENDING" className="text-white hover:bg-slate-700">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-500" />
+                  Pending
+                </div>
+              </SelectItem>
+              <SelectItem value="APPROVED" className="text-white hover:bg-slate-700">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Approved
+                </div>
+              </SelectItem>
+              <SelectItem value="REJECTED" className="text-white hover:bg-slate-700">
+                <div className="flex items-center gap-2">
+                  <XCircle className="h-4 w-4 text-red-500" />
+                  Rejected
+                </div>
+              </SelectItem>
             </SelectContent>
           </Select>
 
@@ -608,6 +761,10 @@ export default function UsersPage() {
                   <BookOpen className="h-4 w-4 inline mr-1" />
                   Classes & Subjects
                 </th>
+                <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
+                  <Clock className="h-4 w-4 inline mr-1" />
+                  Status
+                </th>
                 <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Actions</th>
               </tr>
             </thead>
@@ -681,6 +838,240 @@ export default function UsersPage() {
         }
         singleUser={!!currentUserForNotification}
       />
+
+      {/* User Detail Dialog */}
+      <Dialog open={userDetailDialogOpen} onOpenChange={setUserDetailDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <UserIcon className="h-5 w-5" />
+              User Details
+            </DialogTitle>
+            <DialogDescription className="text-slate-500">
+              Review complete user profile information before approving or rejecting
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedUserForDetail && (
+            <div className="space-y-6">
+              {/* Basic Info */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  <UserIcon className="h-4 w-4 text-blue-500" />
+                  Basic Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-slate-500">Full Name</label>
+                    <p className="text-slate-900 dark:text-white font-medium">{selectedUserForDetail.name}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-500">Role</label>
+                    <p className="text-slate-900 dark:text-white font-medium">{selectedUserForDetail.role}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-500">Phone</label>
+                    <p className="text-slate-900 dark:text-white font-medium flex items-center gap-1">
+                      <Phone className="h-4 w-4" />
+                      {selectedUserForDetail.phone}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-500">Email</label>
+                    <p className="text-slate-900 dark:text-white font-medium">{selectedUserForDetail.email || '-'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* School Info */}
+              {selectedUserForDetail.faculty?.school && (
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 space-y-3">
+                  <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-green-500" />
+                    School Information
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-slate-500">School Name</label>
+                      <p className="text-slate-900 dark:text-white font-medium">{selectedUserForDetail.faculty.school.name}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-slate-500">District</label>
+                      <p className="text-slate-900 dark:text-white font-medium">{selectedUserForDetail.faculty.school.district?.name || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-slate-500">Registration Code</label>
+                      <p className="text-slate-900 dark:text-white font-medium">{selectedUserForDetail.faculty.school.registration_code || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Professional Info */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4 text-purple-500" />
+                  Professional Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-slate-500">Highest Qualification</label>
+                    <p className="text-slate-900 dark:text-white font-medium">{selectedUserForDetail.faculty?.highest_qualification || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-500">Years of Experience</label>
+                    <p className="text-slate-900 dark:text-white font-medium">
+                      {selectedUserForDetail.faculty?.years_of_experience ? `${selectedUserForDetail.faculty.years_of_experience} Years` : '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Teaching Assignments */}
+              {selectedUserForDetail.faculty?.teaching_assignments && selectedUserForDetail.faculty.teaching_assignments.length > 0 && (
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 space-y-3">
+                  <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-orange-500" />
+                    Teaching Assignments
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedUserForDetail.faculty.teaching_assignments.map((ta, idx) => (
+                      <Badge key={idx} className="bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                        Class {ta.class_level} - {ta.subject}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Approval Status */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-500" />
+                  Approval Status
+                </h3>
+                <div className="flex items-center gap-4">
+                  {selectedUserForDetail.faculty?.approval_status === 'PENDING' && (
+                    <Badge className="bg-amber-500/20 text-amber-500 border border-amber-500/30 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Pending Approval
+                    </Badge>
+                  )}
+                  {selectedUserForDetail.faculty?.approval_status === 'APPROVED' && (
+                    <Badge className="bg-green-500/20 text-green-500 border border-green-500/30 flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Approved
+                    </Badge>
+                  )}
+                  {selectedUserForDetail.faculty?.approval_status === 'REJECTED' && (
+                    <Badge className="bg-red-500/20 text-red-500 border border-red-500/30 flex items-center gap-1">
+                      <XCircle className="h-3 w-3" />
+                      Rejected
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2 mt-4">
+            {selectedUserForDetail?.faculty?.approval_status === 'PENDING' && (
+              <>
+                <Button
+                  onClick={() => {
+                    handleApprove(selectedUserForDetail.id);
+                    setUserDetailDialogOpen(false);
+                  }}
+                  disabled={approveUserMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Approve
+                </Button>
+                <Button
+                  onClick={() => {
+                    setUserDetailDialogOpen(false);
+                    setSelectedUserForReject(selectedUserForDetail);
+                    setRejectDialogOpen(true);
+                  }}
+                  variant="destructive"
+                  disabled={approveUserMutation.isPending}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Reject
+                </Button>
+              </>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => setUserDetailDialogOpen(false)}
+              className="border-slate-300 dark:border-slate-600"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject User Dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-red-500" />
+              Reject User
+            </DialogTitle>
+            <DialogDescription className="text-slate-500">
+              Are you sure you want to reject {selectedUserForReject?.name}? You can optionally provide a reason.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                Rejection Reason (Optional)
+              </label>
+              <Textarea
+                placeholder="Enter reason for rejection..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRejectDialogOpen(false);
+                setRejectionReason('');
+              }}
+              className="border-slate-300 dark:border-slate-600"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleReject}
+              disabled={approveUserMutation.isPending}
+              variant="destructive"
+            >
+              {approveUserMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Rejecting...
+                </>
+              ) : (
+                <>
+                  <X className="h-4 w-4 mr-2" />
+                  Reject User
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

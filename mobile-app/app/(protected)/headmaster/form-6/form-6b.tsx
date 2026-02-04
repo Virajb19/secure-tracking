@@ -1,7 +1,8 @@
 /**
  * Form 6B - Non-Teaching Staff
  * 
- * Form to add/edit non-teaching staff details including fourth-grade staff.
+ * Form to add/edit multiple non-teaching staff details.
+ * Principal can add as many non-teaching staff as needed using the + button.
  */
 
 import React, { useState, useCallback } from 'react';
@@ -16,6 +17,7 @@ import {
     Alert,
     KeyboardAvoidingView,
     Platform,
+    Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
@@ -34,17 +36,26 @@ interface NonTeachingStaff {
 
 type FormStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'NOT_SUBMITTED';
 
+const emptyStaffForm = {
+    full_name: '',
+    qualification: '',
+    nature_of_work: '',
+    years_of_service: '',
+    phone: '',
+};
+
 export default function Form6BScreen() {
     const insets = useSafeAreaInsets();
-    const [fullName, setFullName] = useState('');
-    const [qualification, setQualification] = useState('');
-    const [yearsOfService, setYearsOfService] = useState('');
-    const [natureOfWork, setNatureOfWork] = useState('');
-    const [phone, setPhone] = useState('');
-    const [editingId, setEditingId] = useState<string | null>(null);
+    const queryClient = useQueryClient();
+    
+    // Form state
     const [formStatus, setFormStatus] = useState<FormStatus>('NOT_SUBMITTED');
     const [rejectionReason, setRejectionReason] = useState<string | null>(null);
-    const queryClient = useQueryClient();
+    
+    // Modal state for add/edit
+    const [modalVisible, setModalVisible] = useState(false);
+    const [editingStaff, setEditingStaff] = useState<NonTeachingStaff | null>(null);
+    const [formData, setFormData] = useState(emptyStaffForm);
 
     // Fetch existing non-teaching staff
     const { data: staffData, isLoading, refetch } = useQuery({
@@ -68,7 +79,7 @@ export default function Form6BScreen() {
         ? `${profile.faculty.school.registration_code} - ${profile.faculty.school.name}`
         : 'Your School';
 
-    const existingStaff: NonTeachingStaff | null = staffData?.staff || null;
+    const staffList: NonTeachingStaff[] = staffData?.staff || [];
 
     useFocusEffect(
         useCallback(() => {
@@ -76,26 +87,18 @@ export default function Form6BScreen() {
         }, [refetch])
     );
 
-    // Load existing data when available
+    // Update form status when data loads
     React.useEffect(() => {
-        if (existingStaff) {
-            setFullName(existingStaff.full_name);
-            setQualification(existingStaff.qualification);
-            setYearsOfService((existingStaff.years_of_service ?? 0).toString());
-            setNatureOfWork(existingStaff.nature_of_work);
-            setPhone(existingStaff.phone);
-            setEditingId(existingStaff.id);
-        }
         if (staffData?.form_status) {
             setFormStatus(staffData.form_status);
             if (staffData.rejection_reason) {
                 setRejectionReason(staffData.rejection_reason);
             }
         }
-    }, [existingStaff, staffData]);
+    }, [staffData]);
 
-    // Save non-teaching staff
-    const saveMutation = useMutation({
+    // Add new staff mutation
+    const addMutation = useMutation({
         mutationFn: async (data: {
             full_name: string;
             qualification: string;
@@ -103,20 +106,53 @@ export default function Form6BScreen() {
             years_of_service: number;
             phone: string;
         }) => {
-            if (editingId) {
-                const response = await apiClient.patch(`/form-6/non-teaching-staff/${editingId}`, data);
-                return response.data;
-            } else {
-                const response = await apiClient.post('/form-6/non-teaching-staff', data);
-                return response.data;
-            }
+            const response = await apiClient.post('/form-6/non-teaching-staff', data);
+            return response.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['form-6b-staff'] });
-            Alert.alert('Success', 'Non-teaching staff details saved successfully!');
+            closeModal();
+            Alert.alert('Success', 'Non-teaching staff added successfully!');
         },
         onError: (error: any) => {
-            Alert.alert('Error', error.response?.data?.message || 'Failed to save details');
+            Alert.alert('Error', error.response?.data?.message || 'Failed to add staff');
+        },
+    });
+
+    // Update staff mutation
+    const updateMutation = useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: {
+            full_name: string;
+            qualification: string;
+            nature_of_work: string;
+            years_of_service: number;
+            phone: string;
+        }}) => {
+            const response = await apiClient.patch(`/form-6/non-teaching-staff/${id}`, data);
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['form-6b-staff'] });
+            closeModal();
+            Alert.alert('Success', 'Staff details updated successfully!');
+        },
+        onError: (error: any) => {
+            Alert.alert('Error', error.response?.data?.message || 'Failed to update staff');
+        },
+    });
+
+    // Delete staff mutation
+    const deleteMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const response = await apiClient.delete(`/form-6/non-teaching-staff/${id}`);
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['form-6b-staff'] });
+            Alert.alert('Success', 'Staff removed successfully!');
+        },
+        onError: (error: any) => {
+            Alert.alert('Error', error.response?.data?.message || 'Failed to delete staff');
         },
     });
 
@@ -128,6 +164,7 @@ export default function Form6BScreen() {
         },
         onSuccess: () => {
             setFormStatus('SUBMITTED');
+            queryClient.invalidateQueries({ queryKey: ['form-6b-staff'] });
             Alert.alert('Success', 'Form 6B submitted successfully!');
         },
         onError: (error: any) => {
@@ -135,40 +172,96 @@ export default function Form6BScreen() {
         },
     });
 
+    const openAddModal = () => {
+        setEditingStaff(null);
+        setFormData(emptyStaffForm);
+        setModalVisible(true);
+    };
+
+    const openEditModal = (staff: NonTeachingStaff) => {
+        setEditingStaff(staff);
+        setFormData({
+            full_name: staff.full_name,
+            qualification: staff.qualification,
+            nature_of_work: staff.nature_of_work,
+            years_of_service: staff.years_of_service.toString(),
+            phone: staff.phone,
+        });
+        setModalVisible(true);
+    };
+
+    const closeModal = () => {
+        setModalVisible(false);
+        setEditingStaff(null);
+        setFormData(emptyStaffForm);
+    };
+
     const handleSave = () => {
-        if (!fullName.trim()) {
+        if (!formData.full_name.trim()) {
             Alert.alert('Error', 'Please enter full name');
             return;
         }
-        if (!qualification.trim()) {
+        if (!formData.qualification.trim()) {
             Alert.alert('Error', 'Please enter qualification');
             return;
         }
-        if (!natureOfWork.trim()) {
+        if (!formData.nature_of_work.trim()) {
             Alert.alert('Error', 'Please enter nature of work');
             return;
         }
-        if (!phone.trim()) {
+        if (!formData.phone.trim()) {
             Alert.alert('Error', 'Please enter phone number');
             return;
         }
 
-        saveMutation.mutate({
-            full_name: fullName.trim(),
-            qualification: qualification.trim(),
-            nature_of_work: natureOfWork.trim(),
-            years_of_service: parseInt(yearsOfService) || 0,
-            phone: phone.trim(),
-        });
+        const data = {
+            full_name: formData.full_name.trim(),
+            qualification: formData.qualification.trim(),
+            nature_of_work: formData.nature_of_work.trim(),
+            years_of_service: parseInt(formData.years_of_service) || 0,
+            phone: formData.phone.trim(),
+        };
+
+        if (editingStaff) {
+            updateMutation.mutate({ id: editingStaff.id, data });
+        } else {
+            addMutation.mutate(data);
+        }
+    };
+
+    const handleDelete = (staff: NonTeachingStaff) => {
+        Alert.alert(
+            'Delete Staff',
+            `Are you sure you want to remove ${staff.full_name}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { 
+                    text: 'Delete', 
+                    style: 'destructive',
+                    onPress: () => deleteMutation.mutate(staff.id)
+                },
+            ]
+        );
     };
 
     const handleSubmit = () => {
-        if (!editingId) {
-            Alert.alert('Error', 'Please save the details first before submitting.');
+        if (staffList.length === 0) {
+            Alert.alert('Error', 'Please add at least one non-teaching staff before submitting.');
             return;
         }
-        submitMutation.mutate();
+        
+        Alert.alert(
+            'Submit Form 6B',
+            `You are about to submit ${staffList.length} non-teaching staff record(s). Continue?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Submit', onPress: () => submitMutation.mutate() },
+            ]
+        );
     };
+
+    const isEditable = formStatus !== 'SUBMITTED' && formStatus !== 'APPROVED';
+    const isSaving = addMutation.isPending || updateMutation.isPending;
 
     if (isLoading) {
         return (
@@ -196,97 +289,96 @@ export default function Form6BScreen() {
             </View>
 
             {/* Content */}
-            <KeyboardAvoidingView 
-                style={styles.cardContainer}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            >
+            <View style={styles.cardContainer}>
                 <ScrollView 
                     style={styles.scrollView} 
                     contentContainerStyle={styles.scrollContent}
-                    keyboardShouldPersistTaps="handled"
                 >
-                    <Text style={styles.sectionTitle}>Non-Teaching Staff</Text>
+                    {/* Section Title with Add Button */}
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Non-Teaching Staff</Text>
+                        {isEditable && (
+                            <TouchableOpacity 
+                                style={styles.addButton}
+                                onPress={openAddModal}
+                            >
+                                <Ionicons name="add-circle" size={32} color="#0d9488" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
 
-                    {(() => {
-                        const isEditable = formStatus !== 'SUBMITTED' && formStatus !== 'APPROVED';
-                        return (
-                            <>
-                                {/* Full Name */}
-                                <View style={styles.fieldContainer}>
-                                    <Text style={styles.label}>Full Name *</Text>
-                                    <TextInput
-                                        style={[styles.input, !isEditable && styles.inputDisabled]}
-                                        value={fullName}
-                                        onChangeText={setFullName}
-                                        placeholder="Enter full name"
-                                        editable={isEditable}
-                                    />
-                                </View>
+                    {/* Staff Count */}
+                    <Text style={styles.staffCount}>
+                        {staffList.length} staff member{staffList.length !== 1 ? 's' : ''} added
+                    </Text>
 
-                                {/* Two-column row */}
-                                <View style={styles.row}>
-                                    <View style={styles.halfField}>
-                                        <Text style={styles.label}>Highest Qualification *</Text>
-                                        <TextInput
-                                            style={[styles.input, !isEditable && styles.inputDisabled]}
-                                            value={qualification}
-                                            onChangeText={setQualification}
-                                            placeholder="e.g. PU, BA"
-                                            editable={isEditable}
-                                        />
+                    {/* Staff List */}
+                    {staffList.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Ionicons name="people-outline" size={48} color="#9ca3af" />
+                            <Text style={styles.emptyText}>No non-teaching staff added yet</Text>
+                            {isEditable && (
+                                <Text style={styles.emptySubtext}>
+                                    Tap the + button to add staff
+                                </Text>
+                            )}
+                        </View>
+                    ) : (
+                        staffList.map((staff, index) => (
+                            <View key={staff.id} style={styles.staffCard}>
+                                <View style={styles.staffCardHeader}>
+                                    <View style={styles.staffNumber}>
+                                        <Text style={styles.staffNumberText}>{index + 1}</Text>
                                     </View>
-                                    <View style={styles.halfField}>
-                                        <Text style={styles.label}>Length of Service *</Text>
-                                        <TextInput
-                                            style={[styles.input, !isEditable && styles.inputDisabled]}
-                                            value={yearsOfService}
-                                            onChangeText={setYearsOfService}
-                                            placeholder="Years"
-                                            keyboardType="numeric"
-                                            editable={isEditable}
-                                        />
+                                    <Text style={styles.staffName}>{staff.full_name}</Text>
+                                    {isEditable && (
+                                        <View style={styles.staffActions}>
+                                            <TouchableOpacity 
+                                                style={styles.editBtn}
+                                                onPress={() => openEditModal(staff)}
+                                            >
+                                                <Ionicons name="pencil" size={18} color="#0d9488" />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity 
+                                                style={styles.deleteBtn}
+                                                onPress={() => handleDelete(staff)}
+                                            >
+                                                <Ionicons name="trash-outline" size={18} color="#dc2626" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+                                </View>
+                                <View style={styles.staffDetails}>
+                                    <View style={styles.detailRow}>
+                                        <Text style={styles.detailLabel}>Qualification:</Text>
+                                        <Text style={styles.detailValue}>{staff.qualification}</Text>
+                                    </View>
+                                    <View style={styles.detailRow}>
+                                        <Text style={styles.detailLabel}>Nature of Work:</Text>
+                                        <Text style={styles.detailValue}>{staff.nature_of_work}</Text>
+                                    </View>
+                                    <View style={styles.detailRow}>
+                                        <Text style={styles.detailLabel}>Experience:</Text>
+                                        <Text style={styles.detailValue}>{staff.years_of_service} years</Text>
+                                    </View>
+                                    <View style={styles.detailRow}>
+                                        <Text style={styles.detailLabel}>Phone:</Text>
+                                        <Text style={styles.detailValue}>{staff.phone}</Text>
                                     </View>
                                 </View>
-
-                                {/* Nature of Work & Phone */}
-                                <View style={styles.row}>
-                                    <View style={styles.halfField}>
-                                        <Text style={styles.label}>Nature of Work *</Text>
-                                        <TextInput
-                                            style={[styles.input, !isEditable && styles.inputDisabled]}
-                                            value={natureOfWork}
-                                            onChangeText={setNatureOfWork}
-                                            placeholder="e.g. UDA, Peon"
-                                            editable={isEditable}
-                                        />
-                                    </View>
-                                    <View style={styles.halfField}>
-                                        <Text style={styles.label}>Phone Number *</Text>
-                                        <TextInput
-                                            style={[styles.input, !isEditable && styles.inputDisabled]}
-                                            value={phone}
-                                            onChangeText={setPhone}
-                                            placeholder="Phone number"
-                                            keyboardType="phone-pad"
-                                            editable={isEditable}
-                                        />
-                                    </View>
-                                </View>
-                            </>
-                        );
-                    })()}
+                            </View>
+                        ))
+                    )}
 
                     {/* Status Display based on form status */}
-                    {formStatus === 'APPROVED' ? (
-                        <>
-                            <TouchableOpacity style={styles.submittedButton} disabled>
-                                <Text style={styles.submittedButtonText}>Form 6B Submitted</Text>
-                            </TouchableOpacity>
-                            <View style={styles.acceptedBanner}>
-                                <Text style={styles.acceptedText}>Your Form 6B Submission is approved</Text>
-                            </View>
-                        </>
-                    ) : formStatus === 'REJECTED' ? (
+                    {formStatus === 'APPROVED' && (
+                        <View style={styles.acceptedBanner}>
+                            <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
+                            <Text style={styles.acceptedText}>Your Form 6B Submission is approved</Text>
+                        </View>
+                    )}
+
+                    {formStatus === 'REJECTED' && (
                         <>
                             <View style={styles.rejectedBanner}>
                                 <Ionicons name="alert-circle" size={20} color="#dc2626" />
@@ -298,70 +390,139 @@ export default function Form6BScreen() {
                                     <Text style={styles.rejectionReasonText}>{rejectionReason}</Text>
                                 </View>
                             )}
-                            <TouchableOpacity 
-                                style={styles.saveButton}
-                                onPress={handleSave}
-                                disabled={saveMutation.isPending}
-                            >
-                                {saveMutation.isPending ? (
-                                    <ActivityIndicator size="small" color="#ffffff" />
-                                ) : (
-                                    <Text style={styles.saveButtonText}>Save Details</Text>
-                                )}
-                            </TouchableOpacity>
-                            <TouchableOpacity 
-                                style={styles.submitButton}
-                                onPress={handleSubmit}
-                                disabled={submitMutation.isPending}
-                            >
-                                {submitMutation.isPending ? (
-                                    <ActivityIndicator size="small" color="#ffffff" />
-                                ) : (
-                                    <Text style={styles.submitButtonText}>Resubmit Form 6B</Text>
-                                )}
-                            </TouchableOpacity>
-                        </>
-                    ) : formStatus === 'SUBMITTED' ? (
-                        <>
-                            <TouchableOpacity style={styles.pendingButton} disabled>
-                                <Text style={styles.pendingButtonText}>Form 6B Submitted</Text>
-                            </TouchableOpacity>
-                            <View style={styles.pendingBanner}>
-                                <Ionicons name="time-outline" size={18} color="#d97706" />
-                                <Text style={styles.pendingText}>Your Form 6B Submission is pending approval</Text>
-                            </View>
-                        </>
-                    ) : (
-                        <>
-                            <TouchableOpacity 
-                                style={styles.saveButton}
-                                onPress={handleSave}
-                                disabled={saveMutation.isPending}
-                            >
-                                {saveMutation.isPending ? (
-                                    <ActivityIndicator size="small" color="#ffffff" />
-                                ) : (
-                                    <Text style={styles.saveButtonText}>Save Details</Text>
-                                )}
-                            </TouchableOpacity>
-
-                            {editingId && (
-                                <TouchableOpacity 
-                                    style={styles.submitButton}
-                                    onPress={handleSubmit}
-                                    disabled={submitMutation.isPending}
-                                >
-                                    {submitMutation.isPending ? (
-                                        <ActivityIndicator size="small" color="#ffffff" />
-                                    ) : (
-                                        <Text style={styles.submitButtonText}>Submit Form 6B</Text>
-                                    )}
-                                </TouchableOpacity>
-                            )}
                         </>
                     )}
+
+                    {formStatus === 'SUBMITTED' && (
+                        <View style={styles.pendingBanner}>
+                            <Ionicons name="time-outline" size={20} color="#d97706" />
+                            <Text style={styles.pendingText}>Your Form 6B Submission is pending approval</Text>
+                        </View>
+                    )}
+
+                    {/* Submit/Resubmit Button */}
+                    {isEditable && staffList.length > 0 && (
+                        <TouchableOpacity 
+                            style={styles.submitButton}
+                            onPress={handleSubmit}
+                            disabled={submitMutation.isPending}
+                        >
+                            {submitMutation.isPending ? (
+                                <ActivityIndicator size="small" color="#ffffff" />
+                            ) : (
+                                <Text style={styles.submitButtonText}>
+                                    {formStatus === 'REJECTED' ? 'Resubmit Form 6B' : 'Submit Form 6B'}
+                                </Text>
+                            )}
+                        </TouchableOpacity>
+                    )}
                 </ScrollView>
-            </KeyboardAvoidingView>
+            </View>
+
+            {/* Add/Edit Modal */}
+            <Modal
+                visible={modalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={closeModal}
+            >
+                <View style={styles.modalOverlay}>
+                    <KeyboardAvoidingView 
+                        style={styles.modalContent}
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    >
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>
+                                {editingStaff ? 'Edit Staff Details' : 'Add Non-Teaching Staff'}
+                            </Text>
+                            <TouchableOpacity onPress={closeModal}>
+                                <Ionicons name="close" size={24} color="#374151" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
+                            {/* Full Name */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.label}>Full Name *</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={formData.full_name}
+                                    onChangeText={(text) => setFormData({...formData, full_name: text})}
+                                    placeholder="Enter full name"
+                                />
+                            </View>
+
+                            {/* Qualification */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.label}>Highest Qualification *</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={formData.qualification}
+                                    onChangeText={(text) => setFormData({...formData, qualification: text})}
+                                    placeholder="e.g. PU, BA, MA"
+                                />
+                            </View>
+
+                            {/* Nature of Work */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.label}>Nature of Work *</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={formData.nature_of_work}
+                                    onChangeText={(text) => setFormData({...formData, nature_of_work: text})}
+                                    placeholder="e.g. UDA, Peon, Watchman"
+                                />
+                            </View>
+
+                            {/* Years of Service */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.label}>Years of Service</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={formData.years_of_service}
+                                    onChangeText={(text) => setFormData({...formData, years_of_service: text})}
+                                    placeholder="Enter years"
+                                    keyboardType="numeric"
+                                />
+                            </View>
+
+                            {/* Phone Number */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.label}>Phone Number *</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={formData.phone}
+                                    onChangeText={(text) => setFormData({...formData, phone: text})}
+                                    placeholder="Enter phone number"
+                                    keyboardType="phone-pad"
+                                />
+                            </View>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <TouchableOpacity 
+                                style={styles.cancelButton}
+                                onPress={closeModal}
+                            >
+                                <Text style={styles.cancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={styles.saveButton}
+                                onPress={handleSave}
+                                disabled={isSaving}
+                            >
+                                {isSaving ? (
+                                    <ActivityIndicator size="small" color="#ffffff" />
+                                ) : (
+                                    <Text style={styles.saveButtonText}>
+                                        {editingStaff ? 'Update' : 'Add Staff'}
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -410,78 +571,101 @@ const styles = StyleSheet.create({
         padding: 16,
         paddingBottom: 32,
     },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
     sectionTitle: {
         fontSize: 18,
         fontWeight: '700',
         color: '#1f2937',
-        marginBottom: 16,
     },
-    fieldContainer: {
-        marginBottom: 16,
+    addButton: {
+        padding: 4,
     },
-    label: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 6,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#e5e7eb',
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        fontSize: 15,
-        color: '#1f2937',
-        backgroundColor: '#ffffff',
-    },
-    inputDisabled: {
-        backgroundColor: '#f3f4f6',
+    staffCount: {
+        fontSize: 14,
         color: '#6b7280',
-    },
-    row: {
-        flexDirection: 'row',
-        gap: 12,
         marginBottom: 16,
     },
-    halfField: {
-        flex: 1,
-    },
-    saveButton: {
-        backgroundColor: '#0d9488',
-        borderRadius: 8,
-        paddingVertical: 16,
+    emptyState: {
         alignItems: 'center',
-        marginTop: 8,
+        paddingVertical: 40,
     },
-    saveButtonText: {
-        color: '#ffffff',
+    emptyText: {
         fontSize: 16,
-        fontWeight: '600',
-    },
-    submitButton: {
-        backgroundColor: '#374151',
-        borderRadius: 8,
-        paddingVertical: 16,
-        alignItems: 'center',
+        color: '#6b7280',
         marginTop: 12,
     },
-    submitButtonText: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: '600',
+    emptySubtext: {
+        fontSize: 14,
+        color: '#9ca3af',
+        marginTop: 4,
     },
-    submittedButton: {
-        backgroundColor: '#9ca3af',
-        borderRadius: 8,
-        paddingVertical: 16,
+    staffCard: {
+        backgroundColor: '#f9fafb',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+    },
+    staffCardHeader: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 8,
+        marginBottom: 12,
     },
-    submittedButtonText: {
+    staffNumber: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#0d9488',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    staffNumberText: {
         color: '#ffffff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    staffName: {
+        flex: 1,
         fontSize: 16,
         fontWeight: '600',
+        color: '#1f2937',
+    },
+    staffActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    editBtn: {
+        padding: 6,
+        backgroundColor: '#d1fae5',
+        borderRadius: 6,
+    },
+    deleteBtn: {
+        padding: 6,
+        backgroundColor: '#fee2e2',
+        borderRadius: 6,
+    },
+    staffDetails: {
+        gap: 6,
+    },
+    detailRow: {
+        flexDirection: 'row',
+    },
+    detailLabel: {
+        fontSize: 13,
+        color: '#6b7280',
+        width: 110,
+    },
+    detailValue: {
+        fontSize: 13,
+        color: '#1f2937',
+        flex: 1,
     },
     acceptedBanner: {
         backgroundColor: '#d1fae5',
@@ -490,13 +674,16 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         paddingVertical: 12,
         paddingHorizontal: 16,
-        marginTop: 12,
+        marginTop: 16,
+        flexDirection: 'row',
         alignItems: 'center',
+        gap: 8,
     },
     acceptedText: {
         color: '#16a34a',
         fontSize: 14,
         fontWeight: '600',
+        flex: 1,
     },
     rejectedBanner: {
         backgroundColor: '#fee2e2',
@@ -534,18 +721,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         lineHeight: 20,
     },
-    pendingButton: {
-        backgroundColor: '#fbbf24',
-        borderRadius: 8,
-        paddingVertical: 16,
-        alignItems: 'center',
-        marginTop: 16,
-    },
-    pendingButtonText: {
-        color: '#78350f',
-        fontSize: 16,
-        fontWeight: '600',
-    },
     pendingBanner: {
         backgroundColor: '#fef3c7',
         borderWidth: 1,
@@ -553,7 +728,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         paddingVertical: 12,
         paddingHorizontal: 16,
-        marginTop: 12,
+        marginTop: 16,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
@@ -563,6 +738,18 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         flex: 1,
+    },
+    submitButton: {
+        backgroundColor: '#374151',
+        borderRadius: 8,
+        paddingVertical: 16,
+        alignItems: 'center',
+        marginTop: 20,
+    },
+    submitButtonText: {
+        color: '#ffffff',
+        fontSize: 16,
+        fontWeight: '600',
     },
     loadingContainer: {
         flex: 1,
@@ -574,5 +761,84 @@ const styles = StyleSheet.create({
         marginTop: 12,
         fontSize: 16,
         color: '#6b7280',
+    },
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#ffffff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '85%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1f2937',
+    },
+    modalBody: {
+        padding: 16,
+        maxHeight: 400,
+    },
+    modalFooter: {
+        flexDirection: 'row',
+        padding: 16,
+        gap: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+    },
+    fieldContainer: {
+        marginBottom: 16,
+    },
+    label: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 6,
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        fontSize: 15,
+        color: '#1f2937',
+        backgroundColor: '#ffffff',
+    },
+    cancelButton: {
+        flex: 1,
+        backgroundColor: '#f3f4f6',
+        borderRadius: 8,
+        paddingVertical: 14,
+        alignItems: 'center',
+    },
+    cancelButtonText: {
+        color: '#374151',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    saveButton: {
+        flex: 1,
+        backgroundColor: '#0d9488',
+        borderRadius: 8,
+        paddingVertical: 14,
+        alignItems: 'center',
+    },
+    saveButtonText: {
+        color: '#ffffff',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });

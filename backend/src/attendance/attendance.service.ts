@@ -92,7 +92,7 @@ export class AttendanceService {
 
         // 4. Calculate distance and check geo-fence
         let distance: number | null = null;
-        let isWithinGeofence = false;
+        let isWithinGeofence = true; // Default to true if no coordinates set
 
         if (targetLat !== null && targetLng !== null) {
             distance = this.calculateDistance(
@@ -103,6 +103,7 @@ export class AttendanceService {
             );
             isWithinGeofence = distance <= task.geofence_radius;
         }
+        // If no target coordinates are defined, consider within geofence by default
 
         // 5. Calculate image hash for integrity
         const imageHash = this.calculateSHA256(imageFile.buffer);

@@ -23,6 +23,7 @@ import { UserStarsModule } from './user-stars/user-stars.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { FormSubmissionsModule } from './form-submissions/form-submissions.module';
 import { AttendanceModule } from './attendance/attendance.module';
+import { ExamTrackerModule } from './exam-tracker/exam-tracker.module';
 import { DevDelayMiddleware } from './shared/middlewares';
 
 /**
@@ -83,6 +84,7 @@ import { DevDelayMiddleware } from './shared/middlewares';
         AnalyticsModule,
         FormSubmissionsModule,
         AttendanceModule,
+        ExamTrackerModule,
     ],
     providers: [
         // Apply ThrottlerGuard globally to all routes

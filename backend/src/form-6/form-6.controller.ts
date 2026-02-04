@@ -3,6 +3,7 @@ import {
     Get,
     Post,
     Patch,
+    Delete,
     Body,
     Param,
     UseGuards,
@@ -183,6 +184,20 @@ export class Form6Controller {
         @Ip() ip: string | null,
     ) {
         return this.form6Service.updateNonTeachingStaff(user.id, staffId, body, ip);
+    }
+
+    /**
+     * DELETE /form-6/non-teaching-staff/:id
+     * Delete non-teaching staff member.
+     */
+    @Delete('non-teaching-staff/:id')
+    @Roles(UserRole.HEADMASTER)
+    async deleteNonTeachingStaff(
+        @CurrentUser() user: User,
+        @Param('id') staffId: string,
+        @Ip() ip: string | null,
+    ) {
+        return this.form6Service.deleteNonTeachingStaff(user.id, staffId, ip);
     }
 
     /**

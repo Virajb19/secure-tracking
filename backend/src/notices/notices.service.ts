@@ -14,6 +14,9 @@ export class NoticesService {
      * Get all active notices.
      * Returns notices that are not expired.
      * For Paper Setter/Checker notices, includes acceptance status.
+     * 
+     * SECURITY: Targeted notices (is_targeted=true) are only visible to their recipients.
+     * Global notices (is_targeted=false) are visible to all users in the school/globally.
      */
     async getNotices(userId: string) {
         // Get user's school if they have a faculty profile
@@ -24,18 +27,35 @@ export class NoticesService {
 
         const now = new Date();
 
-        // Build school filter
+        // Build school filter for global notices
         const schoolFilter = faculty?.school_id
             ? { OR: [{ school_id: null }, { school_id: faculty.school_id }] }
             : { school_id: null };
 
-        // Get notices - either global (no school_id) or for the user's school
+        // Get notices with proper security filtering:
+        // 1. Global notices (is_targeted=false): visible to all in school
+        // 2. Targeted notices (is_targeted=true): only visible to recipients
         const notices = await this.db.notice.findMany({
             where: {
                 is_active: true,
                 AND: [
                     { OR: [{ expires_at: null }, { expires_at: { gte: now } }] },
-                    schoolFilter,
+                    {
+                        OR: [
+                            // Global notices - follow school filter
+                            {
+                                is_targeted: false,
+                                ...schoolFilter,
+                            },
+                            // Targeted notices - only if user is a recipient
+                            {
+                                is_targeted: true,
+                                recipients: {
+                                    some: { user_id: userId },
+                                },
+                            },
+                        ],
+                    },
                 ],
             },
             select: {
@@ -51,11 +71,17 @@ export class NoticesService {
                 created_at: true,
                 file_url: true,
                 file_name: true,
+                is_targeted: true,
                 creator: {
                     select: {
                         id: true,
                         name: true,
                     },
+                },
+                // Include read status for targeted notices
+                recipients: {
+                    where: { user_id: userId },
+                    select: { is_read: true, read_at: true },
                 },
             },
             orderBy: [
@@ -66,6 +92,14 @@ export class NoticesService {
         // For Paper Setter/Checker notices, get acceptance status
         const noticesWithStatus = await Promise.all(
             notices.map(async (notice) => {
+                // Flatten recipient info
+                const recipientInfo = notice.recipients[0];
+                const baseNotice = {
+                    ...notice,
+                    is_read: recipientInfo?.is_read ?? false,
+                    recipients: undefined, // Remove recipients array from response
+                };
+
                 if (notice.type === NoticeType.PAPER_SETTER || notice.type === NoticeType.PAPER_CHECKER) {
                     const selectionType = notice.type === NoticeType.PAPER_SETTER ? 'PAPER_SETTER' : 'EXAMINER';
                     
@@ -82,11 +116,11 @@ export class NoticesService {
                     });
 
                     return {
-                        ...notice,
+                        ...baseNotice,
                         acceptance_status: selection?.status === SelectionStatus.ACCEPTED ? 'ACCEPTED' : 'PENDING',
                     };
                 }
-                return notice;
+                return baseNotice;
             })
         );
 
@@ -216,5 +250,35 @@ export class NoticesService {
             message: 'Notice accepted successfully',
             selection: updated,
         };
+    }
+
+    /**
+     * Mark a targeted notice as read.
+     */
+    async markNoticeAsRead(noticeId: string, userId: string) {
+        const recipient = await this.db.noticeRecipient.findUnique({
+            where: {
+                notice_id_user_id: {
+                    notice_id: noticeId,
+                    user_id: userId,
+                },
+            },
+        });
+
+        if (!recipient) {
+            throw new ForbiddenException('You do not have access to this notice');
+        }
+
+        if (!recipient.is_read) {
+            await this.db.noticeRecipient.update({
+                where: { id: recipient.id },
+                data: {
+                    is_read: true,
+                    read_at: new Date(),
+                },
+            });
+        }
+
+        return { success: true };
     }
 }

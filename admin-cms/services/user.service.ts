@@ -22,6 +22,21 @@ export const useToggleUserStatus = () => {
   });
 }
 
+export const useApproveUser = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ userId, status, rejectionReason }: { 
+      userId: string; 
+      status: 'APPROVED' | 'REJECTED';
+      rejectionReason?: string;
+    }) => usersApi.approveUser(userId, status, rejectionReason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"], exact: false });
+    },
+  });
+}
+
 export const useResetDevice = () => {
   const queryClient = useQueryClient();
   

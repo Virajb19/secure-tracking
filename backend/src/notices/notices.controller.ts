@@ -2,6 +2,7 @@ import {
     Controller,
     Get,
     Post,
+    Patch,
     Param,
     UseGuards,
 } from '@nestjs/common';
@@ -33,6 +34,19 @@ export class NoticesController {
     @Roles(UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT, UserRole.SEBA_OFFICER)
     async getNoticeById(@Param('id') noticeId: string) {
         return this.noticesService.getNoticeById(noticeId);
+    }
+
+    /**
+     * PATCH /notices/:id/read
+     * Mark a targeted notice as read.
+     */
+    @Patch(':id/read')
+    @Roles(UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT, UserRole.SEBA_OFFICER)
+    async markNoticeAsRead(
+        @Param('id') noticeId: string,
+        @CurrentUser() user: User,
+    ) {
+        return this.noticesService.markNoticeAsRead(noticeId, user.id);
     }
 
     /**

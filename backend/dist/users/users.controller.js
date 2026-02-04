@@ -33,7 +33,7 @@ let UsersController = class UsersController {
         const ipAddress = this.extractIpAddress(request);
         return this.usersService.create(createUserDto, currentUser.id, ipAddress);
     }
-    async findAll(page, limit, role, district_id, school_id, class_level, subject, search, is_active) {
+    async findAll(page, limit, role, district_id, school_id, class_level, subject, search, is_active, approval_status) {
         return this.usersService.findAllPaginated({
             page: page ? parseInt(page, 10) : 1,
             limit: limit ? parseInt(limit, 10) : 25,
@@ -44,6 +44,7 @@ let UsersController = class UsersController {
             subject,
             search,
             is_active: is_active === 'true' ? true : is_active === 'false' ? false : undefined,
+            approval_status,
         });
     }
     async toggleStatus(userId, toggleStatusDto, currentUser, request) {
@@ -87,6 +88,10 @@ let UsersController = class UsersController {
     async getTeachingAssignments(userId) {
         return this.usersService.getTeachingAssignments(userId);
     }
+    async approveUser(userId, body, currentUser, request) {
+        const ipAddress = this.extractIpAddress(request);
+        return this.usersService.updateApprovalStatus(userId, body.status, currentUser.id, ipAddress, body.rejection_reason);
+    }
     extractIpAddress(request) {
         const forwarded = request.headers['x-forwarded-for'];
         if (forwarded) {
@@ -118,8 +123,9 @@ __decorate([
     __param(6, (0, common_1.Query)('subject')),
     __param(7, (0, common_1.Query)('search')),
     __param(8, (0, common_1.Query)('is_active')),
+    __param(9, (0, common_1.Query)('approval_status')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String, String, String, String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "findAll", null);
 __decorate([
@@ -171,6 +177,17 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "getTeachingAssignments", null);
+__decorate([
+    (0, common_1.Patch)(':userId/approve'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Param)('userId')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, decorators_1.CurrentUser)()),
+    __param(3, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "approveUser", null);
 exports.UsersController = UsersController = __decorate([
     (0, common_1.Controller)('admin/users'),
     (0, common_1.UseGuards)(guards_1.JwtAuthGuard, guards_1.RolesGuard),

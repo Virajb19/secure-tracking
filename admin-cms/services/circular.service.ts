@@ -1,18 +1,18 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { circularsApi, masterDataApi } from './api';
+import { circularsApi, masterDataApi, CircularsResponse } from './api';
 import type { Circular, District, School } from '@/types';
 
 /* =========================
    Circular Queries
 ========================= */
 
-// Get all circulars
-export const useGetCirculars = () => {
-  return useQuery<Circular[]>({
-    queryKey: ['circulars'],
-    queryFn: circularsApi.getAll,
+// Get all circulars (with pagination)
+export const useGetCirculars = (limit = 20, offset = 0, search?: string) => {
+  return useQuery<CircularsResponse>({
+    queryKey: ['circulars', limit, offset, search],
+    queryFn: () => circularsApi.getAll(limit, offset, search),
   });
 };
 
