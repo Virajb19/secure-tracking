@@ -154,6 +154,25 @@ export interface Task {
     is_double_shift?: boolean;
     shift_type?: 'MORNING' | 'AFTERNOON';
     expected_travel_time?: number;
+    // Geo-fence coordinates for attendance
+    pickup_latitude?: number;
+    pickup_longitude?: number;
+    destination_latitude?: number;
+    destination_longitude?: number;
+    geofence_radius?: number;
+}
+
+/**
+ * Attendance record from backend.
+ */
+export interface Attendance {
+    id: string;
+    task_id: string;
+    user_id: string;
+    location_type: 'PICKUP' | 'DESTINATION';
+    is_within_geofence: boolean;
+    distance_from_target?: string;
+    timestamp: string;
 }
 
 /**

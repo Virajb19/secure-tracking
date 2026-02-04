@@ -15,8 +15,8 @@ import { Platform } from 'react-native';
 import { API_CONFIG } from '../constants/config';
 import { getSecureItem } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/config';
-// Initialize Firebase (for analytics/future use)
-import '../lib/firebase';
+// Firebase disabled - not configured
+// import '../lib/firebase';
 
 /**
  * Notification response from server

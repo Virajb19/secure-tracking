@@ -26,6 +26,7 @@ export interface LoginResponse {
         phone: string;
         role: UserRole;
         profile_image_url?: string | null;
+        is_active: boolean;
     };
 }
 
@@ -146,17 +147,8 @@ export class AuthService {
             throw new BadRequestException('Either email+password or phone is required');
         }
 
-        // Check if user is active (approved by admin)
-        if (!user.is_active) {
-            await this.auditLogsService.log(
-                AuditAction.USER_LOGIN_FAILED,
-                'User',
-                user.id,
-                user.id,
-                ipAddress,
-            );
-            throw new UnauthorizedException('Your account is pending admin approval. Please wait for activation.');
-        }
+        // Note: Inactive users CAN login now, but with limited access
+        // The mobile app will show a pending approval screen for inactive users
 
         // DELIVERY users must provide device_id
         if (user.role === UserRole.SEBA_OFFICER) {
@@ -189,6 +181,7 @@ export class AuthService {
                 email: user.email,
                 phone: user.phone,
                 role: user.role,
+                is_active: user.is_active,
             },
         };
     }
@@ -403,6 +396,7 @@ export class AuthService {
                 phone: user.phone,
                 role: user.role,
                 profile_image_url: user.profile_image_url,
+                is_active: user.is_active,
             },
         };
     }

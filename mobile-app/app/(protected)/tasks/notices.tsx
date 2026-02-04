@@ -1,34 +1,32 @@
 /**
- * Headmaster Notices Screen
+ * Notices Screen for SEBA_OFFICER
  * 
- * Displays important notices for the headmaster.
- * Supports filtering by Self and Colleagues tabs.
+ * Displays important notices/messages from admin/CMS:
+ * - Notice cards with type badges (INFO, WARNING, URGENT, ANNOUNCEMENT)
+ * - Search functionality
+ * - Pull-to-refresh
+ * - File attachments support
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    TextInput,
     ActivityIndicator,
     RefreshControl,
+    TextInput,
     Image,
     Linking,
     Alert,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../src/api/client';
 import { getFileViewUrl } from '../../../src/lib/appwrite';
-
-// No notices image - using a URI since the GIF needs to be added to assets
-// To use: Place the no-notices.gif file in mobile-app/assets/ folder
-const NO_NOTICES_IMAGE_URI = 'https://raw.githubusercontent.com/AliARIOGLU/react-native-gif/main/assets/empty-box.gif';
 
 interface Notice {
     id: string;
@@ -37,17 +35,15 @@ interface Notice {
     type: 'INFO' | 'WARNING' | 'URGENT' | 'ANNOUNCEMENT';
     created_at: string;
     author?: string;
-    target?: 'SELF' | 'SCHOOL';
     file_url?: string;
     file_name?: string;
 }
 
-type TabType = 'self' | 'colleagues';
+// Empty state image
+const NO_NOTICES_IMAGE_URI = 'https://raw.githubusercontent.com/AliARIOGLU/react-native-gif/main/assets/empty-box.gif';
 
 export default function NoticesScreen() {
     const router = useRouter();
-    const insets = useSafeAreaInsets();
-    const [activeTab, setActiveTab] = useState<TabType>('self');
     const [searchQuery, setSearchQuery] = useState('');
 
     const {
@@ -57,15 +53,13 @@ export default function NoticesScreen() {
         refetch,
         isRefetching,
     } = useQuery<Notice[]>({
-        queryKey: ['notices', activeTab],
+        queryKey: ['seba-officer-notices'],
         queryFn: async () => {
             try {
-                const response = await apiClient.get('/notices', {
-                    params: { target: activeTab },
-                });
+                const response = await apiClient.get('/notices');
                 return response.data;
             } catch (err: any) {
-                // Return empty array if endpoint not found (not implemented yet)
+                // Return empty array if endpoint not found
                 if (err.response?.status === 404) {
                     return [];
                 }
@@ -74,7 +68,8 @@ export default function NoticesScreen() {
         },
     });
 
-    const filteredNotices = React.useMemo(() => {
+    // Filter notices based on search query
+    const filteredNotices = useMemo(() => {
         if (!notices) return [];
         if (!searchQuery.trim()) return notices;
         
@@ -95,7 +90,7 @@ export default function NoticesScreen() {
             case 'ANNOUNCEMENT':
                 return { name: 'megaphone', color: '#8b5cf6' };
             default:
-                return { name: 'information-circle', color: '#0d9488' };
+                return { name: 'information-circle', color: '#3b82f6' };
         }
     };
 
@@ -108,7 +103,7 @@ export default function NoticesScreen() {
             case 'ANNOUNCEMENT':
                 return { bg: '#faf5ff', text: '#7c3aed', border: '#e9d5ff' };
             default:
-                return { bg: '#ccfbf1', text: '#0d9488', border: '#99f6e4' };
+                return { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' };
         }
     };
 
@@ -131,7 +126,7 @@ export default function NoticesScreen() {
     if (isLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#0d9488" />
+                <ActivityIndicator size="large" color="#3b82f6" />
                 <Text style={styles.loadingText}>Loading notices...</Text>
             </View>
         );
@@ -152,14 +147,14 @@ export default function NoticesScreen() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+            <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => router.back()}
                 >
-                    <Ionicons name="arrow-back" size={24} color="#ffffff" />
+                    <Ionicons name="arrow-back" size={24} color="#1f2937" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>View Notices</Text>
+                <Text style={styles.headerTitle}>Important Notices</Text>
                 <View style={styles.placeholder} />
             </View>
 
@@ -180,26 +175,6 @@ export default function NoticesScreen() {
                         </TouchableOpacity>
                     )}
                 </View>
-            </View>
-
-            {/* Tab Buttons */}
-            <View style={styles.tabContainer}>
-                <TouchableOpacity
-                    style={[styles.tabButton, activeTab === 'self' && styles.tabButtonActive]}
-                    onPress={() => setActiveTab('self')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'self' && styles.tabTextActive]}>
-                        Self
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tabButton, activeTab === 'colleagues' && styles.tabButtonActive]}
-                    onPress={() => setActiveTab('colleagues')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'colleagues' && styles.tabTextActive]}>
-                        Colleagues
-                    </Text>
-                </TouchableOpacity>
             </View>
 
             {/* Notices List */}
@@ -276,11 +251,11 @@ export default function NoticesScreen() {
                                                 }
                                             }}
                                         >
-                                            <Ionicons name="document-attach" size={18} color="#0d9488" />
+                                            <Ionicons name="document-attach" size={18} color="#3b82f6" />
                                             <Text style={styles.fileText}>
                                                 {notice.file_name || 'View Attachment'}
                                             </Text>
-                                            <Ionicons name="open-outline" size={16} color="#0d9488" />
+                                            <Ionicons name="open-outline" size={16} color="#3b82f6" />
                                         </TouchableOpacity>
                                     )}
                                 </View>
@@ -318,7 +293,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingVertical: 16,
-        backgroundColor: '#374151',
+        backgroundColor: '#ffffff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
     },
     backButton: {
         padding: 8,
@@ -326,7 +303,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#ffffff',
+        color: '#1f2937',
     },
     placeholder: {
         width: 40,
@@ -351,31 +328,6 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         color: '#1f2937',
-    },
-    tabContainer: {
-        flexDirection: 'row',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#ffffff',
-        gap: 12,
-    },
-    tabButton: {
-        flex: 1,
-        paddingVertical: 10,
-        borderRadius: 8,
-        alignItems: 'center',
-        backgroundColor: '#f3f4f6',
-    },
-    tabButtonActive: {
-        backgroundColor: '#0d9488',
-    },
-    tabText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#6b7280',
-    },
-    tabTextActive: {
-        color: '#ffffff',
     },
     scrollView: {
         flex: 1,
@@ -442,14 +394,14 @@ const styles = StyleSheet.create({
         marginTop: 12,
         paddingVertical: 8,
         paddingHorizontal: 12,
-        backgroundColor: '#ccfbf1',
+        backgroundColor: '#eff6ff',
         borderRadius: 8,
         gap: 8,
     },
     fileText: {
         flex: 1,
         fontSize: 13,
-        color: '#0d9488',
+        color: '#3b82f6',
         fontWeight: '500',
     },
     loadingContainer: {
@@ -477,7 +429,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     retryButton: {
-        backgroundColor: '#0d9488',
+        backgroundColor: '#3b82f6',
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 8,

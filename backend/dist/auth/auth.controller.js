@@ -56,6 +56,7 @@ const auth_service_1 = require("./auth.service");
 const login_dto_1 = require("./dto/login.dto");
 const register_dto_1 = require("./dto/register.dto");
 const decorators_1 = require("../shared/decorators");
+const users_service_1 = require("../users/users.service");
 const profileImageMulterOptions = {
     storage: (0, multer_1.memoryStorage)(),
     limits: {
@@ -72,8 +73,9 @@ const profileImageMulterOptions = {
     },
 };
 let AuthController = class AuthController {
-    constructor(authService) {
+    constructor(authService, usersService) {
         this.authService = authService;
+        this.usersService = usersService;
     }
     async login(loginDto, request) {
         const ipAddress = this.extractIpAddress(request);
@@ -94,6 +96,22 @@ let AuthController = class AuthController {
             return forwardedIps.split(',')[0].trim();
         }
         return request.ip || request.socket.remoteAddress || 'unknown';
+    }
+    async getMe(request) {
+        const user = request.user;
+        if (!user) {
+            throw new common_1.BadRequestException('User not found');
+        }
+        return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            gender: user.gender,
+            profile_image_url: user.profile_image_url,
+            is_active: user.is_active,
+        };
     }
     async logout(request) {
         const user = request.user;
@@ -149,6 +167,15 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "adminLogin", null);
 __decorate([
+    (0, common_1.Get)('me'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "getMe", null);
+__decorate([
     (0, common_1.Post)('logout'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
@@ -168,6 +195,7 @@ __decorate([
 ], AuthController.prototype, "uploadProfileImage", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
-    __metadata("design:paramtypes", [auth_service_1.AuthService])
+    __metadata("design:paramtypes", [auth_service_1.AuthService,
+        users_service_1.UsersService])
 ], AuthController);
 //# sourceMappingURL=auth.controller.js.map

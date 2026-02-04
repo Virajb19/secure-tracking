@@ -23,6 +23,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { fetchMyTasks } from '../../../src/services/task.service';
 import { Task, TaskStatus } from '../../../src/types';
@@ -240,12 +241,21 @@ export default function TasksScreen() {
         <View style={styles.container}>
             {/* Welcome Banner */}
             <View style={styles.welcomeBanner}>
-                <Text style={styles.welcomeText}>
-                    👋 Welcome, {user?.name || 'Agent'}!
-                </Text>
-                <Text style={styles.taskCount}>
-                    {tasks.length} task{tasks.length !== 1 ? 's' : ''} assigned
-                </Text>
+                <View style={styles.welcomeTextContainer}>
+                    <Text style={styles.welcomeText}>
+                        👋 Welcome, {user?.name || 'Agent'}!
+                    </Text>
+                    <Text style={styles.taskCount}>
+                        {tasks.length} task{tasks.length !== 1 ? 's' : ''} assigned
+                    </Text>
+                </View>
+                <TouchableOpacity 
+                    style={styles.noticesButton}
+                    onPress={() => router.push('/(protected)/tasks/notices')}
+                >
+                    <Ionicons name="megaphone-outline" size={20} color="#ffffff" />
+                    <Text style={styles.noticesButtonText}>Notices</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Error State */}
@@ -298,6 +308,12 @@ const styles = StyleSheet.create({
         padding: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#2d2d44',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    welcomeTextContainer: {
+        flex: 1,
     },
     welcomeText: {
         color: '#ffffff',
@@ -308,6 +324,20 @@ const styles = StyleSheet.create({
         color: '#6b7280',
         fontSize: 14,
         marginTop: 4,
+    },
+    noticesButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#3b82f6',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 8,
+        gap: 6,
+    },
+    noticesButtonText: {
+        color: '#ffffff',
+        fontSize: 14,
+        fontWeight: '600',
     },
     listContent: {
         padding: 16,

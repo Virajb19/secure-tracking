@@ -518,9 +518,12 @@ const styles = StyleSheet.create({
         margin: 16,
         borderRadius: 16,
         overflow: 'hidden',
+        maxHeight: 350,
+        minHeight: 250,
     },
     previewImage: {
-        flex: 1,
+        width: '100%',
+        height: '100%',
         resizeMode: 'cover',
     },
     locationInfo: {

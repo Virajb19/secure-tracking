@@ -20,7 +20,7 @@ export class NoticesController {
      * Get all active notices.
      */
     @Get()
-    @Roles(UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT)
+    @Roles(UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT, UserRole.SEBA_OFFICER)
     async getNotices(@CurrentUser() user: User) {
         return this.noticesService.getNotices(user.id);
     }
@@ -30,7 +30,7 @@ export class NoticesController {
      * Get a single notice by ID.
      */
     @Get(':id')
-    @Roles(UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT)
+    @Roles(UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT, UserRole.SEBA_OFFICER)
     async getNoticeById(@Param('id') noticeId: string) {
         return this.noticesService.getNoticeById(noticeId);
     }

@@ -26,10 +26,11 @@ import {
     storeUserData,
     clearAuthData,
 } from '../utils/storage';
-import {
-    initializePushNotifications,
-    removePushToken,
-} from '../services/notification.service';
+// Push notifications disabled - Firebase not configured
+// import {
+//     initializePushNotifications,
+//     removePushToken,
+// } from '../services/notification.service';
 import apiClient from '../api/client';
 
 /**
@@ -66,6 +67,8 @@ interface AuthContextType {
     login: (params: LoginParams) => Promise<LoginResult>;
     /** Logout function */
     logout: () => Promise<void>;
+    /** Refresh user data from storage */
+    refreshUser: () => Promise<void>;
 }
 
 /**
@@ -78,6 +81,7 @@ const AuthContext = createContext<AuthContextType>({
     deviceId: null,
     login: async () => ({ success: false, error: 'Context not initialized', isInactive: false }),
     logout: async () => { },
+    refreshUser: async () => { },
 });
 
 /**
@@ -169,10 +173,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 // Update state
                 setUser(result.user);
 
-                // Initialize push notifications after successful login
-                initializePushNotifications().catch(err => {
-                    console.error('[Auth] Failed to initialize push notifications:', err);
-                });
+                // Push notifications disabled - Firebase not configured
+                // initializePushNotifications().catch(err => {
+                //     console.error('[Auth] Failed to initialize push notifications:', err);
+                // });
 
                 return { success: true };
             }
@@ -204,10 +208,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 console.error('[Auth] Failed to log logout action:', error);
             }
 
-            // Remove push token from server before logout
-            await removePushToken().catch(err => {
-                console.error('[Auth] Failed to remove push token:', err);
-            });
+            // Push notifications disabled - Firebase not configured
+            // await removePushToken().catch(err => {
+            //     console.error('[Auth] Failed to remove push token:', err);
+            // });
 
             // Clear all auth data (but NOT device_id)
             await clearAuthData();
@@ -221,6 +225,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     }, []);
 
+    /**
+     * Refresh user data from storage.
+     * Used after admin activates the user.
+     */
+    const refreshUser = useCallback(async () => {
+        try {
+            const userData = await getUserData();
+            if (userData) {
+                setUser(userData);
+                console.log('[Auth] User data refreshed');
+            }
+        } catch (error) {
+            console.error('[Auth] Failed to refresh user:', error);
+        }
+    }, []);
+
     return (
         <AuthContext.Provider
             value={{
@@ -230,6 +250,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 deviceId,
                 login,
                 logout,
+                refreshUser,
             }}
         >
             {children}

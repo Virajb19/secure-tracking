@@ -8,11 +8,13 @@ import {
     RefreshControl,
     TextInput,
     Linking,
+    Alert,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { styled } from 'nativewind';
 import apiClient from '../../../../src/api/client';
+import { getFileViewUrl } from '../../../../src/lib/appwrite';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -424,7 +426,20 @@ export default function NoticesScreen() {
                                     {notice.file_url && (
                                         <StyledTouchable
                                             className="flex-row items-center bg-indigo-50 mt-4 px-4 py-3 rounded-xl"
-                                            onPress={() => Linking.openURL(notice.file_url!)}
+                                            onPress={async () => {
+                                                try {
+                                                    const fileUrl = getFileViewUrl(notice.file_url!);
+                                                    const canOpen = await Linking.canOpenURL(fileUrl);
+                                                    if (canOpen) {
+                                                        await Linking.openURL(fileUrl);
+                                                    } else {
+                                                        Alert.alert('Error', 'Unable to open this file. Please try again later.');
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Error opening file:', error);
+                                                    Alert.alert('Error', 'Failed to open attachment.');
+                                                }
+                                            }}
                                             activeOpacity={0.7}
                                         >
                                             <StyledView className="w-10 h-10 bg-indigo-100 rounded-xl justify-center items-center mr-3">

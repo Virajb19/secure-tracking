@@ -7,9 +7,11 @@ import { Client, Account, Databases, Storage } from "react-native-appwrite";
  * Make sure your .env file has:
  * - EXPO_PUBLIC_APPWRITE_ENDPOINT
  * - EXPO_PUBLIC_APPWRITE_PROJECT_ID
+ * - EXPO_PUBLIC_APPWRITE_BUCKET_ID
  */
 const APPWRITE_ENDPOINT = process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
 const APPWRITE_PROJECT_ID = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID || '';
+const APPWRITE_BUCKET_ID = process.env.EXPO_PUBLIC_APPWRITE_BUCKET_ID || '';
 
 console.log('[Appwrite] Endpoint:', APPWRITE_ENDPOINT);
 console.log('[Appwrite] Project ID:', APPWRITE_PROJECT_ID);
@@ -26,3 +28,13 @@ export const client = new Client()
 export const account = new Account(client);
 export const databases = new Databases(client);
 export const storage = new Storage(client);
+
+/**
+ * Get the public view URL for a file stored in Appwrite
+ * @param fileId - The Appwrite file ID
+ * @returns Full URL to view the file
+ */
+export function getFileViewUrl(fileId: string): string {
+    if (!fileId) return '';
+    return `${APPWRITE_ENDPOINT}/storage/buckets/${APPWRITE_BUCKET_ID}/files/${fileId}/view?project=${APPWRITE_PROJECT_ID}`;
+}

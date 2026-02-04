@@ -31,9 +31,6 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
             if (!user) {
                 throw new common_1.UnauthorizedException('User not found. Please login again.');
             }
-            if (!user.is_active) {
-                throw new common_1.UnauthorizedException('User account is deactivated');
-            }
             return user;
         }
         catch (error) {

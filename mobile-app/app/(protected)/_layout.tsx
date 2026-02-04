@@ -45,6 +45,7 @@ export default function ProtectedLayout() {
     }, [isAuthenticated, fetchUnreadCount]);
 
     // Redirect to login if not authenticated
+    // Redirect to pending-approval if not active
     // Route to appropriate screen based on role
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
@@ -53,6 +54,12 @@ export default function ProtectedLayout() {
         }
 
         if (!isLoading && isAuthenticated && user) {
+            // Check if user is inactive (pending admin approval)
+            if (!user.is_active) {
+                router.replace('/pending-approval');
+                return;
+            }
+
             // Check current route
             const currentRoute = segments.join('/');
 

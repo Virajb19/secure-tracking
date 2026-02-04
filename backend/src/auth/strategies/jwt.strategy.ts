@@ -41,9 +41,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
      * Validate JWT payload and return user.
      * Called automatically by Passport after token verification.
      * 
+     * NOTE: We no longer block inactive users here. Instead, the mobile app
+     * checks is_active and shows appropriate UI (pending approval screen).
+     * This allows inactive users to call /auth/me to check their status.
+     * 
      * @param payload - Decoded JWT payload
      * @returns User object to be attached to request
-     * @throws UnauthorizedException if user not found or inactive
+     * @throws UnauthorizedException if user not found
      */
     async validate(payload: JwtPayload) {
         try {
@@ -53,9 +57,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                 throw new UnauthorizedException('User not found. Please login again.');
             }
 
-            if (!user.is_active) {
-                throw new UnauthorizedException('User account is deactivated');
-            }
+            // Note: Inactive users are allowed to authenticate.
+            // The mobile app handles the is_active check and shows pending screen.
+            // If specific endpoints need to block inactive users, they should check user.is_active.
 
             // Return user object - will be attached to request.user
             return user;

@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import apiClient from '../../../../src/api/client';
+import { getFileViewUrl } from '../../../../src/lib/appwrite';
 import { 
     getMyBankDetails, 
     acceptPaperSetterNotice 
@@ -164,12 +165,19 @@ export default function NoticesScreen() {
         return `${hour12}:${minutes} ${ampm}`;
     };
 
-    const openFile = async (url?: string) => {
-        if (url) {
+    const openFile = async (fileId?: string) => {
+        if (fileId) {
             try {
-                await Linking.openURL(url);
+                const fileUrl = getFileViewUrl(fileId);
+                const canOpen = await Linking.canOpenURL(fileUrl);
+                if (canOpen) {
+                    await Linking.openURL(fileUrl);
+                } else {
+                    Alert.alert('Error', 'Unable to open this file. Please try again later.');
+                }
             } catch (err) {
                 console.log('Failed to open file:', err);
+                Alert.alert('Error', 'Failed to open attachment.');
             }
         }
     };

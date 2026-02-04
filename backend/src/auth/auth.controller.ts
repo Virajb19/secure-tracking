@@ -1,6 +1,7 @@
 import {
     Controller,
     Post,
+    Get,
     Body,
     Req,
     HttpCode,
@@ -20,6 +21,7 @@ import { AuthService, LoginResponse, RegisterResponse } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { Roles } from '@/shared/decorators';
+import { UsersService } from '../users/users.service';
 
 /**
  * Multer config for profile image upload
@@ -47,13 +49,17 @@ const profileImageMulterOptions = {
  * - POST /api/auth/login - User login
  * - POST /api/auth/register - User registration (non-admin only)
  * - POST /api/auth/upload-profile-image - Upload profile image
+ * - GET /api/auth/me - Get current user profile
  * 
  * NOTE: These endpoints are NOT protected by JWT guard
  * since they are used before authentication.
  */
 @Controller('auth')
 export class AuthController {
-    constructor(private readonly authService: AuthService) { }
+    constructor(
+        private readonly authService: AuthService,
+        private readonly usersService: UsersService,
+    ) { }
 
     /**
      * User login endpoint.
@@ -134,6 +140,36 @@ export class AuthController {
             return forwardedIps.split(',')[0].trim();
         }
         return request.ip || request.socket.remoteAddress || 'unknown';
+    }
+
+    /**
+     * Get current user profile.
+     * Returns the authenticated user's data including is_active status.
+     * 
+     * @param request - HTTP request (contains user from JWT strategy)
+     * @returns User profile data
+     */
+    @Get('me')
+    @HttpCode(HttpStatus.OK)
+    @UseGuards(JwtAuthGuard)
+    async getMe(@Req() request: Request) {
+        // The JWT strategy returns the full user object
+        const user = request.user as any;
+        
+        if (!user) {
+            throw new BadRequestException('User not found');
+        }
+
+        return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            gender: user.gender,
+            profile_image_url: user.profile_image_url,
+            is_active: user.is_active,
+        };
     }
 
     /**

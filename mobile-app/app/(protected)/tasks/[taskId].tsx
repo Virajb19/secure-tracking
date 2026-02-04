@@ -37,8 +37,10 @@ import {
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { fetchTaskById, fetchTaskEvents } from '../../../src/services/task.service';
 import { submitEvent, EVENT_STEPS, getNextEventType } from '../../../src/services/event.service';
+import { markAttendance, fetchTaskAttendance, AttendanceRecord } from '../../../src/services/attendance.service';
 import { Task, TaskStatus, EventType } from '../../../src/types';
 import EventCamera from '../../../src/components/EventCamera';
+import AttendanceCamera from '../../../src/components/AttendanceCamera';
 
 /**
  * Status badge colors and labels
@@ -86,6 +88,11 @@ export default function TaskDetailScreen() {
     // Camera modal
     const [showCamera, setShowCamera] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Attendance state
+    const [hasPickupAttendance, setHasPickupAttendance] = useState(false);
+    const [showAttendanceCamera, setShowAttendanceCamera] = useState(false);
+    const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
 
     // PHASE 4: Track if we're in active submission (for navigation guard)
     const isSubmittingRef = useRef(false);
@@ -149,6 +156,14 @@ export default function TaskDetailScreen() {
                 console.log('[Task] Events fetch failed, inferring from status');
                 updateCompletedEventsFromStatus(taskResult.task.status);
             }
+
+            // Fetch attendance status
+            const attendanceResult = await fetchTaskAttendance(taskId);
+            if (attendanceResult.success && attendanceResult.attendance) {
+                const hasPickup = attendanceResult.attendance.some(a => a.location_type === 'PICKUP');
+                setHasPickupAttendance(hasPickup);
+                console.log('[Task] Pickup attendance marked:', hasPickup);
+            }
         } else {
             setError(taskResult.error || 'Failed to load task');
         }
@@ -195,8 +210,25 @@ export default function TaskDetailScreen() {
     /**
      * Start event capture.
      * PHASE 4: Show confirmation for SUBMISSION_POST_OFFICE (final) event
+     * ATTENDANCE: Require pickup attendance before first event
      */
     const startEventCapture = (eventType: EventType) => {
+        // Check if attendance is required for PICKUP event
+        if (eventType === 'PICKUP_POLICE_STATION' && !hasPickupAttendance) {
+            Alert.alert(
+                '📍 Attendance Required',
+                'You must mark your attendance at the pickup location before starting the delivery. This requires taking a selfie within 100 meters of the pickup point.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Mark Attendance',
+                        onPress: () => setShowAttendanceCamera(true),
+                    }
+                ]
+            );
+            return;
+        }
+
         // PHASE 4: Special confirmation for SUBMISSION_POST_OFFICE event (final step)
         if (eventType === 'SUBMISSION_POST_OFFICE') {
             Alert.alert(
@@ -219,6 +251,64 @@ export default function TaskDetailScreen() {
 
         setCurrentEventType(eventType);
         setShowCamera(true);
+    };
+
+    /**
+     * Handle attendance capture.
+     * Called when officer takes selfie at pickup location.
+     */
+    const handleAttendanceCapture = async (imageUri: string, latitude: number, longitude: number) => {
+        if (!taskId) return;
+
+        setIsSubmittingAttendance(true);
+
+        try {
+            console.log('[Task] Submitting pickup attendance...');
+
+            const result = await markAttendance(
+                taskId,
+                'PICKUP',
+                imageUri,
+                latitude,
+                longitude,
+            );
+
+            if (result.success) {
+                setHasPickupAttendance(true);
+                setShowAttendanceCamera(false);
+
+                // Show success with geofence status
+                const isWithin = result.attendance?.is_within_geofence;
+                const distance = result.attendance?.distance_from_target;
+
+                Alert.alert(
+                    '✅ Attendance Marked',
+                    isWithin 
+                        ? 'Your attendance has been recorded. You may now proceed with the pickup.'
+                        : `Attendance recorded. Note: You were ${distance || 'unknown'} from the designated area.`,
+                    [
+                        {
+                            text: 'Start Pickup',
+                            onPress: () => startEventCapture('PICKUP_POLICE_STATION'),
+                        }
+                    ]
+                );
+            } else {
+                if (result.errorCode === 'CONFLICT' || result.error?.includes('already marked')) {
+                    // Attendance already exists
+                    setHasPickupAttendance(true);
+                    setShowAttendanceCamera(false);
+                    Alert.alert('Already Marked', 'Pickup attendance was already recorded.');
+                } else {
+                    Alert.alert('Error', result.error || 'Failed to mark attendance. Please try again.');
+                }
+            }
+        } catch (error) {
+            console.error('[Task] Attendance error:', error);
+            Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+        } finally {
+            setIsSubmittingAttendance(false);
+        }
     };
 
     /**
@@ -460,6 +550,50 @@ export default function TaskDetailScreen() {
                     )}
                 </View>
 
+                {/* Attendance Card - Show before delivery steps */}
+                {!isCompleted && task.pickup_latitude && task.pickup_longitude && (
+                    <View style={[
+                        styles.card,
+                        hasPickupAttendance ? styles.attendanceCardComplete : styles.attendanceCardPending
+                    ]}>
+                        <Text style={styles.cardLabel}>📍 PICKUP ATTENDANCE</Text>
+                        
+                        {hasPickupAttendance ? (
+                            <View style={styles.attendanceStatus}>
+                                <View style={styles.attendanceCheckIcon}>
+                                    <Text style={styles.attendanceCheckText}>✓</Text>
+                                </View>
+                                <View style={styles.attendanceInfo}>
+                                    <Text style={styles.attendanceStatusText}>Attendance Marked</Text>
+                                    <Text style={styles.attendanceHint}>
+                                        You can now proceed with delivery steps
+                                    </Text>
+                                </View>
+                            </View>
+                        ) : (
+                            <View style={styles.attendanceRequired}>
+                                <Text style={styles.attendanceRequiredText}>
+                                    You must mark your attendance at the pickup location before starting the delivery.
+                                </Text>
+                                <Text style={styles.attendanceGeofenceHint}>
+                                    📏 Must be within {task.geofence_radius || 100}m of pickup point
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.attendanceButton}
+                                    onPress={() => setShowAttendanceCamera(true)}
+                                    disabled={isSubmittingAttendance}
+                                >
+                                    {isSubmittingAttendance ? (
+                                        <ActivityIndicator size="small" color="#fff" />
+                                    ) : (
+                                        <Text style={styles.attendanceButtonText}>📷 Mark Attendance</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </View>
+                )}
+
                 {/* Event Steps */}
                 <View style={styles.card}>
                     <Text style={styles.cardLabel}>DELIVERY STEPS</Text>
@@ -601,6 +735,24 @@ export default function TaskDetailScreen() {
                         onCapture={handleCapture}
                         onCancel={handleCancelCamera}
                         isSubmitting={isSubmitting}
+                    />
+                )}
+            </Modal>
+
+            {/* Attendance Camera Modal */}
+            <Modal
+                visible={showAttendanceCamera}
+                animationType="slide"
+                presentationStyle="fullScreen"
+            >
+                {task?.pickup_latitude && task?.pickup_longitude && (
+                    <AttendanceCamera
+                        targetLatitude={task.pickup_latitude}
+                        targetLongitude={task.pickup_longitude}
+                        geofenceRadius={task.geofence_radius || 100}
+                        onCapture={handleAttendanceCapture}
+                        onCancel={() => setShowAttendanceCamera(false)}
+                        isSubmitting={isSubmittingAttendance}
                     />
                 )}
             </Modal>
@@ -901,5 +1053,73 @@ const styles = StyleSheet.create({
         fontSize: 12,
         marginBottom: 12,
         fontStyle: 'italic',
+    },
+    // Attendance Card Styles
+    attendanceCardComplete: {
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    },
+    attendanceCardPending: {
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    },
+    attendanceStatus: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    attendanceCheckIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#10b981',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    attendanceCheckText: {
+        color: '#ffffff',
+        fontSize: 20,
+        fontWeight: '700',
+    },
+    attendanceInfo: {
+        flex: 1,
+    },
+    attendanceStatusText: {
+        color: '#10b981',
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    attendanceHint: {
+        color: '#9ca3af',
+        fontSize: 13,
+    },
+    attendanceRequired: {
+        alignItems: 'center',
+    },
+    attendanceRequiredText: {
+        color: '#9ca3af',
+        fontSize: 14,
+        textAlign: 'center',
+        marginBottom: 12,
+        lineHeight: 20,
+    },
+    attendanceGeofenceHint: {
+        color: '#f59e0b',
+        fontSize: 13,
+        marginBottom: 16,
+    },
+    attendanceButton: {
+        backgroundColor: '#f59e0b',
+        paddingVertical: 14,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        minWidth: 180,
+        alignItems: 'center',
+    },
+    attendanceButtonText: {
+        color: '#ffffff',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });

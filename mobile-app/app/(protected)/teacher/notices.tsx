@@ -10,11 +10,13 @@ import {
     TextInput,
     Image,
     Linking,
+    Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../src/api/client';
+import { getFileViewUrl } from '../../../src/lib/appwrite';
 
 interface Notice {
     id: string;
@@ -225,7 +227,20 @@ export default function NoticesScreen() {
                                     {notice.file_url && (
                                         <TouchableOpacity 
                                             style={styles.fileAttachment}
-                                            onPress={() => Linking.openURL(notice.file_url!)}
+                                            onPress={async () => {
+                                                try {
+                                                    const fileUrl = getFileViewUrl(notice.file_url!);
+                                                    const canOpen = await Linking.canOpenURL(fileUrl);
+                                                    if (canOpen) {
+                                                        await Linking.openURL(fileUrl);
+                                                    } else {
+                                                        Alert.alert('Error', 'Unable to open this file. Please try again later.');
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Error opening file:', error);
+                                                    Alert.alert('Error', 'Failed to open attachment.');
+                                                }
+                                            }}
                                         >
                                             <Ionicons name="document-attach" size={18} color="#3b82f6" />
                                             <Text style={styles.fileText}>

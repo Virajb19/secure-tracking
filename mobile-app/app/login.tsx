@@ -115,19 +115,9 @@ export default function LoginScreen() {
             const result = await login({ email, password, phone });
         
             if (result.success) {
-                // Navigate to protected area
+                // Navigate to protected area (layout will handle routing based on is_active)
                 router.replace('/(protected)/tasks');
             } else {
-                // Check if user is inactive/not approved
-                if (result.isInactive) {
-                    Toast.show({
-                        type: 'info',
-                        text1: 'Account Pending Approval',
-                        text2: 'Your account is awaiting admin approval. Please try again later.',
-                        visibilityTime: 5000,
-                        position: 'top',
-                    });
-                }
                 // Show error
                 setError(result.error || 'Login failed. Please try again.');
             }

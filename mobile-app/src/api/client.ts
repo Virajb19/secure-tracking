@@ -110,4 +110,40 @@ export function getErrorMessage(error: unknown): string {
     return 'An unexpected error occurred.';
 }
 
+/**
+ * Helper to extract error code from API error response.
+ */
+export function getErrorCode(error: unknown): string | undefined {
+    if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError<ApiError>;
+
+        if (!axiosError.response) {
+            return 'NETWORK_ERROR';
+        }
+
+        const data = axiosError.response.data;
+
+        // Check for error code in response
+        if (data?.errorCode) {
+            return data.errorCode;
+        }
+
+        // Map HTTP status to error codes
+        if (axiosError.response.status === 409) {
+            return 'CONFLICT';
+        }
+        if (axiosError.response.status === 401) {
+            return 'UNAUTHORIZED';
+        }
+        if (axiosError.response.status === 403) {
+            return 'FORBIDDEN';
+        }
+        if (axiosError.response.status === 404) {
+            return 'NOT_FOUND';
+        }
+    }
+
+    return undefined;
+}
+
 export default apiClient;

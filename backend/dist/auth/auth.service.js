@@ -92,10 +92,6 @@ let AuthService = class AuthService {
         else {
             throw new common_1.BadRequestException('Either email+password or phone is required');
         }
-        if (!user.is_active) {
-            await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
-            throw new common_1.UnauthorizedException('Your account is pending admin approval. Please wait for activation.');
-        }
         if (user.role === client_1.UserRole.SEBA_OFFICER) {
             await this.validateDeliveryUserDevice(user, loginDto.device_id, ipAddress);
         }
@@ -114,6 +110,7 @@ let AuthService = class AuthService {
                 email: user.email,
                 phone: user.phone,
                 role: user.role,
+                is_active: user.is_active,
             },
         };
     }
@@ -208,6 +205,7 @@ let AuthService = class AuthService {
                 phone: user.phone,
                 role: user.role,
                 profile_image_url: user.profile_image_url,
+                is_active: user.is_active,
             },
         };
     }

@@ -43,7 +43,7 @@ interface AttendanceCameraProps {
 /**
  * Capture state.
  */
-type CaptureState = 'ready' | 'capturing' | 'preview' | 'getting-location';
+type CaptureState = 'checking-location' | 'out-of-range' | 'ready' | 'capturing' | 'preview' | 'getting-location';
 
 /**
  * Calculate distance between two GPS coordinates using Haversine formula.
@@ -76,8 +76,12 @@ export default function AttendanceCamera({
     const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
     const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
 
-    // Capture state
-    const [captureState, setCaptureState] = useState<CaptureState>('ready');
+    // Capture state - starts with location check
+    const [captureState, setCaptureState] = useState<CaptureState>('checking-location');
+
+    // Current user location (for geofence check)
+    const [currentUserLocation, setCurrentUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+    const [initialDistance, setInitialDistance] = useState<number | null>(null);
 
     // Captured data
     const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -90,10 +94,10 @@ export default function AttendanceCamera({
     const locationLabel = locationType === 'PICKUP' ? 'Pickup Location' : 'Destination';
 
     /**
-     * Request permissions on mount and auto-launch camera.
+     * Request permissions on mount and check location first.
      */
     useEffect(() => {
-        initializeAndCapture();
+        checkLocationFirst();
     }, []);
 
     /**
@@ -111,6 +115,84 @@ export default function AttendanceCamera({
             setIsWithinGeofence(dist <= geofenceRadius);
         }
     }, [location, targetLat, targetLng, geofenceRadius]);
+
+    /**
+     * Check location first before allowing camera access.
+     * This enforces the 100m geofence requirement.
+     */
+    const checkLocationFirst = async () => {
+        console.log('[Attendance] Checking location first...');
+        setCaptureState('checking-location');
+
+        // Request location permission
+        const locationResult = await Location.requestForegroundPermissionsAsync();
+        setLocationPermission(locationResult.status === 'granted');
+
+        if (locationResult.status !== 'granted') {
+            console.log('[Attendance] Location permission denied');
+            return;
+        }
+
+        // Get current location
+        try {
+            const currentLocation = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.High,
+            });
+
+            const userLat = currentLocation.coords.latitude;
+            const userLng = currentLocation.coords.longitude;
+            setCurrentUserLocation({ latitude: userLat, longitude: userLng });
+
+            // Check if target coordinates exist
+            if (targetLat !== undefined && targetLng !== undefined) {
+                const dist = calculateDistance(userLat, userLng, targetLat, targetLng);
+                setInitialDistance(dist);
+
+                console.log(`[Attendance] Distance from ${locationType}: ${dist.toFixed(0)}m`);
+
+                if (dist > geofenceRadius) {
+                    // Outside geofence - block attendance
+                    console.log(`[Attendance] BLOCKED - Outside ${geofenceRadius}m geofence`);
+                    setCaptureState('out-of-range');
+                    return;
+                }
+            } else {
+                console.log('[Attendance] No target coordinates set, allowing attendance');
+            }
+
+            // Within geofence or no coordinates - proceed to camera
+            await requestCameraAndCapture();
+
+        } catch (error) {
+            console.error('[Attendance] Location error:', error);
+            Alert.alert(
+                'Location Error',
+                'Failed to get your current location. Please ensure GPS is enabled and try again.',
+                [
+                    { text: 'Retry', onPress: checkLocationFirst },
+                    { text: 'Cancel', onPress: onCancel, style: 'cancel' },
+                ]
+            );
+        }
+    };
+
+    /**
+     * Request camera permission and launch camera.
+     */
+    const requestCameraAndCapture = async () => {
+        // Request camera permission
+        const cameraResult = await ImagePicker.requestCameraPermissionsAsync();
+        setCameraPermission(cameraResult.granted);
+
+        if (!cameraResult.granted) {
+            console.log('[Attendance] Camera permission denied');
+            return;
+        }
+
+        // Launch camera
+        setCaptureState('ready');
+        launchCamera();
+    };
 
     /**
      * Initialize permissions and launch camera.
@@ -257,6 +339,52 @@ export default function AttendanceCamera({
         }
         return `${(meters / 1000).toFixed(2)} km`;
     };
+
+    // Checking location state
+    if (captureState === 'checking-location') {
+        return (
+            <View style={styles.container}>
+                <View style={styles.centerContent}>
+                    <ActivityIndicator size="large" color="#4f8cff" />
+                    <Text style={styles.loadingText}>Checking your location...</Text>
+                    <Text style={styles.subText}>
+                        Verifying you are at the {locationType === 'PICKUP' ? 'pickup' : 'destination'} location
+                    </Text>
+                </View>
+            </View>
+        );
+    }
+
+    // Out of range state - BLOCKS attendance
+    if (captureState === 'out-of-range') {
+        return (
+            <View style={styles.container}>
+                <View style={styles.centerContent}>
+                    <Text style={styles.outOfRangeIcon}>📍</Text>
+                    <Text style={styles.outOfRangeTitle}>Outside {locationType === 'PICKUP' ? 'Pickup' : 'Destination'} Area</Text>
+                    <Text style={styles.outOfRangeText}>
+                        You must be within {geofenceRadius} meters of the {locationType === 'PICKUP' ? 'pickup' : 'destination'} location to mark attendance.
+                    </Text>
+                    
+                    {initialDistance !== null && (
+                        <View style={styles.distanceBox}>
+                            <Text style={styles.distanceLabel}>Current distance:</Text>
+                            <Text style={styles.distanceValue}>{formatDistance(initialDistance)}</Text>
+                            <Text style={styles.distanceRequired}>Required: Within {geofenceRadius}m</Text>
+                        </View>
+                    )}
+
+                    <TouchableOpacity style={styles.refreshButton} onPress={checkLocationFirst}>
+                        <Text style={styles.refreshButtonText}>🔄 Refresh Location</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+                        <Text style={styles.cancelButtonText}>Go Back</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
 
     // Loading state
     if (cameraPermission === null || locationPermission === null) {
@@ -562,10 +690,12 @@ const styles = StyleSheet.create({
         margin: 16,
         borderRadius: 16,
         overflow: 'hidden',
-        maxHeight: 300,
+        maxHeight: 350,
+        minHeight: 250,
     },
     previewImage: {
-        flex: 1,
+        width: '100%',
+        height: '100%',
         resizeMode: 'cover',
     },
     geofenceStatus: {
@@ -660,5 +790,72 @@ const styles = StyleSheet.create({
     },
     buttonDisabled: {
         opacity: 0.6,
+    },
+    // New styles for geofence enforcement
+    centerContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 32,
+    },
+    subText: {
+        color: '#9ca3af',
+        fontSize: 14,
+        marginTop: 8,
+        textAlign: 'center',
+    },
+    outOfRangeIcon: {
+        fontSize: 80,
+        marginBottom: 16,
+    },
+    outOfRangeTitle: {
+        color: '#ef4444',
+        fontSize: 24,
+        fontWeight: '700',
+        textAlign: 'center',
+    },
+    outOfRangeText: {
+        color: '#9ca3af',
+        fontSize: 16,
+        marginTop: 12,
+        textAlign: 'center',
+        lineHeight: 24,
+    },
+    distanceBox: {
+        backgroundColor: '#1a1a2e',
+        borderRadius: 12,
+        padding: 20,
+        marginTop: 24,
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#ef4444',
+        width: '100%',
+    },
+    distanceLabel: {
+        color: '#9ca3af',
+        fontSize: 14,
+    },
+    distanceValue: {
+        color: '#ef4444',
+        fontSize: 40,
+        fontWeight: '700',
+        marginTop: 8,
+    },
+    distanceRequired: {
+        color: '#6b7280',
+        fontSize: 13,
+        marginTop: 8,
+    },
+    refreshButton: {
+        backgroundColor: '#3b82f6',
+        paddingVertical: 16,
+        paddingHorizontal: 32,
+        borderRadius: 12,
+        marginTop: 32,
+    },
+    refreshButtonText: {
+        color: '#ffffff',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
