@@ -50,9 +50,9 @@ function MultiSelectModal({ visible, title, data, selectedValues, onSelect, onCl
     }, [visible, selectedValues]);
 
     const toggleItem = (item: string) => {
-        setTempSelected(prev => 
-            prev.includes(item) 
-                ? prev.filter(v => v !== item) 
+        setTempSelected(prev =>
+            prev.includes(item)
+                ? prev.filter(v => v !== item)
                 : [...prev, item]
         );
     };
@@ -191,7 +191,7 @@ function SelectModal({ visible, title, data, selectedValue, onSelect, onClose, l
 export default function CompleteProfileScreen() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
-    
+
     // Form state
     const [selectedDistrict, setSelectedDistrict] = useState<string>('');
     const [selectedSchool, setSelectedSchool] = useState<string>('');
@@ -199,7 +199,7 @@ export default function CompleteProfileScreen() {
     const [highestQualification, setHighestQualification] = useState<string>('');
     const [teachingClasses, setTeachingClasses] = useState<Record<string, boolean>>({});
     const [selectedSubjects, setSelectedSubjects] = useState<Record<number, string[]>>({});
-    
+
     // Modal visibility state
     const [districtModalVisible, setDistrictModalVisible] = useState(false);
     const [schoolModalVisible, setSchoolModalVisible] = useState(false);
@@ -252,8 +252,8 @@ export default function CompleteProfileScreen() {
             return response.data;
         },
         onSuccess: () => {
-            Alert.alert('Success', 'Profile completed successfully!', [
-                { text: 'OK', onPress: () => router.back() },
+            Alert.alert('Success', 'Profile completed successfully! Your account is now pending admin approval.', [
+                { text: 'OK', onPress: () => router.replace('/pending-approval') },
             ]);
             queryClient.invalidateQueries({ queryKey: ['profile'] });
             queryClient.invalidateQueries({ queryKey: ['profile-status'] });
@@ -303,7 +303,7 @@ export default function CompleteProfileScreen() {
 
         // Build teaching classes array
         const teachingClassesData: TeachingClass[] = [];
-        
+
         CLASS_LEVELS.forEach(level => {
             if (teachingClasses[level.key] && level.value > 0) {
                 const subjectsForClass = selectedSubjects[level.value] || [];
@@ -345,8 +345,8 @@ export default function CompleteProfileScreen() {
                         <ActivityIndicator size="small" color="#3b82f6" />
                     </View>
                 ) : (
-                    <TouchableOpacity 
-                        style={styles.pickerButton} 
+                    <TouchableOpacity
+                        style={styles.pickerButton}
                         onPress={() => setDistrictModalVisible(true)}
                     >
                         <Text style={selectedDistrict ? styles.pickerButtonText : styles.pickerPlaceholder}>
@@ -378,8 +378,8 @@ export default function CompleteProfileScreen() {
                         <ActivityIndicator size="small" color="#3b82f6" />
                     </View>
                 ) : (
-                    <TouchableOpacity 
-                        style={[styles.pickerButton, !selectedDistrict && styles.pickerButtonDisabled]} 
+                    <TouchableOpacity
+                        style={[styles.pickerButton, !selectedDistrict && styles.pickerButtonDisabled]}
                         onPress={() => selectedDistrict && setSchoolModalVisible(true)}
                         disabled={!selectedDistrict}
                     >
@@ -460,7 +460,7 @@ export default function CompleteProfileScreen() {
                             <Text style={styles.radioText}>No</Text>
                         </TouchableOpacity>
                     </View>
-                    
+
                     {/* Subject Selection - appears when Yes is selected */}
                     {teachingClasses[level.key] && (
                         <View style={styles.subjectSection}>
@@ -540,7 +540,7 @@ export default function CompleteProfileScreen() {
 
             <View style={styles.rowFields}>
                 <View style={[styles.fieldContainer, { flex: 1, marginRight: 8 }]}>
-                    <Text  style={styles.label}>Gender</Text>
+                    <Text style={styles.label}>Gender</Text>
                     <View style={styles.readOnlyInput}>
                         <Text style={styles.readOnlyText}>
                             {user?.gender === 'MALE' ? 'Male' : user?.gender === 'FEMALE' ? 'Female' : '-'}

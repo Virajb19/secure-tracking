@@ -6,7 +6,7 @@
  * - Action cards: View Profile, View Colleagues, Important Notices, Question Paper, Form 6 Submit
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
     View,
     Text,
@@ -14,14 +14,13 @@ import {
     ScrollView,
     TouchableOpacity,
     Image,
-    Modal,
-    Alert,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../../../src/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../../src/api/client';
 import { Ionicons } from '@expo/vector-icons';
+import ProfileCompletionBlocker from '../../../../src/components/ProfileCompletionBlocker';
 
 interface ActionCardProps {
     title: string;
@@ -32,8 +31,8 @@ interface ActionCardProps {
 
 function ActionCard({ title, icon, onPress, disabled = false }: ActionCardProps) {
     return (
-        <TouchableOpacity 
-            style={[styles.actionCard, disabled && styles.actionCardDisabled]} 
+        <TouchableOpacity
+            style={[styles.actionCard, disabled && styles.actionCardDisabled]}
             onPress={onPress}
             disabled={disabled}
         >
@@ -45,47 +44,8 @@ function ActionCard({ title, icon, onPress, disabled = false }: ActionCardProps)
     );
 }
 
-interface ProfileCompletionModalProps {
-    visible: boolean;
-    onComplete: () => void;
-}
-
-function ProfileCompletionModal({ visible, onComplete }: ProfileCompletionModalProps) {
-    return (
-        <Modal
-            visible={visible}
-            transparent
-            animationType="fade"
-            statusBarTranslucent
-        >
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                    <View style={styles.illustrationContainer}>
-                        <View style={styles.illustration}>
-                            <Ionicons name="document-text" size={60} color="#3b82f6" />
-                            <View style={styles.checkmarkBadge}>
-                                <Ionicons name="checkmark-circle" size={24} color="#22c55e" />
-                            </View>
-                        </View>
-                    </View>
-                    
-                    <Text style={styles.modalTitle}>Complete your profile</Text>
-                    <Text style={styles.modalDescription}>
-                        Kindly complete your profile by filling up details about your teaching experience.
-                    </Text>
-                    
-                    <TouchableOpacity style={styles.completeButton} onPress={onComplete}>
-                        <Text style={styles.completeButtonText}>Complete Profile</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </Modal>
-    );
-}
-
 export default function HeadmasterHomeScreen() {
     const { user } = useAuth();
-    const [showProfileModal, setShowProfileModal] = useState(false);
 
     // Fetch profile status
     const { data: profileStatus, isLoading: loadingProfile, refetch: refetchProfile } = useQuery({
@@ -103,22 +63,6 @@ export default function HeadmasterHomeScreen() {
             refetchProfile();
         }, [refetchProfile])
     );
-
-    useEffect(() => {
-        if (!loadingProfile && !hasCompletedProfile) {
-            const timer = setTimeout(() => {
-                setShowProfileModal(true);
-            }, 500);
-            return () => clearTimeout(timer);
-        } else {
-            setShowProfileModal(false);
-        }
-    }, [loadingProfile, hasCompletedProfile]);
-
-    const handleCompleteProfile = () => {
-        setShowProfileModal(false);
-        router.push('/(protected)/headmaster/complete-profile');
-    };
 
     const handleViewProfile = () => {
         if (!hasCompletedProfile) {
@@ -212,9 +156,11 @@ export default function HeadmasterHomeScreen() {
                 </View>
             </View>
 
-            <ProfileCompletionModal 
-                visible={showProfileModal && !hasCompletedProfile} 
-                onComplete={handleCompleteProfile} 
+            {/* Profile Completion Blocker */}
+            <ProfileCompletionBlocker
+                visible={!loadingProfile && !hasCompletedProfile}
+                userName={user?.name}
+                userRole={user?.role || 'HEADMASTER'}
             />
         </ScrollView>
     );

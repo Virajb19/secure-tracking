@@ -30,7 +30,7 @@ import { Roles, CurrentUser } from '../shared/decorators';
 @Controller('form-submissions')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class FormSubmissionsController {
-    constructor(private readonly formSubmissionsService: FormSubmissionsService) {}
+    constructor(private readonly formSubmissionsService: FormSubmissionsService) { }
 
     /**
      * Create a new form submission
@@ -45,10 +45,10 @@ export class FormSubmissionsController {
             submit?: boolean;
         },
     ) {
-        const status = body.submit 
-            ? FormSubmissionStatus.SUBMITTED 
+        const status = body.submit
+            ? FormSubmissionStatus.SUBMITTED
             : FormSubmissionStatus.DRAFT;
-        
+
         return this.formSubmissionsService.create(
             body.schoolId,
             user.id,
@@ -127,6 +127,16 @@ export class FormSubmissionsController {
     // ===========================
     // ADMIN ENDPOINTS
     // ===========================
+
+    /**
+     * Get form submission stats (admin only)
+     * Returns: pending, approvedToday, rejectedToday, totalProcessed
+     */
+    @Get('admin/stats')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    async getStats() {
+        return this.formSubmissionsService.getStats();
+    }
 
     /**
      * Get pending form submissions (admin only)

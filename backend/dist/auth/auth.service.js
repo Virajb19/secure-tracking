@@ -48,13 +48,24 @@ const jwt_1 = require("@nestjs/jwt");
 const client_1 = require("@prisma/client");
 const users_service_1 = require("../users/users.service");
 const audit_logs_service_1 = require("../audit-logs/audit-logs.service");
+const prisma_1 = require("../prisma");
 const bcrypt = __importStar(require("bcrypt"));
 const env_validation_1 = require("../env.validation");
 let AuthService = class AuthService {
-    constructor(usersService, jwtService, auditLogsService) {
+    constructor(usersService, jwtService, auditLogsService, db) {
         this.usersService = usersService;
         this.jwtService = jwtService;
         this.auditLogsService = auditLogsService;
+        this.db = db;
+    }
+    async hasCompletedProfile(userId, role) {
+        if (role === client_1.UserRole.ADMIN || role === client_1.UserRole.SUPER_ADMIN) {
+            return true;
+        }
+        const faculty = await this.db.faculty.findUnique({
+            where: { user_id: userId },
+        });
+        return faculty !== null;
     }
     async login(loginDto, ipAddress) {
         let user = null;
@@ -102,6 +113,7 @@ let AuthService = class AuthService {
         };
         const accessToken = this.jwtService.sign(payload);
         await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN, 'User', user.id, user.id, ipAddress);
+        const hasProfile = await this.hasCompletedProfile(user.id, user.role);
         return {
             access_token: accessToken,
             user: {
@@ -111,6 +123,7 @@ let AuthService = class AuthService {
                 phone: user.phone,
                 role: user.role,
                 is_active: user.is_active,
+                has_completed_profile: hasProfile,
             },
         };
     }
@@ -206,6 +219,7 @@ let AuthService = class AuthService {
                 role: user.role,
                 profile_image_url: user.profile_image_url,
                 is_active: user.is_active,
+                has_completed_profile: true,
             },
         };
     }
@@ -219,6 +233,7 @@ exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [users_service_1.UsersService,
         jwt_1.JwtService,
-        audit_logs_service_1.AuditLogsService])
+        audit_logs_service_1.AuditLogsService,
+        prisma_1.PrismaService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { User, UserRole, Gender } from '@prisma/client';
 import { UsersService } from '../users/users.service';
 import { AuditLogsService, AuditAction } from '../audit-logs/audit-logs.service';
+import { PrismaService } from '../prisma';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
@@ -27,6 +28,7 @@ export interface LoginResponse {
         role: UserRole;
         profile_image_url?: string | null;
         is_active: boolean;
+        has_completed_profile: boolean;
     };
 }
 
@@ -62,7 +64,26 @@ export class AuthService {
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
         private readonly auditLogsService: AuditLogsService,
+        private readonly db: PrismaService,
     ) { }
+
+    /**
+     * Check if a non-admin user has completed their Faculty profile.
+     * Admins are considered to have completed profile by default.
+     */
+    private async hasCompletedProfile(userId: string, role: UserRole): Promise<boolean> {
+        // Admins don't need to complete a faculty profile
+        if (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN) {
+            return true;
+        }
+
+        // Check if Faculty record exists for this user
+        const faculty = await this.db.faculty.findUnique({
+            where: { user_id: userId },
+        });
+
+        return faculty !== null;
+    }
 
     /**
      * Authenticate user and return JWT token.
@@ -173,6 +194,9 @@ export class AuthService {
             ipAddress,
         );
 
+        // Check if user has completed their profile
+        const hasProfile = await this.hasCompletedProfile(user.id, user.role);
+
         return {
             access_token: accessToken,
             user: {
@@ -182,6 +206,7 @@ export class AuthService {
                 phone: user.phone,
                 role: user.role,
                 is_active: user.is_active,
+                has_completed_profile: hasProfile,
             },
         };
     }
@@ -397,6 +422,7 @@ export class AuthService {
                 role: user.role,
                 profile_image_url: user.profile_image_url,
                 is_active: user.is_active,
+                has_completed_profile: true, // Admins always have completed profile
             },
         };
     }

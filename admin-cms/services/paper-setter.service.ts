@@ -243,6 +243,17 @@ export interface FormSubmission {
 }
 
 export const formSubmissionsApi = {
+  // Get form submission stats for admin dashboard
+  getStats: async (): Promise<{
+    pending: number;
+    approvedToday: number;
+    rejectedToday: number;
+    totalProcessed: number;
+  }> => {
+    const response = await api.get('/form-submissions/admin/stats');
+    return response.data;
+  },
+
   // Get all submissions (admin) with optional filters
   getAll: async (formType?: string, page = 1, limit = 20, districtId?: string, status?: string): Promise<{
     data: FormSubmission[];

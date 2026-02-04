@@ -8,12 +8,12 @@
 /**
  * User roles as defined in backend.
  */
-export type UserRole = 
-    | 'SUPER_ADMIN' 
-    | 'ADMIN' 
-    | 'SEBA_OFFICER' 
-    | 'HEADMASTER' 
-    | 'TEACHER' 
+export type UserRole =
+    | 'SUPER_ADMIN'
+    | 'ADMIN'
+    | 'SEBA_OFFICER'
+    | 'HEADMASTER'
+    | 'TEACHER'
     | 'CENTER_SUPERINTENDENT';
 
 /**
@@ -89,6 +89,7 @@ export interface User {
     gender?: Gender;
     profile_image_url?: string;
     is_active: boolean;
+    has_completed_profile?: boolean;
     faculty?: Faculty;
 }
 
@@ -129,7 +130,7 @@ export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPICIOUS';
  * Follows strict progression: PICKUP → TRANSIT → FINAL
  */
 // Updated EventType - 5-Step Tracking for Exam Papers
-export type EventType = 
+export type EventType =
     | 'PICKUP_POLICE_STATION'    // Step 1: Pickup from Police Station
     | 'ARRIVAL_EXAM_CENTER'      // Step 2: Arrival at Exam Center
     | 'OPENING_SEAL'             // Step 3: Opening Seal

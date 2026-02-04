@@ -109,6 +109,13 @@ export default function Form6Page() {
     queryFn: masterDataApi.getDistricts,
   });
 
+  // Fetch form submission stats for dashboard cards
+  const { data: stats } = useQuery({
+    queryKey: ['form-submission-stats'],
+    queryFn: formSubmissionsApi.getStats,
+    refetchInterval: 30000, // Refetch every 30 seconds to keep stats fresh
+  });
+
   // Fetch all submissions with filters
   const { data, isFetching, error } = useQuery({
     queryKey: ['form-submissions', formType, districtId, statusFilter, page],
@@ -534,19 +541,19 @@ export default function Form6Page() {
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm dark:shadow-none">
           <p className="text-slate-500 dark:text-slate-400 text-sm">Pending</p>
-          <p className="text-2xl font-bold text-orange-500 dark:text-orange-400">{total}</p>
+          <p className="text-2xl font-bold text-orange-500 dark:text-orange-400">{stats?.pending ?? total}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm dark:shadow-none">
           <p className="text-slate-500 dark:text-slate-400 text-sm">Approved Today</p>
-          <p className="text-2xl font-bold text-emerald-500 dark:text-emerald-400">-</p>
+          <p className="text-2xl font-bold text-emerald-500 dark:text-emerald-400">{stats?.approvedToday ?? 0}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm dark:shadow-none">
           <p className="text-slate-500 dark:text-slate-400 text-sm">Rejected Today</p>
-          <p className="text-2xl font-bold text-red-500 dark:text-red-400">-</p>
+          <p className="text-2xl font-bold text-red-500 dark:text-red-400">{stats?.rejectedToday ?? 0}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm dark:shadow-none">
           <p className="text-slate-500 dark:text-slate-400 text-sm">Total Processed</p>
-          <p className="text-2xl font-bold text-blue-500 dark:text-blue-400">-</p>
+          <p className="text-2xl font-bold text-blue-500 dark:text-blue-400">{stats?.totalProcessed ?? 0}</p>
         </div>
       </div>
 

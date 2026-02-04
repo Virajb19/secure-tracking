@@ -27,7 +27,7 @@ export class FormSubmissionsService {
     constructor(
         private readonly db: PrismaService,
         private readonly notificationsService: NotificationsService,
-    ) {}
+    ) { }
 
     /**
      * Create a new form submission (DRAFT or SUBMITTED)
@@ -365,5 +365,56 @@ export class FormSubmissionsService {
         await this.db.formSubmission.delete({
             where: { id: formId },
         });
+    }
+
+    /**
+     * Get form submission stats for admin dashboard
+     * Returns counts for: pending, approved today, rejected today, total processed
+     */
+    async getStats(): Promise<{
+        pending: number;
+        approvedToday: number;
+        rejectedToday: number;
+        totalProcessed: number;
+    }> {
+        // Get start of today (midnight)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const [pending, approvedToday, rejectedToday, totalProcessed] = await Promise.all([
+            // Count pending (submitted) forms
+            this.db.formSubmission.count({
+                where: { status: FormSubmissionStatus.SUBMITTED },
+            }),
+            // Count forms approved today
+            this.db.formSubmission.count({
+                where: {
+                    status: FormSubmissionStatus.APPROVED,
+                    approved_at: { gte: today },
+                },
+            }),
+            // Count forms rejected today
+            this.db.formSubmission.count({
+                where: {
+                    status: FormSubmissionStatus.REJECTED,
+                    approved_at: { gte: today },
+                },
+            }),
+            // Count total processed (approved + rejected all time)
+            this.db.formSubmission.count({
+                where: {
+                    status: {
+                        in: [FormSubmissionStatus.APPROVED, FormSubmissionStatus.REJECTED],
+                    },
+                },
+            }),
+        ]);
+
+        return {
+            pending,
+            approvedToday,
+            rejectedToday,
+            totalProcessed,
+        };
     }
 }

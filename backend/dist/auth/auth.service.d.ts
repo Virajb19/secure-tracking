@@ -2,6 +2,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 import { UsersService } from '../users/users.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { PrismaService } from '../prisma';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 export interface LoginResponse {
@@ -14,6 +15,7 @@ export interface LoginResponse {
         role: UserRole;
         profile_image_url?: string | null;
         is_active: boolean;
+        has_completed_profile: boolean;
     };
 }
 export interface RegisterResponse {
@@ -31,7 +33,9 @@ export declare class AuthService {
     private readonly usersService;
     private readonly jwtService;
     private readonly auditLogsService;
-    constructor(usersService: UsersService, jwtService: JwtService, auditLogsService: AuditLogsService);
+    private readonly db;
+    constructor(usersService: UsersService, jwtService: JwtService, auditLogsService: AuditLogsService, db: PrismaService);
+    private hasCompletedProfile;
     login(loginDto: LoginDto, ipAddress: string | null): Promise<LoginResponse>;
     private validateDeliveryUserDevice;
     register(registerDto: RegisterDto, ipAddress: string | null): Promise<RegisterResponse>;

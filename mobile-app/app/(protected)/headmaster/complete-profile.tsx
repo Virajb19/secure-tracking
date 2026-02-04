@@ -92,14 +92,14 @@ function SelectModal({ visible, title, data, selectedValue, onSelect, onClose, l
 export default function CompleteProfileScreen() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
-    
+
     // Form state
     const [selectedDistrict, setSelectedDistrict] = useState<string>('');
     const [selectedSchool, setSelectedSchool] = useState<string>('');
     const [yearsOfExperience, setYearsOfExperience] = useState<string>('0');
     const [highestQualification, setHighestQualification] = useState<string>('');
     const [designation, setDesignation] = useState<string>('Principal');
-    
+
     // Modal visibility state
     const [districtModalVisible, setDistrictModalVisible] = useState(false);
     const [schoolModalVisible, setSchoolModalVisible] = useState(false);
@@ -144,7 +144,7 @@ export default function CompleteProfileScreen() {
         },
         onSuccess: () => {
             Alert.alert('Success', 'Profile completed successfully!', [
-                { text: 'OK', onPress: () => router.back() },
+                { text: 'OK', onPress: () => router.replace('/pending-approval') },
             ]);
             queryClient.invalidateQueries({ queryKey: ['profile'] });
             queryClient.invalidateQueries({ queryKey: ['profile-status'] });
@@ -202,8 +202,8 @@ export default function CompleteProfileScreen() {
                         <ActivityIndicator size="small" color="#0d9488" />
                     </View>
                 ) : (
-                    <TouchableOpacity 
-                        style={styles.pickerButton} 
+                    <TouchableOpacity
+                        style={styles.pickerButton}
                         onPress={() => setDistrictModalVisible(true)}
                     >
                         <Text style={selectedDistrict ? styles.pickerButtonText : styles.pickerPlaceholder}>
@@ -235,8 +235,8 @@ export default function CompleteProfileScreen() {
                         <ActivityIndicator size="small" color="#0d9488" />
                     </View>
                 ) : (
-                    <TouchableOpacity 
-                        style={[styles.pickerButton, !selectedDistrict && styles.pickerButtonDisabled]} 
+                    <TouchableOpacity
+                        style={[styles.pickerButton, !selectedDistrict && styles.pickerButtonDisabled]}
                         onPress={() => selectedDistrict && setSchoolModalVisible(true)}
                         disabled={!selectedDistrict}
                     >

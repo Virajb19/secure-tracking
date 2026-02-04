@@ -27,6 +27,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { fetchMyTasks } from '../../../src/services/task.service';
 import { Task, TaskStatus } from '../../../src/types';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../../src/api/client';
+import ProfileCompletionBlocker from '../../../src/components/ProfileCompletionBlocker';
 
 /**
  * Status badge colors and labels
@@ -62,6 +65,18 @@ export default function TasksScreen() {
     const [error, setError] = useState<string | null>(null);
     const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
 
+    // Check profile completion status for SEBA_OFFICER
+    const { data: profileStatus, isLoading: loadingProfile, refetch: refetchProfile } = useQuery({
+        queryKey: ['profile-status'],
+        queryFn: async () => {
+            const response = await apiClient.get('/faculty/profile/status');
+            return response.data;
+        },
+        enabled: user?.role === 'SEBA_OFFICER',
+    });
+
+    const hasCompletedProfile = user?.role !== 'SEBA_OFFICER' || profileStatus?.has_completed_profile || false;
+
     /**
      * Load tasks from API
      */
@@ -92,7 +107,10 @@ export default function TasksScreen() {
     useFocusEffect(
         useCallback(() => {
             loadTasks(hasFetchedOnce); // Show refresh indicator only after first load
-        }, [hasFetchedOnce])
+            if (user?.role === 'SEBA_OFFICER') {
+                refetchProfile();
+            }
+        }, [hasFetchedOnce, user?.role])
     );
 
     /**
@@ -249,7 +267,7 @@ export default function TasksScreen() {
                         {tasks.length} task{tasks.length !== 1 ? 's' : ''} assigned
                     </Text>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.noticesButton}
                     onPress={() => router.push('/(protected)/tasks/notices')}
                 >
@@ -281,6 +299,15 @@ export default function TasksScreen() {
                         />
                     }
                     showsVerticalScrollIndicator={false}
+                />
+            )}
+
+            {/* Profile Completion Blocker for SEBA_OFFICER */}
+            {user?.role === 'SEBA_OFFICER' && (
+                <ProfileCompletionBlocker
+                    visible={!loadingProfile && !hasCompletedProfile}
+                    userName={user?.name}
+                    userRole="SEBA_OFFICER"
                 />
             )}
         </View>
