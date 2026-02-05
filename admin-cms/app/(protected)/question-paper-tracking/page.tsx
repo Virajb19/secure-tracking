@@ -10,9 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, MapPin, Clock, Image as ImageIcon, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { MapPin, Clock, Image as ImageIcon, CheckCircle, XCircle, Loader2, Download } from 'lucide-react';
 import { tasksApi } from '@/services/api';
 import { Task, TaskEvent, TaskStatus, EventType } from '@/types';
+import { toast } from 'sonner';
 
 // 5-step tracking workflow columns
 const trackingSteps = [
@@ -33,6 +34,7 @@ export default function QuestionPaperTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedEvent, setSelectedEvent] = useState<TaskEvent | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   // Fetch tasks on mount and when filters change
   useEffect(() => {
@@ -85,23 +87,88 @@ export default function QuestionPaperTrackingPage() {
     return Math.round((task.events.length / 5) * 100);
   };
 
+  // Download CSV function
+  const handleDownload = async () => {
+    if (filteredTasks.length === 0) {
+      toast.error('No data to download');
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      // Build CSV content
+      const headers = ['Sl.', 'Pack Code', 'Assigned To', 'Phone', 'Progress', ...trackingSteps.map(s => s.label), 'Status'];
+      const rows = filteredTasks.map((task, index) => {
+        const stepStatuses = trackingSteps.map(step => {
+          const event = getEventByType(task, step.key);
+          return event ? 'Completed' : 'Pending';
+        });
+        return [
+          index + 1,
+          task.sealed_pack_code,
+          task.assigned_user?.name || 'N/A',
+          task.assigned_user?.phone || 'N/A',
+          `${getProgress(task)}%`,
+          ...stepStatuses,
+          task.status
+        ];
+      });
+
+      const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `regular-exam-tracking-${selectedDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('Downloaded successfully!');
+    } catch (err) {
+      console.error('Download failed:', err);
+      toast.error('Failed to download');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">Question Paper Tracking - Regular Exams</h1>
-        <Link href="/question-paper-tracking/compartmental">
-          <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
-            View Compartmental Exams →
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={handleDownload}
+            disabled={downloading || filteredTasks.length === 0}
+            className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/25 transition-all duration-300 disabled:opacity-50"
+          >
+            {downloading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Downloading...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                Download CSV
+              </>
+            )}
           </Button>
-        </Link>
+          <Link href="/question-paper-tracking/compartmental">
+            <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
+              View Compartmental Exams →
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
         <div className="flex gap-4 items-end mb-6">
           {/* Date Filter */}
-          <div className="flex-1">
+          <div className="flex-1 max-w-xs">
             <label className="block text-sm text-slate-400 mb-2">Select Date</label>
             <div className="flex items-center gap-2 h-10 px-3 bg-slate-800 border border-slate-700 rounded-md">
               <input
@@ -114,7 +181,7 @@ export default function QuestionPaperTrackingPage() {
           </div>
 
           {/* Status Filter */}
-          <div className="flex-1">
+          <div className="flex-1 max-w-xs">
             <label className="block text-sm text-slate-400 mb-2">Status</label>
             <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
               <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
@@ -127,16 +194,6 @@ export default function QuestionPaperTrackingPage() {
               </SelectContent>
             </Select>
           </div>
-
-          <Button
-            className="bg-blue-600 hover:bg-blue-700 px-6"
-            onClick={() => {
-              // Trigger refetch by updating date to same value
-              setSelectedDate(selectedDate);
-            }}
-          >
-            <Search className="h-4 w-4" />
-          </Button>
         </div>
 
         {/* Paper Tracking Summary Table */}

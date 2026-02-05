@@ -98,12 +98,17 @@ export const useDeleteEvent = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: ['delete-event'],
     mutationFn: async (eventId: string) => {
       return eventsApi.delete(eventId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: ['events'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['events-infinite'], exact: false });
     },
+    onError: (error: any) => {
+      throw new Error(error?.response?.data?.message || 'Failed to delete event');
+    }
   });
 };
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { tasksApi, usersApi, PaginatedTasksResponse } from '@/services/api';
@@ -33,9 +33,10 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
-import { ClipboardList, Plus, Loader2, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ClipboardList, Plus, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { RefreshTableButton } from '@/components/RefreshTableButton';
 
 // Status badge colors
 const statusColors: Record<TaskStatus, string> = {
@@ -95,7 +96,6 @@ export default function TasksPage() {
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [users, setUsers] = useState<User[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
 
     // Helper to get local datetime string for input
     const getLocalDateTimeString = (date: Date) => {
@@ -124,6 +124,30 @@ export default function TasksPage() {
             start_time: getDefaultStartTime(),
             end_time: getDefaultEndTime(),
             geofence_radius: '100',
+        },
+    });
+
+    // Create task mutation
+    const createTaskMutation = useMutation({
+        mutationFn: async (payload: any) => tasksApi.create(payload),
+        onSuccess: () => {
+            setCreateDialogOpen(false);
+            form.reset({
+                sealed_pack_code: '',
+                source_location: '',
+                destination_location: '',
+                assigned_user_id: '',
+                exam_type: 'REGULAR',
+                start_time: getDefaultStartTime(),
+                end_time: getDefaultEndTime(),
+                geofence_radius: '100',
+            });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            toast.success('Task created successfully!');
+        },
+        onError: (err: any) => {
+            const message = err?.response?.data?.message;
+            toast.error(Array.isArray(message) ? message[0] : message || 'Failed to create task');
         },
     });
 
@@ -212,38 +236,13 @@ export default function TasksPage() {
     };
 
     const handleCreateTask = async (values: CreateTaskSchema) => {
-        setSubmitting(true);
-
-        try {
-            const payload = {
-                ...values,
-                start_time: new Date(values.start_time).toISOString(),
-                end_time: new Date(values.end_time).toISOString(),
-                geofence_radius: values.geofence_radius,
-            };
-
-            await tasksApi.create(payload as any);
-            setCreateDialogOpen(false);
-            form.reset({
-                sealed_pack_code: '',
-                source_location: '',
-                destination_location: '',
-                assigned_user_id: '',
-                exam_type: 'REGULAR',
-                start_time: getDefaultStartTime(),
-                end_time: getDefaultEndTime(),
-                geofence_radius: '100',
-            });
-            // Invalidate and refetch tasks
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            toast.success('Task created successfully!');
-        } catch (err: unknown) {
-            const error = err as { response?: { data?: { message?: string | string[] } } };
-            const message = error.response?.data?.message;
-            toast.error(Array.isArray(message) ? message[0] : message || 'Failed to create task');
-        } finally {
-            setSubmitting(false);
-        }
+        const payload = {
+            ...values,
+            start_time: new Date(values.start_time).toISOString(),
+            end_time: new Date(values.end_time).toISOString(),
+            geofence_radius: values.geofence_radius ? parseInt(values.geofence_radius, 10) : 100,
+        };
+        createTaskMutation.mutate(payload);
     };
 
     const getMinDateTime = () => {
@@ -266,44 +265,38 @@ export default function TasksPage() {
                     </div>
                 </div>
 
-                {/* Animated Create Task Button */}
-                <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                {/* Create Task Button */}
+                <Button
+                    onClick={() => setCreateDialogOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white gap-2 px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-300 group"
                 >
-                    <Button
-                        onClick={() => setCreateDialogOpen(true)}
-                        className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-500 hover:via-blue-400 hover:to-indigo-500 text-white gap-2 px-6 py-2.5 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 group"
-                    >
-                        <motion.span
-                            className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0"
-                            initial={{ x: '-100%' }}
-                            animate={{ x: '200%' }}
-                            transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-                        />
-                        <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform duration-300" />
-                        <span className="font-medium">Create Task</span>
-                        <Sparkles className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </Button>
-                </motion.div>
+                    <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform duration-300" />
+                    <span className="font-medium">Create Task</span>
+                </Button>
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex gap-2 flex-wrap">
-                {['ALL', ...Object.values(TaskStatus)].map((status) => (
-                    <motion.button
-                        key={status}
-                        onClick={() => handleFilterChange(status as TaskStatus | 'ALL')}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === status
-                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                            }`}
-                    >
-                        {status.replace('_', ' ')}
-                    </motion.button>
-                ))}
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex gap-2 flex-wrap">
+                    {['ALL', ...Object.values(TaskStatus)].map((status) => (
+                        <motion.button
+                            key={status}
+                            onClick={() => handleFilterChange(status as TaskStatus | 'ALL')}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === status
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                }`}
+                        >
+                            {status.replace('_', ' ')}
+                        </motion.button>
+                    ))}
+                </div>
+                <RefreshTableButton
+                    queryKey={['tasks', statusFilter, page]}
+                    isFetching={isFetching}
+                />
             </div>
 
             {/* Tasks Table */}
@@ -419,18 +412,18 @@ export default function TasksPage() {
                     <div className="text-sm text-slate-500 dark:text-slate-400">
                         Showing {((page - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(page * ITEMS_PER_PAGE, total)} of {total} tasks
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 overflow-x-auto max-w-full">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setPage(p => Math.max(1, p - 1))}
                             disabled={page === 1 || isFetching}
-                            className="gap-1"
+                            className="gap-1 flex-shrink-0"
                         >
                             <ChevronLeft className="h-4 w-4" />
                             Previous
                         </Button>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 overflow-x-auto">
                             {[...Array(Math.min(5, totalPages))].map((_, i) => {
                                 let pageNum: number;
                                 if (totalPages <= 5) {
@@ -449,7 +442,7 @@ export default function TasksPage() {
                                         size="sm"
                                         onClick={() => setPage(pageNum)}
                                         disabled={isFetching}
-                                        className="min-w-[36px]"
+                                        className="min-w-[36px] flex-shrink-0"
                                     >
                                         {pageNum}
                                     </Button>
@@ -461,7 +454,7 @@ export default function TasksPage() {
                             size="sm"
                             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                             disabled={page === totalPages || isFetching}
-                            className="gap-1"
+                            className="gap-1 flex-shrink-0"
                         >
                             Next
                             <ChevronRight className="h-4 w-4" />
@@ -470,301 +463,236 @@ export default function TasksPage() {
                 </motion.div>
             )}
 
-            {/* Create Task Dialog with Animation */}
-            <AnimatePresence>
-                {createDialogOpen && (
-                    <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-                        <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 max-w-2xl max-h-[90vh] overflow-y-auto" asChild>
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                                transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
-                            >
-                                <DialogHeader>
-                                    <DialogTitle className="text-slate-900 dark:text-white flex items-center gap-2">
-                                        <motion.div
-                                            initial={{ rotate: -180, opacity: 0 }}
-                                            animate={{ rotate: 0, opacity: 1 }}
-                                            transition={{ delay: 0.2 }}
-                                        >
-                                            <Plus className="h-5 w-5 text-blue-500" />
-                                        </motion.div>
-                                        Create New Task
-                                    </DialogTitle>
-                                    <DialogDescription className="text-slate-500 dark:text-slate-400">
-                                        Assign a new delivery task to a SEBA Officer
-                                    </DialogDescription>
-                                </DialogHeader>
+            {/* Create Task Dialog */}
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+                            <Plus className="h-5 w-5 text-blue-500" />
+                            Create New Task
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-500 dark:text-slate-400">
+                            Assign a new delivery task to a SEBA Officer
+                        </DialogDescription>
+                    </DialogHeader>
 
-                                <Form {...form}>
-                                    <form onSubmit={form.handleSubmit(handleCreateTask)} className="space-y-4 mt-4">
-                                        {/* Sealed Pack Code */}
-                                        <motion.div
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.1 }}
-                                        >
-                                            <FormField
-                                                control={form.control}
-                                                name="sealed_pack_code"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Sealed Pack Code *</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                placeholder="e.g., PACK-2026-001"
-                                                                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                                                                {...field}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleCreateTask)} className="space-y-4 mt-4">
+                            {/* Sealed Pack Code */}
+                            <FormField
+                                control={form.control}
+                                name="sealed_pack_code"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Sealed Pack Code *</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="e.g., PACK-2026-001"
+                                                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                                {...field}
                                             />
-                                        </motion.div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                                        {/* Source Location */}
-                                        <motion.div
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.15 }}
-                                        >
-                                            <FormField
-                                                control={form.control}
-                                                name="source_location"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Source Location (Pickup) *</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                placeholder="Enter pickup address..."
-                                                                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                                                                {...field}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
+                            {/* Source Location */}
+                            <FormField
+                                control={form.control}
+                                name="source_location"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Source Location (Pickup) *</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="Enter pickup address..."
+                                                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                                {...field}
                                             />
-                                        </motion.div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                                        {/* Destination Location */}
-                                        <motion.div
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.2 }}
-                                        >
-                                            <FormField
-                                                control={form.control}
-                                                name="destination_location"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Destination Location (Delivery) *</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                placeholder="Enter delivery address..."
-                                                                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                                                                {...field}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
+                            {/* Destination Location */}
+                            <FormField
+                                control={form.control}
+                                name="destination_location"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Destination Location (Delivery) *</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="Enter delivery address..."
+                                                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                                {...field}
                                             />
-                                        </motion.div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                                        {/* Assigned User */}
-                                        <motion.div
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.25 }}
-                                        >
-                                            <FormField
-                                                control={form.control}
-                                                name="assigned_user_id"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Assign to SEBA Officer *</FormLabel>
-                                                        {loadingUsers ? (
-                                                            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 py-2">
-                                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                                Loading users...
-                                                            </div>
-                                                        ) : users.length === 0 ? (
-                                                            <p className="text-yellow-600 dark:text-yellow-400 text-sm py-2">
-                                                                No active SEBA Officers found
-                                                            </p>
-                                                        ) : (
-                                                            <Select
-                                                                value={field.value}
-                                                                onValueChange={field.onChange}
-                                                            >
-                                                                <FormControl>
-                                                                    <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                                                                        <SelectValue placeholder="Select a SEBA Officer" />
-                                                                    </SelectTrigger>
-                                                                </FormControl>
-                                                                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                                                                    {users.map((user) => (
-                                                                        <SelectItem key={user.id} value={user.id}>
-                                                                            {user.name} ({user.phone})
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        )}
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </motion.div>
-
-                                        {/* Exam Type */}
-                                        <motion.div
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.3 }}
-                                        >
-                                            <FormField
-                                                control={form.control}
-                                                name="exam_type"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Exam Type *</FormLabel>
-                                                        <Select
-                                                            value={field.value}
-                                                            onValueChange={field.onChange}
-                                                        >
-                                                            <FormControl>
-                                                                <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                            </FormControl>
-                                                            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                                                                <SelectItem value="REGULAR">Regular Exam</SelectItem>
-                                                                <SelectItem value="COMPARTMENTAL">Compartmental Exam</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </motion.div>
-
-                                        {/* Time Window */}
-                                        <motion.div
-                                            className="grid grid-cols-2 gap-4"
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.35 }}
-                                        >
-                                            <FormField
-                                                control={form.control}
-                                                name="start_time"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Start Time *</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                type="datetime-local"
-                                                                min={getMinDateTime()}
-                                                                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                                                                {...field}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="end_time"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>End Time *</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                type="datetime-local"
-                                                                min={form.watch('start_time') || getMinDateTime()}
-                                                                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                                                                {...field}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </motion.div>
-
-                                        {/* Geo-fence Radius */}
-                                        <motion.div
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.4 }}
-                                        >
-                                            <FormField
-                                                control={form.control}
-                                                name="geofence_radius"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Geo-fence Radius (meters)</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                type="number"
-                                                                min="10"
-                                                                max="1000"
-                                                                placeholder="100"
-                                                                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 w-32"
-                                                                {...field}
-                                                            />
-                                                        </FormControl>
-                                                        <p className="text-xs text-slate-500 dark:text-slate-400">Default: 100m</p>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </motion.div>
-
-                                        {/* Actions */}
-                                        <motion.div
-                                            className="flex gap-3 pt-4"
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: 0.45 }}
-                                        >
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={() => setCreateDialogOpen(false)}
-                                                className="flex-1"
+                            {/* Assigned User */}
+                            <FormField
+                                control={form.control}
+                                name="assigned_user_id"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Assign to SEBA Officer *</FormLabel>
+                                        {loadingUsers ? (
+                                            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 py-2">
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                Loading users...
+                                            </div>
+                                        ) : users.length === 0 ? (
+                                            <p className="text-yellow-600 dark:text-yellow-400 text-sm py-2">
+                                                No active SEBA Officers found
+                                            </p>
+                                        ) : (
+                                            <Select
+                                                value={field.value}
+                                                onValueChange={field.onChange}
                                             >
-                                                Cancel
-                                            </Button>
-                                            <motion.div className="flex-1" whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                                                <Button
-                                                    type="submit"
-                                                    disabled={submitting || loadingUsers || users.length === 0}
-                                                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/25"
-                                                >
-                                                    {submitting ? (
-                                                        <>
-                                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                            Creating...
-                                                        </>
-                                                    ) : (
-                                                        'Create Task'
-                                                    )}
-                                                </Button>
-                                            </motion.div>
-                                        </motion.div>
-                                    </form>
-                                </Form>
-                            </motion.div>
-                        </DialogContent>
-                    </Dialog>
-                )}
-            </AnimatePresence>
+                                                <FormControl>
+                                                    <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                                                        <SelectValue placeholder="Select a SEBA Officer" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                                                    {users.map((user) => (
+                                                        <SelectItem key={user.id} value={user.id}>
+                                                            {user.name} ({user.phone})
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* Exam Type */}
+                            <FormField
+                                control={form.control}
+                                name="exam_type"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Exam Type *</FormLabel>
+                                        <Select
+                                            value={field.value}
+                                            onValueChange={field.onChange}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                                                <SelectItem value="REGULAR">Regular Exam</SelectItem>
+                                                <SelectItem value="COMPARTMENTAL">Compartmental Exam</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* Time Window */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="start_time"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Start Time *</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="datetime-local"
+                                                    min={getMinDateTime()}
+                                                    className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="end_time"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>End Time *</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="datetime-local"
+                                                    min={form.watch('start_time') || getMinDateTime()}
+                                                    className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            {/* Geo-fence Radius */}
+                            <FormField
+                                control={form.control}
+                                name="geofence_radius"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Geo-fence Radius (meters)</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                min="10"
+                                                max="1000"
+                                                placeholder="100"
+                                                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 w-32"
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Default: 100m</p>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* Actions */}
+                            <div className="flex gap-3 pt-4">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setCreateDialogOpen(false)}
+                                    className="flex-1"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={createTaskMutation.isPending || loadingUsers || users.length === 0}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                                >
+                                    {createTaskMutation.isPending ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            Creating...
+                                        </>
+                                    ) : (
+                                        'Create Task'
+                                    )}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

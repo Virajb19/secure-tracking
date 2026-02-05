@@ -143,9 +143,7 @@ export const createTaskSchema = z.object({
     .string()
     .min(1, 'Destination location is required')
     .max(500, 'Destination location cannot exceed 500 characters'),
-  assigned_user_id: z
-    .string()
-    .uuid('Please select a valid user'),
+  assigned_user_id: z.string().uuid('Please select a valid user'),
   exam_type: z.enum(['REGULAR', 'COMPARTMENTAL'], {
     message: 'Exam type is required',
   }),
@@ -157,9 +155,11 @@ export const createTaskSchema = z.object({
     .min(1, 'End time is required'),
   geofence_radius: z
     .string()
-    .optional()
-    .transform((val) => (val ? parseInt(val, 10) : 100))
-    .pipe(z.number().min(10, 'Minimum radius is 10m').max(1000, 'Maximum radius is 1000m')),
+    .refine((val) => {
+      if (!val) return true; // Allow empty, will use default
+      const num = parseInt(val, 10);
+      return !isNaN(num) && num >= 10 && num <= 1000;
+    }, 'Geofence radius must be between 10m and 1000m'),
 }).refine(
   (data) => {
     const start = new Date(data.start_time);

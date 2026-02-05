@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,9 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, MapPin, Clock, Image as ImageIcon, CheckCircle, XCircle, Loader2, FileText, ArrowLeft } from 'lucide-react';
+import { MapPin, Clock, Image as ImageIcon, CheckCircle, XCircle, Loader2, FileText, ArrowLeft, Download } from 'lucide-react';
 import { tasksApi } from '@/services/api';
 import { Task, TaskEvent, TaskStatus, EventType } from '@/types';
+import { toast } from 'sonner';
 
 // 5-step tracking workflow columns
 const trackingSteps = [
@@ -33,6 +34,8 @@ export default function CompartmentalExamsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedEvent, setSelectedEvent] = useState<TaskEvent | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const tableRef = useRef<HTMLTableElement>(null);
 
   // Fetch tasks on mount and when filters change
   useEffect(() => {
@@ -86,6 +89,55 @@ export default function CompartmentalExamsPage() {
     return Math.round((task.events.length / 5) * 100);
   };
 
+  // Download CSV function
+  const handleDownload = async () => {
+    if (filteredTasks.length === 0) {
+      toast.error('No data to download');
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      // Build CSV content
+      const headers = ['Sl.', 'Pack Code', 'Assigned To', 'Phone', 'Shift', 'Progress', ...trackingSteps.map(s => s.label), 'Status'];
+      const rows = filteredTasks.map((task, index) => {
+        const hour = new Date(task.start_time).getHours();
+        const taskShift = hour < 12 ? 'Morning' : 'Afternoon';
+        const stepStatuses = trackingSteps.map(step => {
+          const event = getEventByType(task, step.key);
+          return event ? 'Completed' : 'Pending';
+        });
+        return [
+          index + 1,
+          task.sealed_pack_code,
+          task.assigned_user?.name || 'N/A',
+          task.assigned_user?.phone || 'N/A',
+          taskShift,
+          `${getProgress(task)}%`,
+          ...stepStatuses,
+          task.status
+        ];
+      });
+
+      const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `compartmental-tracking-${selectedDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('Downloaded successfully!');
+    } catch (err) {
+      console.error('Download failed:', err);
+      toast.error('Failed to download');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -99,9 +151,22 @@ export default function CompartmentalExamsPage() {
           </Link>
           <h1 className="text-2xl font-bold text-white">Compartmental Exam Tracking</h1>
         </div>
-        <Button className="gap-2 bg-slate-800 hover:bg-slate-700">
-          <FileText className="h-4 w-4" />
-          Download PDF
+        <Button 
+          onClick={handleDownload}
+          disabled={downloading || filteredTasks.length === 0}
+          className="gap-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white shadow-lg shadow-orange-500/25 transition-all duration-300 disabled:opacity-50"
+        >
+          {downloading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Downloading...
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              Download CSV
+            </>
+          )}
         </Button>
       </div>
 
@@ -109,7 +174,7 @@ export default function CompartmentalExamsPage() {
       <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
         <div className="flex gap-4 items-end mb-6">
           {/* Date Filter */}
-          <div className="flex-1">
+          <div className="flex-1 max-w-xs">
             <label className="block text-sm text-slate-400 mb-2">Select Date</label>
             <div className="flex items-center gap-2 h-10 px-3 bg-slate-800 border border-slate-700 rounded-md">
               <input
@@ -122,7 +187,7 @@ export default function CompartmentalExamsPage() {
           </div>
 
           {/* Shift Filter */}
-          <div className="flex-1">
+          <div className="flex-1 max-w-xs">
             <label className="block text-sm text-slate-400 mb-2">Shift</label>
             <Select value={shift} onValueChange={(v) => setShift(v as typeof shift)}>
               <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
@@ -135,13 +200,6 @@ export default function CompartmentalExamsPage() {
               </SelectContent>
             </Select>
           </div>
-
-          <Button
-            className="bg-blue-600 hover:bg-blue-700 px-6"
-            onClick={() => setSelectedDate(selectedDate)}
-          >
-            <Search className="h-4 w-4" />
-          </Button>
         </div>
 
         {/* Paper Tracking Summary Table */}

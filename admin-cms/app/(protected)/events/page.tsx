@@ -21,24 +21,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Calendar, MapPin, Users, Eye, Trash2, Loader2, Check, X, Clock, CalendarDays, Search, Download, FileText, User } from 'lucide-react';
-import { useGetEventsInfinite, useDeleteEvent, useGetEventById } from '@/services/events.service';
+import { Calendar, MapPin, Users, Eye, Loader2, Check, X, Clock, CalendarDays, Search, Download, FileText, User } from 'lucide-react';
+import { useGetEventsInfinite, useGetEventById } from '@/services/events.service';
+import { DeleteEventButton } from '@/components/DeleteEventButton';
 import { useGetDistricts } from '@/services/user.service';
-import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
 import { EventFilterParams, SchoolEventType, EventWithStats } from '@/services/api';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+import { useIsMutating } from '@tanstack/react-query';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useDebounceCallback } from 'usehooks-ts';
@@ -136,6 +127,23 @@ const eventTypeLabels: Record<SchoolEventType, string> = {
   OTHER: 'Other',
 };
 
+// View Event Button - disabled while any delete is in progress
+function ViewEventButton({ eventId, onClick }: { eventId: string; onClick: () => void }) {
+  const isDeletingAny = useIsMutating({ mutationKey: ['delete-event'] }) > 0;
+  
+  return (
+    <motion.button
+      onClick={onClick}
+      disabled={isDeletingAny}
+      className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-full text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+      whileHover={{ scale: isDeletingAny ? 1 : 1.05 }}
+      whileTap={{ scale: isDeletingAny ? 1 : 0.95 }}
+    >
+      View
+    </motion.button>
+  );
+}
+
 const eventTypeColors: Record<SchoolEventType, string> = {
   MEETING: 'bg-blue-500/20 text-blue-400',
   EXAM: 'bg-red-500/20 text-red-400',
@@ -149,7 +157,6 @@ const eventTypeColors: Record<SchoolEventType, string> = {
 
 export default function EventsPage() {
   const { data: districts = [] } = useGetDistricts();
-  const deleteEventMutation = useDeleteEvent();
 
   // Date filters - default to all time (empty means no filter)
   const [fromDate, setFromDate] = useState<string>('');
@@ -210,15 +217,6 @@ export default function EventsPage() {
 
   // Get event details when viewing
   const { data: eventDetails, isLoading: isLoadingDetails } = useGetEventById(selectedEventId || undefined);
-
-  const handleDeleteEvent = async (eventId: string) => {
-    try {
-      await deleteEventMutation.mutateAsync(eventId);
-      showSuccessToast('Event deleted successfully');
-    } catch (error: any) {
-      showErrorToast(error?.response?.data?.message || 'Failed to delete event');
-    }
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -301,10 +299,10 @@ export default function EventsPage() {
       // Build filename
       const datePart = fromDate && toDate ? `${fromDate}-to-${toDate}` : new Date().toISOString().split('T')[0];
       doc.save(`events-report-${datePart}.pdf`);
-      showSuccessToast('PDF downloaded successfully');
+      toast.success('PDF downloaded successfully');
     } catch (error) {
       console.error('PDF generation error:', error);
-      showErrorToast('Failed to generate PDF');
+      toast.error('Failed to generate PDF');
     } finally {
       setIsDownloading(false);
     }
@@ -574,50 +572,14 @@ export default function EventsPage() {
                       </td>
                       <td className="py-4 px-5">
                         <div className="flex items-center gap-2">
-                          <motion.button
+                          <ViewEventButton
+                            eventId={event.id}
                             onClick={() => {
                               setSelectedEventId(event.id);
                               setViewModalOpen(true);
                             }}
-                            className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-full text-sm font-medium transition-all"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            View
-                          </motion.button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <motion.button
-                                className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                                title="Delete"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                              >
-                                <Trash2 className="h-5 w-5" />
-                              </motion.button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="bg-slate-900 border-slate-700/50 rounded-2xl">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle className="text-white text-lg font-semibold">Delete Event</AlertDialogTitle>
-                                <AlertDialogDescription className="text-slate-400">
-                                  Are you sure you want to delete "{event.title}"? 
-                                  <br />
-                                  <span className="text-red-400 font-medium">This action cannot be undone.</span>
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter className="gap-3 mt-4">
-                                <AlertDialogCancel className="bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white transition-all duration-200">
-                                  Cancel
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteEvent(event.id)}
-                                  className="bg-red-600 text-white hover:bg-red-700 transition-all duration-200"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          />
+                          <DeleteEventButton eventId={event.id} eventTitle={event.title} />
                         </div>
                       </td>
                     </motion.tr>
