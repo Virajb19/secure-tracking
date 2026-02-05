@@ -340,6 +340,7 @@ export class AuthService {
             throw new BadRequestException('Email and password are required');
         }
 
+        // check if user exists with given email
         const user = await this.usersService.findByEmail(loginDto.email);
 
         if (!user) {
@@ -370,8 +371,20 @@ export class AuthService {
             ? (loginDto.password === user.password) // TEMPORARY: Plaintext check in development
             : await bcrypt.compare(loginDto.password, user.password);
 
-        loginDto.password === user.password; // TEMPORARY: Plaintext password check
         if (!isPasswordValid) {
+            await this.auditLogsService.log(
+                AuditAction.USER_LOGIN_FAILED,
+                'User',
+                user.id,
+                user.id,
+                ipAddress,
+            );
+            throw new UnauthorizedException('Invalid credentials');
+        }
+
+        // check if phone matches
+        const userWithPhone = await this.usersService.findByPhone(loginDto.phone);
+        if(!userWithPhone || userWithPhone.id !== user.id) {
             await this.auditLogsService.log(
                 AuditAction.USER_LOGIN_FAILED,
                 'User',

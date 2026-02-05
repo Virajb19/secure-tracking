@@ -3,7 +3,7 @@ import { z } from "zod";
 export const loginSchema = z.object({
   email: z.email({ message: 'Please enter a valid email' }).trim(),
   password: z.string().min(8, { message: 'Password must be atleast 8 letters long' }).max(15, { message: 'Password cannot exceed 15 characters' }),
-  phone: z.string().optional(),
+  phone: z.string().min(1, { message: "Phone number is required" }).regex(/^[+]?[\d\s-]{10,15}$/, { message: 'Invalid phone number format' }),
 });
 
 export type LoginSchema = z.infer<typeof loginSchema>;

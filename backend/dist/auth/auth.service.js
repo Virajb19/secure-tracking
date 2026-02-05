@@ -193,8 +193,12 @@ let AuthService = class AuthService {
         const isPasswordValid = env_validation_1.env.NODE_ENV === 'development'
             ? (loginDto.password === user.password)
             : await bcrypt.compare(loginDto.password, user.password);
-        loginDto.password === user.password;
         if (!isPasswordValid) {
+            await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
+            throw new common_1.UnauthorizedException('Invalid credentials');
+        }
+        const userWithPhone = await this.usersService.findByPhone(loginDto.phone);
+        if (!userWithPhone || userWithPhone.id !== user.id) {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
             throw new common_1.UnauthorizedException('Invalid credentials');
         }

@@ -4,9 +4,9 @@ exports.LoginDto = exports.LoginSchema = void 0;
 const nestjs_zod_1 = require("nestjs-zod");
 const zod_1 = require("zod");
 exports.LoginSchema = zod_1.z.object({
-    email: zod_1.z.string().email({ message: 'Please enter a valid email' }).trim().optional(),
-    password: zod_1.z.string().min(8, { message: 'Password must be at least 8 characters long' }).max(15, { message: 'Password cannot exceed 15 characters' }).optional(),
-    phone: zod_1.z.string().regex(/^[+]?[\d\s-]{10,15}$/, { message: 'Invalid phone number format' }).optional(),
+    email: zod_1.z.email({ message: 'Please enter a valid email' }).trim().optional(),
+    password: zod_1.z.string().min(8, { message: 'Password must be at least 8 characters long' }).max(15, { message: 'Password cannot exceed 15 characters' }),
+    phone: zod_1.z.string().min(1, { message: "Phone number is required" }).regex(/^[+]?[\d\s-]{10,15}$/, { message: 'Invalid phone number format' }),
     device_id: zod_1.z.string().min(10).optional(),
 }).refine((data) => {
     const hasEmailLogin = data.email && data.password;

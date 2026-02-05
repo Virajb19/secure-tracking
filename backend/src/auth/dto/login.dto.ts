@@ -3,10 +3,10 @@ import { z } from 'zod';
 
 export const LoginSchema = z.object({
   // Admin CMS login (email + password) OR Mobile app login (email + password + phone)
-  email: z.string().email({ message: 'Please enter a valid email' }).trim().optional(),
-  password: z.string().min(8, { message: 'Password must be at least 8 characters long' }).max(15, { message: 'Password cannot exceed 15 characters' }).optional(),
+  email: z.email({ message: 'Please enter a valid email' }).trim().optional(),
+  password: z.string().min(8, { message: 'Password must be at least 8 characters long' }).max(15, { message: 'Password cannot exceed 15 characters' }),
   // Mobile app login requires phone + device_id along with email + password
-  phone: z.string().regex(/^[+]?[\d\s-]{10,15}$/, { message: 'Invalid phone number format' }).optional(),
+  phone: z.string().min(1, { message: "Phone number is required" }).regex(/^[+]?[\d\s-]{10,15}$/, { message: 'Invalid phone number format' }),
   device_id: z.string().min(10).optional(),
 }).refine(
   (data) => {
