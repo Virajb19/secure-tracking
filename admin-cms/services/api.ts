@@ -197,15 +197,29 @@ export const masterDataApi = {
 // ============================
 export interface TaskFilterParams {
   exam_type?: 'REGULAR' | 'COMPARTMENTAL';
+  status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPICIOUS';
   date?: string;  // YYYY-MM-DD format
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedTasksResponse {
+  data: Task[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 export const tasksApi = {
-  getAll: async (filters?: TaskFilterParams): Promise<Task[]> => {
+  getAll: async (filters?: TaskFilterParams): Promise<PaginatedTasksResponse> => {
     const params: Record<string, string> = {};
     if (filters?.exam_type) params.exam_type = filters.exam_type;
+    if (filters?.status) params.status = filters.status;
     if (filters?.date) params.date = filters.date;
-    const response = await api.get<Task[]>('/admin/tasks', { params });
+    if (filters?.page) params.page = String(filters.page);
+    if (filters?.limit) params.limit = String(filters.limit);
+    const response = await api.get<PaginatedTasksResponse>('/admin/tasks', { params });
     return response.data;
   },
 

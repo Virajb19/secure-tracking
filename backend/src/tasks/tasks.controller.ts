@@ -15,7 +15,7 @@ import {
     forwardRef,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { User, Task, TaskEvent, UserRole, ExamType } from '@prisma/client';
+import { User, Task, TaskEvent, UserRole, ExamType, TaskStatus } from '@prisma/client';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { JwtAuthGuard, RolesGuard } from '../shared/guards';
@@ -66,18 +66,32 @@ export class AdminTasksController {
     }
 
     /**
-     * Get all tasks.
+     * Get all tasks with pagination and filters.
      * Admin only endpoint.
      * @param exam_type - Optional filter by REGULAR or COMPARTMENTAL
+     * @param status - Optional filter by task status
+     * @param page - Page number (default: 1)
+     * @param limit - Items per page (default: 20)
      */
     @Get()
     async findAll(
         @Query('exam_type') examType?: string,
-    ): Promise<Task[]> {
+        @Query('status') status?: string,
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+    ): Promise<{ data: Task[]; total: number; page: number; limit: number; totalPages: number }> {
         const validExamType = examType && ['REGULAR', 'COMPARTMENTAL'].includes(examType)
             ? (examType as ExamType)
             : undefined;
-        return this.tasksService.findAll(validExamType);
+        const validStatus = status && ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'SUSPICIOUS'].includes(status)
+            ? (status as TaskStatus)
+            : undefined;
+        return this.tasksService.findAll(
+            validExamType,
+            validStatus,
+            page ? parseInt(page, 10) : 1,
+            limit ? parseInt(limit, 10) : 20,
+        );
     }
 
     /**

@@ -29,11 +29,14 @@ let AdminTasksController = class AdminTasksController {
         const ipAddress = this.extractIpAddress(request);
         return this.tasksService.create(createTaskDto, currentUser.id, ipAddress);
     }
-    async findAll(examType) {
+    async findAll(examType, status, page, limit) {
         const validExamType = examType && ['REGULAR', 'COMPARTMENTAL'].includes(examType)
             ? examType
             : undefined;
-        return this.tasksService.findAll(validExamType);
+        const validStatus = status && ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'SUSPICIOUS'].includes(status)
+            ? status
+            : undefined;
+        return this.tasksService.findAll(validExamType, validStatus, page ? parseInt(page, 10) : 1, limit ? parseInt(limit, 10) : 20);
     }
     async findAllWithEvents(examType, dateStr) {
         const validExamType = examType && ['REGULAR', 'COMPARTMENTAL'].includes(examType)
@@ -75,8 +78,11 @@ __decorate([
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('exam_type')),
+    __param(1, (0, common_1.Query)('status')),
+    __param(2, (0, common_1.Query)('page')),
+    __param(3, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], AdminTasksController.prototype, "findAll", null);
 __decorate([

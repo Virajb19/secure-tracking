@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
-  email: z.email({message: 'Please enter a valid email'}).trim(),
-  password: z.string().min(8, {message: 'Password must be atleast 8 letters long'}).max(15, { message: 'Password cannot exceed 15 characters'}),
+  email: z.email({ message: 'Please enter a valid email' }).trim(),
+  password: z.string().min(8, { message: 'Password must be atleast 8 letters long' }).max(15, { message: 'Password cannot exceed 15 characters' }),
   phone: z.string().optional(),
 });
 
@@ -126,3 +126,50 @@ export const rejectFormSchema = z.object({
     .min(1, 'Rejection reason is required')
     .max(500, 'Rejection reason cannot exceed 500 characters'),
 });
+
+// ============================
+// CREATE TASK SCHEMA
+// ============================
+export const createTaskSchema = z.object({
+  sealed_pack_code: z
+    .string()
+    .min(1, 'Sealed pack code is required')
+    .max(50, 'Pack code cannot exceed 50 characters'),
+  source_location: z
+    .string()
+    .min(1, 'Source location is required')
+    .max(500, 'Source location cannot exceed 500 characters'),
+  destination_location: z
+    .string()
+    .min(1, 'Destination location is required')
+    .max(500, 'Destination location cannot exceed 500 characters'),
+  assigned_user_id: z
+    .string()
+    .uuid('Please select a valid user'),
+  exam_type: z.enum(['REGULAR', 'COMPARTMENTAL'], {
+    message: 'Exam type is required',
+  }),
+  start_time: z
+    .string()
+    .min(1, 'Start time is required'),
+  end_time: z
+    .string()
+    .min(1, 'End time is required'),
+  geofence_radius: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 100))
+    .pipe(z.number().min(10, 'Minimum radius is 10m').max(1000, 'Maximum radius is 1000m')),
+}).refine(
+  (data) => {
+    const start = new Date(data.start_time);
+    const end = new Date(data.end_time);
+    return end > start;
+  },
+  {
+    message: 'End time must be after start time',
+    path: ['end_time'],
+  }
+);
+
+export type CreateTaskSchema = z.infer<typeof createTaskSchema>;

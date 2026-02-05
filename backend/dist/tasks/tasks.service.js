@@ -66,12 +66,32 @@ let TasksService = class TasksService {
         await this.notificationsService.notifyTaskAssigned(createTaskDto.assigned_user_id, createTaskDto.sealed_pack_code);
         return savedTask;
     }
-    async findAll(examType) {
-        return this.db.task.findMany({
-            where: examType ? { exam_type: examType } : undefined,
-            orderBy: { created_at: 'desc' },
-            include: { assigned_user: true },
-        });
+    async findAll(examType, status, page = 1, limit = 20) {
+        const skip = (page - 1) * limit;
+        const where = {};
+        if (examType)
+            where.exam_type = examType;
+        if (status)
+            where.status = status;
+        const [data, total] = await Promise.all([
+            this.db.task.findMany({
+                where: Object.keys(where).length > 0 ? where : undefined,
+                orderBy: { created_at: 'desc' },
+                include: { assigned_user: true },
+                skip,
+                take: limit,
+            }),
+            this.db.task.count({
+                where: Object.keys(where).length > 0 ? where : undefined,
+            }),
+        ]);
+        return {
+            data,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
     }
     async findAllWithEvents(examType, date) {
         const whereClause = {};

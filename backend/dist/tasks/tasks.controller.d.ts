@@ -8,7 +8,13 @@ export declare class AdminTasksController {
     private readonly taskEventsService;
     constructor(tasksService: TasksService, taskEventsService: TaskEventsService);
     create(createTaskDto: CreateTaskDto, currentUser: User, request: Request): Promise<Task>;
-    findAll(examType?: string): Promise<Task[]>;
+    findAll(examType?: string, status?: string, page?: string, limit?: string): Promise<{
+        data: Task[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }>;
     findAllWithEvents(examType?: string, dateStr?: string): Promise<(Task & {
         events: TaskEvent[];
     })[]>;

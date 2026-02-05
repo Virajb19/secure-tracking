@@ -20,7 +20,13 @@ export declare class TasksService {
     private readonly notificationsService;
     constructor(db: PrismaService, usersService: UsersService, auditLogsService: AuditLogsService, notificationsService: NotificationsService);
     create(createTaskDto: CreateTaskDto, adminId: string, ipAddress: string | null): Promise<Task>;
-    findAll(examType?: ExamType): Promise<TaskWithUser[]>;
+    findAll(examType?: ExamType, status?: TaskStatus, page?: number, limit?: number): Promise<{
+        data: TaskWithUser[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }>;
     findAllWithEvents(examType?: ExamType, date?: Date): Promise<(TaskWithUser & {
         events: any[];
     })[]>;

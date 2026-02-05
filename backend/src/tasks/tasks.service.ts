@@ -130,16 +130,42 @@ export class TasksService {
     }
 
     /**
-     * Get all tasks (Admin view).
-     * Returns all tasks ordered by creation date.
-     * Optionally filter by exam type.
+     * Get all tasks (Admin view) with pagination.
+     * Returns paginated tasks ordered by creation date.
+     * Optionally filter by exam type and status.
      */
-    async findAll(examType?: ExamType): Promise<TaskWithUser[]> {
-        return this.db.task.findMany({
-            where: examType ? { exam_type: examType } : undefined,
-            orderBy: { created_at: 'desc' },
-            include: { assigned_user: true },
-        });
+    async findAll(
+        examType?: ExamType,
+        status?: TaskStatus,
+        page: number = 1,
+        limit: number = 20,
+    ): Promise<{ data: TaskWithUser[]; total: number; page: number; limit: number; totalPages: number }> {
+        const skip = (page - 1) * limit;
+
+        const where: any = {};
+        if (examType) where.exam_type = examType;
+        if (status) where.status = status;
+
+        const [data, total] = await Promise.all([
+            this.db.task.findMany({
+                where: Object.keys(where).length > 0 ? where : undefined,
+                orderBy: { created_at: 'desc' },
+                include: { assigned_user: true },
+                skip,
+                take: limit,
+            }),
+            this.db.task.count({
+                where: Object.keys(where).length > 0 ? where : undefined,
+            }),
+        ]);
+
+        return {
+            data,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
     }
 
     /**

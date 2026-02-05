@@ -81,7 +81,7 @@ export default function Header() {
                 >
 
                    <motion.span
-                        className="text-2xl md:text-3xl"
+                        className="text-2xl md:text-4xl"
                         variants={waveVariants}
                         animate="wave"
                         style={{ display: 'inline-block', originX: 0.7, originY: 0.7 }}
@@ -90,7 +90,7 @@ export default function Header() {
                     </motion.span>
 
                     <motion.h1
-                        className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white"
+                        className="text-xl md:text-3xl font-bold text-slate-800 dark:text-white"
                         variants={textVariants}
                     >
                         {greeting}, <span className="uppercase bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">{userName || 'Administrator'}</span>
