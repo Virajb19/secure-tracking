@@ -65,6 +65,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import CopyEmailButton from '@/components/CopyEmailButton';
 
 // Animation variants
 const containerVariants = {
@@ -886,7 +887,12 @@ export default function UsersPage() {
                   </div>
                   <div>
                     <label className="text-sm text-slate-500">Email</label>
-                    <p className="text-slate-900 dark:text-white font-medium">{selectedUserForDetail.email || '-'}</p>
+                     <div className='flex items-center gap-2'>
+                       <p className="text-slate-900 dark:text-white font-medium">{selectedUserForDetail.email || '-'}</p>
+                       {selectedUserForDetail.email && (
+                          <CopyEmailButton email={selectedUserForDetail.email} />
+                         )}
+                     </div>
                   </div>
                 </div>
               </div>
