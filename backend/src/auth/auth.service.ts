@@ -6,6 +6,7 @@ import {
     ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { User, UserRole, Gender } from '@prisma/client';
 import { UsersService } from '../users/users.service';
 import { AuditLogsService, AuditAction } from '../audit-logs/audit-logs.service';
@@ -13,6 +14,7 @@ import { PrismaService } from '../prisma';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { env } from '@/env.validation';
 
 /**
@@ -20,6 +22,7 @@ import { env } from '@/env.validation';
  */
 export interface LoginResponse {
     access_token: string;
+    refresh_token: string;
     user: {
         id: string;
         name: string;
@@ -30,6 +33,14 @@ export interface LoginResponse {
         is_active: boolean;
         has_completed_profile: boolean;
     };
+}
+
+/**
+ * Refresh response structure.
+ */
+export interface RefreshResponse {
+    access_token: string;
+    refresh_token: string;
 }
 
 /**
@@ -65,6 +76,7 @@ export class AuthService {
         private readonly jwtService: JwtService,
         private readonly auditLogsService: AuditLogsService,
         private readonly db: PrismaService,
+        private readonly configService: ConfigService,
     ) { }
 
     /**
@@ -83,6 +95,66 @@ export class AuthService {
         });
 
         return faculty !== null;
+    }
+
+    /**
+     * Parse a duration string (e.g., "7d", "15m", "24h") into milliseconds.
+     */
+    private parseDuration(duration: string): number {
+        const match = duration.match(/^(\d+)(s|m|h|d)$/);
+        if (!match) throw new Error(`Invalid duration: ${duration}`);
+        const value = parseInt(match[1]);
+        const unit = match[2];
+        switch (unit) {
+            case 's': return value * 1000;
+            case 'm': return value * 60 * 1000;
+            case 'h': return value * 60 * 60 * 1000;
+            case 'd': return value * 24 * 60 * 60 * 1000;
+            default: throw new Error(`Unknown unit: ${unit}`);
+        }
+    }
+
+    /**
+     * Generate a cryptographically secure refresh token, hash it, and store in DB.
+     * @returns The raw refresh token (to send to client)
+     */
+    private async generateRefreshToken(userId: string): Promise<string> {
+        const rawToken = crypto.randomBytes(64).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+        const expiresIn = this.configService.get<string>('REFRESH_TOKEN_EXPIRES_IN', '7d');
+        const expiresAt = new Date(Date.now() + this.parseDuration(expiresIn));
+
+        await this.db.refreshToken.create({
+            data: {
+                token_hash: tokenHash,
+                user_id: userId,
+                expires_at: expiresAt,
+            },
+        });
+
+        return rawToken;
+    }
+
+    /**
+     * Revoke all refresh tokens for a user (e.g., on logout or password change).
+     */
+    private async revokeAllRefreshTokens(userId: string): Promise<void> {
+        await this.db.refreshToken.deleteMany({
+            where: { user_id: userId },
+        });
+    }
+
+    /**
+     * Clean up expired refresh tokens for a user.
+     */
+    private async cleanupExpiredTokens(userId: string): Promise<void> {
+        await this.db.refreshToken.deleteMany({
+            where: {
+                user_id: userId,
+                expires_at: { lt: new Date() },
+            },
+        });
     }
 
     /**
@@ -185,6 +257,12 @@ export class AuthService {
 
         const accessToken = this.jwtService.sign(payload);
 
+        // Generate refresh token
+        const refreshToken = await this.generateRefreshToken(user.id);
+
+        // Clean up expired tokens in the background
+        this.cleanupExpiredTokens(user.id).catch(() => {});
+
         // Log successful login
         await this.auditLogsService.log(
             AuditAction.USER_LOGIN,
@@ -199,6 +277,7 @@ export class AuthService {
 
         return {
             access_token: accessToken,
+            refresh_token: refreshToken,
             user: {
                 id: user.id,
                 name: user.name,
@@ -416,6 +495,12 @@ export class AuthService {
 
         const accessToken = this.jwtService.sign(payload);
 
+        // Generate refresh token
+        const refreshToken = await this.generateRefreshToken(user.id);
+
+        // Clean up expired tokens in the background
+        this.cleanupExpiredTokens(user.id).catch(() => {});
+
         // Log successful login
         await this.auditLogsService.log(
             AuditAction.USER_LOGIN,
@@ -427,6 +512,7 @@ export class AuthService {
 
         return {
             access_token: accessToken,
+            refresh_token: refreshToken,
             user: {
                 id: user.id,
                 name: user.name,
@@ -441,6 +527,55 @@ export class AuthService {
     }
 
     /**
+     * Refresh access token using a valid refresh token.
+     * Implements token rotation: old refresh token is revoked, new one is issued.
+     * 
+     * @param refreshTokenRaw - The raw refresh token from the client
+     * @returns New access token and refresh token
+     * @throws UnauthorizedException if refresh token is invalid or expired
+     */
+    async refreshAccessToken(refreshTokenRaw: string): Promise<RefreshResponse> {
+        const tokenHash = crypto.createHash('sha256').update(refreshTokenRaw).digest('hex');
+
+        // Find the refresh token in DB
+        const storedToken = await this.db.refreshToken.findFirst({
+            where: { token_hash: tokenHash },
+            include: { user: true },
+        });
+
+        if (!storedToken) {
+            throw new UnauthorizedException('Invalid refresh token. Please login again.');
+        }
+
+        // Check if token is expired
+        if (storedToken.expires_at < new Date()) {
+            // Delete the expired token
+            await this.db.refreshToken.delete({ where: { id: storedToken.id } });
+            throw new UnauthorizedException('Refresh token expired. Please login again.');
+        }
+
+        // Token rotation: delete the used refresh token
+        await this.db.refreshToken.delete({ where: { id: storedToken.id } });
+
+        // Generate new access token
+        const payload = {
+            sub: storedToken.user.id,
+            phone: storedToken.user.phone,
+            role: storedToken.user.role,
+        };
+
+        const newAccessToken = this.jwtService.sign(payload);
+
+        // Generate new refresh token (rotation)
+        const newRefreshToken = await this.generateRefreshToken(storedToken.user.id);
+
+        return {
+            access_token: newAccessToken,
+            refresh_token: newRefreshToken,
+        };
+    }
+
+    /**
      * Log user logout action.
      * 
      * @param userId - The ID of the user logging out
@@ -448,6 +583,9 @@ export class AuthService {
      * @returns Confirmation message
      */
     async logout(userId: string, ipAddress: string | null): Promise<{ message: string }> {
+        // Revoke all refresh tokens for this user
+        await this.revokeAllRefreshTokens(userId);
+
         await this.auditLogsService.log(
             AuditAction.USER_LOGOUT,
             'User',

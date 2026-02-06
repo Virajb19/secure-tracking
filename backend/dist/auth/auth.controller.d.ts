@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { AuthService, LoginResponse, RegisterResponse } from './auth.service';
+import { AuthService, LoginResponse, RegisterResponse, RefreshResponse } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UsersService } from '../users/users.service';
@@ -10,6 +10,9 @@ export declare class AuthController {
     login(loginDto: LoginDto, request: Request): Promise<LoginResponse>;
     register(registerDto: RegisterDto, request: Request): Promise<RegisterResponse>;
     adminLogin(loginDto: LoginDto, request: Request): Promise<LoginResponse>;
+    refresh(body: {
+        refresh_token: string;
+    }): Promise<RefreshResponse>;
     private extractIpAddress;
     getMe(request: Request): Promise<{
         id: any;

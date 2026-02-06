@@ -42,6 +42,8 @@ console.log('[Config] API Base URL:', API_CONFIG.BASE_URL);
 export const STORAGE_KEYS = {
     /** JWT access token */
     ACCESS_TOKEN: 'access_token',
+    /** JWT refresh token */
+    REFRESH_TOKEN: 'refresh_token',
     /** Unique device identifier */
     DEVICE_ID: 'device_id',
     /** Cached user data (JSON) */

@@ -168,9 +168,16 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={form.formState.isSubmitting}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25"
+                className="w-full flex-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25"
               >
-                {form.formState.isSubmitting ? "Authenticating..." : "Sign In"}
+                {form.formState.isSubmitting ? (
+                  <>
+                    <div className='size-4 border-2 border-t-[3px] border-white/20 border-t-white rounded-full animate-spin'/>
+                    Authenticating...
+                  </>
+                ) : (
+                  "Sign In"
+                )}
               </Button>
             </form>
           </Form>

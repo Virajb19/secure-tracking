@@ -1,4 +1,5 @@
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { UserRole } from '@prisma/client';
 import { UsersService } from '../users/users.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -7,6 +8,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 export interface LoginResponse {
     access_token: string;
+    refresh_token: string;
     user: {
         id: string;
         name: string;
@@ -17,6 +19,10 @@ export interface LoginResponse {
         is_active: boolean;
         has_completed_profile: boolean;
     };
+}
+export interface RefreshResponse {
+    access_token: string;
+    refresh_token: string;
 }
 export interface RegisterResponse {
     message: string;
@@ -34,12 +40,18 @@ export declare class AuthService {
     private readonly jwtService;
     private readonly auditLogsService;
     private readonly db;
-    constructor(usersService: UsersService, jwtService: JwtService, auditLogsService: AuditLogsService, db: PrismaService);
+    private readonly configService;
+    constructor(usersService: UsersService, jwtService: JwtService, auditLogsService: AuditLogsService, db: PrismaService, configService: ConfigService);
     private hasCompletedProfile;
+    private parseDuration;
+    private generateRefreshToken;
+    private revokeAllRefreshTokens;
+    private cleanupExpiredTokens;
     login(loginDto: LoginDto, ipAddress: string | null): Promise<LoginResponse>;
     private validateDeliveryUserDevice;
     register(registerDto: RegisterDto, ipAddress: string | null): Promise<RegisterResponse>;
     adminLogin(loginDto: LoginDto, ipAddress: string | null): Promise<LoginResponse>;
+    refreshAccessToken(refreshTokenRaw: string): Promise<RefreshResponse>;
     logout(userId: string, ipAddress: string | null): Promise<{
         message: string;
     }>;

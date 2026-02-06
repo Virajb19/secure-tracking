@@ -5,6 +5,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().startsWith("postgresql://", "DATABASE_URL must be a PostgreSQL connection string"),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
   JWT_EXPIRES_IN: z.string().regex(/^(\d+)(s|m|h|d)$/, "JWT_EXPIRES_IN must be like 30m, 24h, 7d"),
+  REFRESH_TOKEN_EXPIRES_IN: z.string().regex(/^(\d+)(s|m|h|d)$/, "REFRESH_TOKEN_EXPIRES_IN must be like 7d, 30d").default("7d"),
   PORT: z.coerce.number().int().positive().default(3000),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   UPLOAD_DEST: z.string().min(1, "UPLOAD_DEST is required"),

@@ -87,6 +87,27 @@ export async function clearAccessToken(): Promise<void> {
     await deleteSecureItem(STORAGE_KEYS.ACCESS_TOKEN);
 }
 
+/**
+ * Store the refresh token securely.
+ */
+export async function storeRefreshToken(token: string): Promise<void> {
+    await setSecureItem(STORAGE_KEYS.REFRESH_TOKEN, token);
+}
+
+/**
+ * Retrieve the refresh token.
+ */
+export async function getRefreshToken(): Promise<string | null> {
+    return getSecureItem(STORAGE_KEYS.REFRESH_TOKEN);
+}
+
+/**
+ * Clear the refresh token.
+ */
+export async function clearRefreshToken(): Promise<void> {
+    await deleteSecureItem(STORAGE_KEYS.REFRESH_TOKEN);
+}
+
 // ============================================
 // User Data Management
 // ============================================
@@ -130,6 +151,7 @@ export async function clearUserData(): Promise<void> {
 export async function clearAuthData(): Promise<void> {
     await Promise.all([
         clearAccessToken(),
+        clearRefreshToken(),
         clearUserData(),
     ]);
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { LoginResponse, Task, TaskEvent, AuditLog, User, CreateTaskDto, District, School, Circular, CreateCircularDto } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -15,6 +15,40 @@ export const api: AxiosInstance = axios.create({
   },
 });
 
+// ============================
+// TOKEN REFRESH LOGIC
+// ============================
+let isRefreshing = false;
+let failedQueue: { resolve: (token: string) => void; reject: (err: unknown) => void }[] = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (token) {
+      resolve(token);
+    } else {
+      reject(error);
+    }
+  });
+  failedQueue = [];
+};
+
+/**
+ * Clears all auth data from localStorage and cookies, then redirects to login.
+ */
+function forceLogout() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('userRole');
+  localStorage.removeItem('userName');
+  localStorage.removeItem('userProfilePic');
+  // Clear cookies
+  ['accessToken', 'userRole', 'userName', 'userProfilePic'].forEach((name) => {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+  });
+  window.location.href = '/login';
+}
+
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('accessToken');
@@ -27,16 +61,61 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const url = originalRequest?.url || '';
+    const isAuthRoute = url.includes('/auth/admin/login') || url.includes('/auth/refresh');
 
-    const url = error.config?.url || '';
-    const isAuthlogin = url.includes('/auth/admin/login');
+    // Only attempt refresh on 401, not on auth routes, and not already retried
+    if (error.response?.status === 401 && !isAuthRoute && !originalRequest._retry && typeof window !== 'undefined') {
+      const refreshToken = localStorage.getItem('refreshToken');
 
-    if (error.response?.status === 401 && typeof window !== 'undefined' && !isAuthlogin) {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('userRole');
-      // window.location.href = '/login';
+      if (!refreshToken) {
+        forceLogout();
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        // Queue this request until refresh completes
+        return new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((newToken) => {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return api(originalRequest);
+        }).catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+          refresh_token: refreshToken,
+        });
+
+        const newAccessToken: string = data.access_token;
+        const newRefreshToken: string = data.refresh_token;
+
+        localStorage.setItem('accessToken', newAccessToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
+
+        // Update cookie for server-side auth
+        const expires = new Date(Date.now() + 7 * 864e5).toUTCString();
+        document.cookie = `accessToken=${encodeURIComponent(newAccessToken)}; expires=${expires}; path=/; SameSite=Lax`;
+
+        // Retry the original request
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        processQueue(null, newAccessToken);
+        return api(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        forceLogout();
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
     }
+
     return Promise.reject(error);
   }
 );
@@ -71,6 +150,7 @@ export const authApi = {
     // Always clear local storage
     if (typeof window !== 'undefined') {
       localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('userRole');
     }
   },

@@ -45,18 +45,21 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
+const config_1 = require("@nestjs/config");
 const client_1 = require("@prisma/client");
 const users_service_1 = require("../users/users.service");
 const audit_logs_service_1 = require("../audit-logs/audit-logs.service");
 const prisma_1 = require("../prisma");
 const bcrypt = __importStar(require("bcrypt"));
+const crypto = __importStar(require("crypto"));
 const env_validation_1 = require("../env.validation");
 let AuthService = class AuthService {
-    constructor(usersService, jwtService, auditLogsService, db) {
+    constructor(usersService, jwtService, auditLogsService, db, configService) {
         this.usersService = usersService;
         this.jwtService = jwtService;
         this.auditLogsService = auditLogsService;
         this.db = db;
+        this.configService = configService;
     }
     async hasCompletedProfile(userId, role) {
         if (role === client_1.UserRole.ADMIN || role === client_1.UserRole.SUPER_ADMIN) {
@@ -66,6 +69,47 @@ let AuthService = class AuthService {
             where: { user_id: userId },
         });
         return faculty !== null;
+    }
+    parseDuration(duration) {
+        const match = duration.match(/^(\d+)(s|m|h|d)$/);
+        if (!match)
+            throw new Error(`Invalid duration: ${duration}`);
+        const value = parseInt(match[1]);
+        const unit = match[2];
+        switch (unit) {
+            case 's': return value * 1000;
+            case 'm': return value * 60 * 1000;
+            case 'h': return value * 60 * 60 * 1000;
+            case 'd': return value * 24 * 60 * 60 * 1000;
+            default: throw new Error(`Unknown unit: ${unit}`);
+        }
+    }
+    async generateRefreshToken(userId) {
+        const rawToken = crypto.randomBytes(64).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const expiresIn = this.configService.get('REFRESH_TOKEN_EXPIRES_IN', '7d');
+        const expiresAt = new Date(Date.now() + this.parseDuration(expiresIn));
+        await this.db.refreshToken.create({
+            data: {
+                token_hash: tokenHash,
+                user_id: userId,
+                expires_at: expiresAt,
+            },
+        });
+        return rawToken;
+    }
+    async revokeAllRefreshTokens(userId) {
+        await this.db.refreshToken.deleteMany({
+            where: { user_id: userId },
+        });
+    }
+    async cleanupExpiredTokens(userId) {
+        await this.db.refreshToken.deleteMany({
+            where: {
+                user_id: userId,
+                expires_at: { lt: new Date() },
+            },
+        });
     }
     async login(loginDto, ipAddress) {
         let user = null;
@@ -112,10 +156,13 @@ let AuthService = class AuthService {
             role: user.role,
         };
         const accessToken = this.jwtService.sign(payload);
+        const refreshToken = await this.generateRefreshToken(user.id);
+        this.cleanupExpiredTokens(user.id).catch(() => { });
         await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN, 'User', user.id, user.id, ipAddress);
         const hasProfile = await this.hasCompletedProfile(user.id, user.role);
         return {
             access_token: accessToken,
+            refresh_token: refreshToken,
             user: {
                 id: user.id,
                 name: user.name,
@@ -212,9 +259,12 @@ let AuthService = class AuthService {
             role: user.role,
         };
         const accessToken = this.jwtService.sign(payload);
+        const refreshToken = await this.generateRefreshToken(user.id);
+        this.cleanupExpiredTokens(user.id).catch(() => { });
         await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN, 'User', user.id, user.id, ipAddress);
         return {
             access_token: accessToken,
+            refresh_token: refreshToken,
             user: {
                 id: user.id,
                 name: user.name,
@@ -227,7 +277,34 @@ let AuthService = class AuthService {
             },
         };
     }
+    async refreshAccessToken(refreshTokenRaw) {
+        const tokenHash = crypto.createHash('sha256').update(refreshTokenRaw).digest('hex');
+        const storedToken = await this.db.refreshToken.findFirst({
+            where: { token_hash: tokenHash },
+            include: { user: true },
+        });
+        if (!storedToken) {
+            throw new common_1.UnauthorizedException('Invalid refresh token. Please login again.');
+        }
+        if (storedToken.expires_at < new Date()) {
+            await this.db.refreshToken.delete({ where: { id: storedToken.id } });
+            throw new common_1.UnauthorizedException('Refresh token expired. Please login again.');
+        }
+        await this.db.refreshToken.delete({ where: { id: storedToken.id } });
+        const payload = {
+            sub: storedToken.user.id,
+            phone: storedToken.user.phone,
+            role: storedToken.user.role,
+        };
+        const newAccessToken = this.jwtService.sign(payload);
+        const newRefreshToken = await this.generateRefreshToken(storedToken.user.id);
+        return {
+            access_token: newAccessToken,
+            refresh_token: newRefreshToken,
+        };
+    }
     async logout(userId, ipAddress) {
+        await this.revokeAllRefreshTokens(userId);
         await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGOUT, 'User', userId, userId, ipAddress);
         return { message: 'Logged out successfully' };
     }
@@ -238,6 +315,7 @@ exports.AuthService = AuthService = __decorate([
     __metadata("design:paramtypes", [users_service_1.UsersService,
         jwt_1.JwtService,
         audit_logs_service_1.AuditLogsService,
-        prisma_1.PrismaService])
+        prisma_1.PrismaService,
+        config_1.ConfigService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

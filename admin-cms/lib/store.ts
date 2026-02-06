@@ -123,12 +123,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // toast.success(JSON.stringify(res));
 
     const accessToken = res.access_token;
+    const refreshToken = res.refresh_token;
     const userRole = res.user.role;
     const name = res.user.name || 'Administrator';
     const profilePic = res.user.profile_image_url || null;
 
     // Set localStorage
     localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
     localStorage.setItem('userRole', userRole);
     localStorage.setItem('userName', name);
     if (profilePic) {
@@ -163,6 +165,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // Clear localStorage
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
     localStorage.removeItem('userProfilePic');

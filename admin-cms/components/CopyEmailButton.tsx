@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { useCopyToClipboard } from 'usehooks-ts'
 import { toast } from 'sonner';
-import { fa } from 'zod/v4/locales';
 
 export default function CopyEmailButton({ email }: { email: string }) {
   const [copied, setCopied] = useState(false);

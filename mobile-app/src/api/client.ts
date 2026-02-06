@@ -12,7 +12,7 @@
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_CONFIG } from '../constants/config';
-import { getAccessToken, clearAuthData } from '../utils/storage';
+import { getAccessToken, getRefreshToken, storeAccessToken, storeRefreshToken, clearAuthData } from '../utils/storage';
 import { ApiError } from '../types';
 
 /**
@@ -25,6 +25,20 @@ const apiClient = axios.create({
         'Content-Type': 'application/json',
     },
 });
+
+// ============================================
+// Token Refresh Logic
+// ============================================
+let isRefreshing = false;
+let failedQueue: { resolve: (token: string) => void; reject: (err: unknown) => void }[] = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+    failedQueue.forEach(({ resolve, reject }) => {
+        if (token) resolve(token);
+        else reject(error);
+    });
+    failedQueue = [];
+};
 
 /**
  * Request interceptor.
@@ -53,25 +67,63 @@ apiClient.interceptors.request.use(
 
 /**
  * Response interceptor.
- * Handles 401 errors by clearing auth data.
+ * Handles 401 errors by attempting token refresh before clearing auth data.
  */
 apiClient.interceptors.response.use(
     (response) => {
         return response;
     },
     async (error: AxiosError<ApiError>) => {
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
         // Debug logging
         if (__DEV__) {
             console.log(`[API] Error: ${error.response?.status || 'Network Error'}`);
             console.log(`[API] Error message:`, error.message);
-            console.log(`[API] Error data:`, JSON.stringify(error.response?.data));
         }
 
-        // Handle 401 - token expired or invalid
-        if (error.response?.status === 401) {
-            // Clear stored auth data
-            // Note: We don't auto-redirect here, the AuthContext handles that
-            await clearAuthData();
+        const url = originalRequest?.url || '';
+        const isAuthRoute = url.includes('/auth/login') || url.includes('/auth/refresh');
+
+        // Handle 401 - attempt token refresh
+        if (error.response?.status === 401 && !isAuthRoute && !originalRequest._retry) {
+            const refreshToken = await getRefreshToken();
+
+            if (!refreshToken) {
+                await clearAuthData();
+                return Promise.reject(error);
+            }
+
+            if (isRefreshing) {
+                return new Promise<string>((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                }).then((newToken) => {
+                    originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                    return apiClient(originalRequest);
+                }).catch((err) => Promise.reject(err));
+            }
+
+            originalRequest._retry = true;
+            isRefreshing = true;
+
+            try {
+                const { data } = await axios.post(`${API_CONFIG.BASE_URL}/auth/refresh`, {
+                    refresh_token: refreshToken,
+                });
+
+                await storeAccessToken(data.access_token);
+                await storeRefreshToken(data.refresh_token);
+
+                originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
+                processQueue(null, data.access_token);
+                return apiClient(originalRequest);
+            } catch (refreshError) {
+                processQueue(refreshError, null);
+                await clearAuthData();
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
+            }
         }
 
         return Promise.reject(error);

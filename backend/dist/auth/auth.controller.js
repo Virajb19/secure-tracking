@@ -89,6 +89,12 @@ let AuthController = class AuthController {
         const ipAddress = this.extractIpAddress(request);
         return this.authService.adminLogin(loginDto, ipAddress);
     }
+    async refresh(body) {
+        if (!body.refresh_token) {
+            throw new common_1.BadRequestException('refresh_token is required');
+        }
+        return this.authService.refreshAccessToken(body.refresh_token);
+    }
     extractIpAddress(request) {
         const forwarded = request.headers['x-forwarded-for'];
         if (forwarded) {
@@ -166,6 +172,14 @@ __decorate([
     __metadata("design:paramtypes", [login_dto_1.LoginDto, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "adminLogin", null);
+__decorate([
+    (0, common_1.Post)('refresh'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "refresh", null);
 __decorate([
     (0, common_1.Get)('me'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),

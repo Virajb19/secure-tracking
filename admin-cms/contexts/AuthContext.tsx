@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userRole = res.user.role;
 
         localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', res.refresh_token);
         localStorage.setItem('userRole', userRole);
 
         setToken(accessToken);

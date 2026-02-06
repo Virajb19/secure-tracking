@@ -17,7 +17,7 @@ import { Request } from 'express';
 import { memoryStorage } from 'multer';
 import * as fs from 'fs';
 import * as path from 'path';
-import { AuthService, LoginResponse, RegisterResponse } from './auth.service';
+import { AuthService, LoginResponse, RegisterResponse, RefreshResponse } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { Roles } from '@/shared/decorators';
@@ -47,8 +47,11 @@ const profileImageMulterOptions = {
  * 
  * Endpoints:
  * - POST /api/auth/login - User login
+ * - POST /api/auth/admin/login - Admin-only login
  * - POST /api/auth/register - User registration (non-admin only)
+ * - POST /api/auth/refresh - Refresh access token
  * - POST /api/auth/upload-profile-image - Upload profile image
+ * - POST /api/auth/logout - Logout (revokes refresh tokens)
  * - GET /api/auth/me - Get current user profile
  * 
  * NOTE: These endpoints are NOT protected by JWT guard
@@ -127,6 +130,26 @@ export class AuthController {
     ): Promise<LoginResponse> {
         const ipAddress = this.extractIpAddress(request);
         return this.authService.adminLogin(loginDto, ipAddress);
+    }
+
+    /**
+     * Refresh access token endpoint.
+     * 
+     * Uses a valid refresh token to issue a new access token and
+     * a rotated refresh token. The old refresh token is revoked.
+     * 
+     * @param body - Object containing the refresh_token
+     * @returns New access_token and refresh_token
+     */
+    @Post('refresh')
+    @HttpCode(HttpStatus.OK)
+    async refresh(
+        @Body() body: { refresh_token: string },
+    ): Promise<RefreshResponse> {
+        if (!body.refresh_token) {
+            throw new BadRequestException('refresh_token is required');
+        }
+        return this.authService.refreshAccessToken(body.refresh_token);
     }
 
     /**

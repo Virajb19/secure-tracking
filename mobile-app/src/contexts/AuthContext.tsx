@@ -22,6 +22,7 @@ import { getDeviceId } from '../utils/device';
 import {
     getAccessToken,
     storeAccessToken,
+    storeRefreshToken,
     getUserData,
     storeUserData,
     clearAuthData,
@@ -166,8 +167,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const result = await authLogin(credentials);
 
             if (result.success && result.token && result.user) {
-                // Store token and user data
+                // Store tokens and user data
                 await storeAccessToken(result.token);
+                if (result.refreshToken) {
+                    await storeRefreshToken(result.refreshToken);
+                }
                 await storeUserData(result.user);
 
                 // Update state

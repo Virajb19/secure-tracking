@@ -40,6 +40,7 @@ export interface LoginResult {
     success: boolean;
     user?: User;
     token?: string;
+    refreshToken?: string;
     error?: string;
     isInactive?: boolean;
 }
@@ -79,7 +80,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
 
         const response = await apiClient.post<LoginResponse>('/auth/login', payload);
 
-        const { access_token, user } = response.data;
+        const { access_token, refresh_token, user } = response.data;
 
         // Block admin users from mobile app - they should use admin portal
         if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
@@ -93,6 +94,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
             success: true,
             user,
             token: access_token,
+            refreshToken: refresh_token,
         };
 
     } catch (error: any) {
