@@ -138,8 +138,8 @@ export default function NotificationsPage() {
     const { scrollTop, scrollHeight, clientHeight } = container;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-    // Prefetch when within 200px of bottom
-    if (distanceFromBottom < 200) {
+    // Prefetch when within 700px of bottom
+    if (distanceFromBottom < 700) {
       fetchNextPage();
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
@@ -153,7 +153,7 @@ export default function NotificationsPage() {
     return () => container.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
-  // Filter notices based on search (client-side)
+  // Filter notices based on search (client-side filtering)
   const filteredNotices = useMemo(() => {
     return allNotices.filter((notice: Notice) => {
       const matchesSearch = searchQuery === '' ||
@@ -198,7 +198,9 @@ export default function NotificationsPage() {
     });
   };
 
-  if (isLoading && allNotices.length === 0) {
+  const isInitialLoading = isLoading && !data;
+
+  if (isInitialLoading && allNotices.length === 0) {
     return (
       <motion.div
         className="space-y-8 p-2"
@@ -245,7 +247,7 @@ export default function NotificationsPage() {
             <p className="text-sm text-slate-500 mt-1">{(error as Error)?.message || 'Unknown error'}</p>
             <button
               className="mt-4 px-4 py-2 text-sm text-blue-400 border border-blue-400 rounded-lg hover:bg-blue-400/10"
-              onClick={() => queryClient.invalidateQueries({ queryKey: [NOTICES_QUERY_KEY] })}
+              onClick={() => queryClient.invalidateQueries({ queryKey: [NOTICES_QUERY_KEY], exact: false })}
             >
               <span className="flex items-center gap-2">
                 <RefreshCw className="h-4 w-4" /> Retry
@@ -256,6 +258,8 @@ export default function NotificationsPage() {
       </motion.div>
     );
   }
+
+  const showSkeletons = isFetching && !isFetchingNextPage && allNotices.length > 0;
 
   return (
     <motion.div
@@ -379,7 +383,7 @@ export default function NotificationsPage() {
             </thead>
             <tbody>
               {/* Show skeleton rows when loading or refetching */}
-              {(isFetching && !isFetchingNextPage) || isLoading ? (
+              {(isFetching && !isFetchingNextPage) ? (
                 <TableRowsSkeleton rows={8} columns={8} />
               ) : filteredNotices.length === 0 ? (
                 <tr>

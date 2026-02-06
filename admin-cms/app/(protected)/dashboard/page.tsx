@@ -61,6 +61,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/a
 async function fetchWithAuth(endpoint: string, cookieStore: Awaited<ReturnType<typeof cookies>>) {
     const token = cookieStore.get('accessToken')?.value;
 
+    // Use axios here
     const response = await fetch(`${API_URL}${endpoint}`, {
         headers: {
             'Authorization': `Bearer ${token}`,

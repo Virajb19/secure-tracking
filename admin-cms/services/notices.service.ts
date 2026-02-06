@@ -193,6 +193,7 @@ export function useGetNoticesInfinite(filters?: NoticesFilters, pageSize = 50) {
       return allPages.length * pageSize;
     },
     initialPageParam: 0,
+    placeholderData: prev => prev
   });
 }
 

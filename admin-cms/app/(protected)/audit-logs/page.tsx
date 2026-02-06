@@ -154,7 +154,7 @@ export default function AuditLogsPage() {
 
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container;
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
       if (isNearBottom) {
         loadMore();
       }

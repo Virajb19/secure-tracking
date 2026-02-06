@@ -1,0 +1,38 @@
+# Login as SEBA Officer
+# Prerequisites: Get credentials from Prisma Studio (npx prisma studio in backend/)
+# Usage: maestro test .maestro/login-seba-officer.yaml
+# Set env vars: MAESTRO_EMAIL, MAESTRO_PASSWORD, MAESTRO_PHONE
+
+appId: gov.securedelivery.app
+
+---
+
+# Wait for app to load
+- launchApp
+
+# Wait for login screen
+- assertVisible: "Secure Delivery"
+- assertVisible: "Government Tracking System"
+
+# Enter email
+- tapOn: "Enter your registered email"
+- inputText: ${MAESTRO_EMAIL}
+
+# Enter password
+- tapOn: "Enter your password"
+- inputText: ${MAESTRO_PASSWORD}
+
+# Enter phone number
+- tapOn: "Enter your registered phone"
+- inputText: ${MAESTRO_PHONE}
+
+# Hide keyboard
+- hideKeyboard
+
+# Tap login button
+- tapOn: "Login"
+
+# Wait for navigation to protected area (tasks screen for SEBA_OFFICER)
+- assertVisible:
+    text: ".*Task.*"
+    timeout: 10000

@@ -772,18 +772,7 @@ export default function Form6Page() {
                 Previous
               </Button>
               <div className="flex items-center gap-1 overflow-x-auto max-w-[250px] md:max-w-[400px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent py-1">
-                {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                  let pageNum: number;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (page <= 3) {
-                    pageNum = i + 1;
-                  } else if (page >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = page - 2 + i;
-                  }
-                  return (
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                     <Button
                       key={pageNum}
                       variant={page === pageNum ? 'default' : 'outline'}
@@ -794,8 +783,7 @@ export default function Form6Page() {
                     >
                       {pageNum}
                     </Button>
-                  );
-                })}
+                ))}
               </div>
               <Button
                 variant="outline"

@@ -152,7 +152,7 @@ export default function TasksPage() {
     });
 
     // Query for tasks with pagination and filtering
-    const { data, isFetching, isLoading, error } = useQuery({
+    const { data, isFetching, isLoading, error, isRefetching } = useQuery({
         queryKey: ['tasks', statusFilter, page],
         queryFn: () => tasksApi.getAll({
             status: statusFilter !== 'ALL' ? statusFilter : undefined,
@@ -182,8 +182,11 @@ export default function TasksPage() {
 
     // Prefetch adjacent status filters
     useEffect(() => {
-        const statuses: (TaskStatus | 'ALL')[] = ['ALL', ...Object.values(TaskStatus)];
-        statuses.forEach((status) => {
+        const order: (TaskStatus | 'ALL')[] = ['ALL', ...Object.values(TaskStatus)];
+
+        const currentIndex = order.indexOf(statusFilter);
+        const neighboringStatuses = [order[currentIndex - 1], order[currentIndex + 1]].filter(Boolean) as (TaskStatus | 'ALL')[];
+        neighboringStatuses.forEach((status) => {
             if (status !== statusFilter) {
                 queryClient.prefetchQuery({
                     queryKey: ['tasks', status, 1],
@@ -423,19 +426,8 @@ export default function TasksPage() {
                             <ChevronLeft className="h-4 w-4" />
                             Previous
                         </Button>
-                        <div className="flex items-center gap-1 overflow-x-auto max-w-[200px] md:max-w-[400px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent py-1">
-                            {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                                let pageNum: number;
-                                if (totalPages <= 5) {
-                                    pageNum = i + 1;
-                                } else if (page <= 3) {
-                                    pageNum = i + 1;
-                                } else if (page >= totalPages - 2) {
-                                    pageNum = totalPages - 4 + i;
-                                } else {
-                                    pageNum = page - 2 + i;
-                                }
-                                return (
+                        <div className="flex items-center gap-1 overflow-x-auto max-w-[250px] md:max-w-[400px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent py-1">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                                     <Button
                                         key={pageNum}
                                         variant={page === pageNum ? 'default' : 'outline'}
@@ -446,8 +438,7 @@ export default function TasksPage() {
                                     >
                                         {pageNum}
                                     </Button>
-                                );
-                            })}
+                            ))}
                         </div>
                         <Button
                             variant="outline"

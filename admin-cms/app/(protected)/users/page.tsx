@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useDebounceCallback } from 'usehooks-ts';
+import { useDebounceCallback, useLocalStorage } from 'usehooks-ts';
 import { 
   useGetUsers, 
   useGetDistricts, 
@@ -124,17 +124,17 @@ const displayRoles = [
 ];
 
 export default function UsersPage() {
-  // Filter states
+  // Filter states (persisted in localStorage)
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [districtFilter, setDistrictFilter] = useState('all');
-  const [schoolFilter, setSchoolFilter] = useState('all');
-  const [classFilter, setClassFilter] = useState('all');
-  const [subjectFilter, setSubjectFilter] = useState('all');
-  const [approvalStatusFilter, setApprovalStatusFilter] = useState<string>('all');
-  const [showOnlyInactive, setShowOnlyInactive] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [roleFilter, setRoleFilter, removeRole] = useLocalStorage('users-roleFilter', 'all');
+  const [districtFilter, setDistrictFilter, removeDistrict] = useLocalStorage('users-districtFilter', 'all');
+  const [schoolFilter, setSchoolFilter] = useLocalStorage('users-schoolFilter', 'all');
+  const [classFilter, setClassFilter] = useLocalStorage('users-classFilter', 'all');
+  const [subjectFilter, setSubjectFilter] = useLocalStorage('users-subjectFilter', 'all');
+  const [approvalStatusFilter, setApprovalStatusFilter] = useLocalStorage('users-approvalStatus', 'all');
+  const [showOnlyInactive, setShowOnlyInactive] = useLocalStorage('users-showOnlyInactive', false);
+  const [currentPage, setCurrentPage] = useLocalStorage('users-currentPage', 1);
   const itemsPerPage = 25;
 
   // Dialogs state

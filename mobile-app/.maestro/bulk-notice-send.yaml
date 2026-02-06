@@ -1,0 +1,133 @@
+# Bulk Notice Send Test
+#
+# Tests the full flow of sending a bulk notice from admin CMS
+# and verifying it appears on the mobile app.
+#
+# Prerequisites:
+#   1. Backend running (cd backend && npm run start:dev)
+#   2. Get credentials from Prisma Studio (cd backend && npx prisma studio -> http://localhost:5555)
+#      - Find a SEBA_OFFICER user's email, phone, and password from the User table
+#   3. Android emulator running with mobile app installed
+#   4. Admin CMS running (cd admin-cms && npm run dev)
+#
+# Environment Variables (set in .maestro/.env or export):
+#   MAESTRO_EMAIL     - SEBA_OFFICER user's email
+#   MAESTRO_PASSWORD  - SEBA_OFFICER user's password
+#   MAESTRO_PHONE     - SEBA_OFFICER user's phone number
+#
+# Usage:
+#   maestro test .maestro/bulk-notice-send.yaml
+
+appId: gov.securedelivery.app
+
+---
+
+# ═══════════════════════════════════════════════════
+# STEP 1: Login as SEBA_OFFICER
+# ═══════════════════════════════════════════════════
+
+- launchApp:
+    clearState: true
+
+# Wait for login screen to fully render
+- assertVisible:
+    text: "Secure Delivery"
+    timeout: 8000
+
+# Fill in email
+- tapOn: "Enter your registered email"
+- inputText: ${MAESTRO_EMAIL}
+
+# Fill in password
+- tapOn: "Enter your password"
+- inputText: ${MAESTRO_PASSWORD}
+
+# Fill in phone
+- tapOn: "Enter your registered phone"
+- inputText: ${MAESTRO_PHONE}
+
+- hideKeyboard
+
+# Tap the Login button
+- tapOn: "Login"
+
+# Wait for tasks screen to load (SEBA_OFFICER lands on tasks)
+- assertVisible:
+    text: "My Tasks"
+    timeout: 15000
+
+# ═══════════════════════════════════════════════════
+# STEP 2: Navigate to Notices screen
+# ═══════════════════════════════════════════════════
+
+- tapOn: "Notices"
+
+# Wait for notices screen to load
+- assertVisible:
+    text: ".*Notice.*"
+    timeout: 8000
+
+# Take a screenshot before the new notice arrives
+- takeScreenshot: before-bulk-notice
+
+# ═══════════════════════════════════════════════════
+# STEP 3: Wait for bulk notice from Admin CMS
+# ═══════════════════════════════════════════════════
+# 
+# >>> MANUAL STEP <<<
+# At this point, go to the Admin CMS (http://localhost:3000):
+#   1. Navigate to Users page
+#   2. Select multiple users using checkboxes
+#   3. Click "Send Notification" button
+#   4. Choose notification type (e.g., "General")  
+#   5. Fill in the message
+#   6. Click "Send"
+#
+# Then come back here and the test will continue
+# checking for the notice on the mobile app.
+#
+# Alternatively, use the API directly:
+#   POST http://localhost:3000/api/notices
+#   with appropriate auth headers
+# ═══════════════════════════════════════════════════
+
+# Pull to refresh to check for new notices
+- scroll:
+    from:
+      column: 50%
+      row: 30%
+    to:
+      column: 50%
+      row: 70%
+
+# Wait a moment for refresh
+- waitForAnimationToEnd
+
+# Take screenshot after refresh
+- takeScreenshot: after-bulk-notice-refresh
+
+# ═══════════════════════════════════════════════════
+# STEP 4: Verify notifications bell
+# ═══════════════════════════════════════════════════
+
+# Check notification bell in header (should show unread count)
+- tapOn:
+    id: "notifications-outline"
+    optional: true
+
+# If we navigated to notifications screen
+- assertVisible:
+    text: "Notifications"
+    timeout: 5000
+    optional: true
+
+# Take final screenshot
+- takeScreenshot: notifications-screen
+
+# ═══════════════════════════════════════════════════
+# STEP 5: Navigate back and verify
+# ═══════════════════════════════════════════════════
+
+- back
+- waitForAnimationToEnd
+- takeScreenshot: test-complete

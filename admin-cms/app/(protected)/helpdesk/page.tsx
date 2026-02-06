@@ -94,6 +94,7 @@ export default function HelpdeskPage() {
       return allPages.length * PAGE_SIZE;
     },
     initialPageParam: 0,
+    placeholderData: prev => prev
   });
 
   // Flatten all pages into single array
@@ -121,7 +122,7 @@ export default function HelpdeskPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <motion.div 
         className="space-y-8 p-2"
