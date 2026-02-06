@@ -24,6 +24,7 @@ interface AgentLocation {
     heading?: number;
     speed?: number;
     updated_at?: string;
+    task_id?: string; // Optional task ID for filtering
 }
 
 interface LiveTrackingMapProps {
@@ -214,7 +215,7 @@ export function LiveTrackingMap({
             const bounds = new window.google.maps.LatLngBounds();
             bounds.extend(destinationMarkerRef.current!.getPosition()!);
             bounds.extend(position);
-            mapRef.current.fitBounds(bounds, { padding: 50 });
+            mapRef.current.fitBounds(bounds, 50);
 
         } else {
             // Update target for smooth animation

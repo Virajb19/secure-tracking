@@ -10,7 +10,7 @@ import type { CreateTaskDto } from "@/types";
 export const useGetTasks = () => {
   return useQuery({
     queryKey: ["tasks"],
-    queryFn: tasksApi.getAll,
+    queryFn: () => tasksApi.getAll,
   });
 };
 

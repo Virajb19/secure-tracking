@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +33,7 @@ import {
   Phone,
   User as UserIcon,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDebounceCallback } from 'usehooks-ts';
 import { 
@@ -45,12 +45,14 @@ import {
   useApproveUser,
 } from '@/services/user.service';
 import { userStarsApi } from '@/services/paper-setter.service';
+import { usersApi } from '@/services/api';
 import { UserRole, User } from '@/types';
 import { UserStatusToggle } from '@/components/UserStatusToggle';
 import { DownloadXlsxButton } from '@/components/DownLoadXlxsButton';
 import { StarButton } from '@/components/StarButton';
 import { SendNotificationDialog } from '@/components/SendNotificationDialog';
 import { RetryButton } from '@/components/RetryButton';
+import { TableRowsSkeleton } from '@/components/TableSkeleton';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
 import { ResetDeviceButton } from '@/components/ResetDeviceButton';
 import {
@@ -200,7 +202,7 @@ export default function UsersPage() {
   const totalUsers = usersResponse?.total || 0;
 
   const { data: districts = [] } = useGetDistricts();
-  const { data: schools = [] } = useGetSchools();
+  const { data: schools = [] } = useGetSchools(districtFilter !== 'all' ? districtFilter : undefined);
   const { data: classes = [] } = useGetClasses();
   const { data: subjects = [] } = useGetSubjects();
   
@@ -210,9 +212,27 @@ export default function UsersPage() {
     queryFn: userStarsApi.getStarredIds,
   });
   
+  const queryClient = useQueryClient();
+
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
   const [currentUserForNotification, setCurrentUserForNotification] = useState<string | null>(null);
+
+  // Reset school filter when district changes
+  useEffect(() => {
+    setSchoolFilter('all');
+  }, [districtFilter]);
+
+  // Prefetch next page
+  useEffect(() => {
+    if (currentPage < totalPages) {
+      const nextFilters = { ...apiFilters, page: currentPage + 1 };
+      queryClient.prefetchQuery({
+        queryKey: ['users', nextFilters],
+        queryFn: () => usersApi.getAll(nextFilters),
+      });
+    }
+  }, [currentPage, totalPages, apiFilters, queryClient]);
 
   // Reset page when filters change
   const resetPage = () => setCurrentPage(1);
@@ -335,19 +355,7 @@ export default function UsersPage() {
   const tableContent = () => {
     if (isLoading || isFetching) {
       return (
-        <tr>
-          <td colSpan={8} className="py-16">
-            <div className="flex flex-col items-center justify-center gap-4">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-              >
-                <Loader2 className="h-10 w-10 text-blue-500" />
-              </motion.div>
-              <span className="text-slate-400">Loading users...</span>
-            </div>
-          </td>
-        </tr>
+        <TableRowsSkeleton rows={10} columns={8} />
       );
     }
 

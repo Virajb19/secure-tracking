@@ -268,9 +268,9 @@ export default function TasksPage() {
                 {/* Create Task Button */}
                 <Button
                     onClick={() => setCreateDialogOpen(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white gap-2 px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-300 group"
+                    className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer gap-2 px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-300 group"
                 >
-                    <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform duration-300" />
+                    <Plus className="h-4 w-4 group-hover:rotate-90 group-hover:scale-110 transition-transform duration-300" />
                     <span className="font-medium">Create Task</span>
                 </Button>
             </div>
@@ -423,7 +423,7 @@ export default function TasksPage() {
                             <ChevronLeft className="h-4 w-4" />
                             Previous
                         </Button>
-                        <div className="flex items-center gap-1 overflow-x-auto max-w-[200px] md:max-w-none scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                        <div className="flex items-center gap-1 overflow-x-auto max-w-[200px] md:max-w-[400px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent py-1">
                             {[...Array(Math.min(5, totalPages))].map((_, i) => {
                                 let pageNum: number;
                                 if (totalPages <= 5) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -30,12 +30,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Download, FileText, Check, X, Loader2, AlertTriangle, Eye, RefreshCw, Search } from 'lucide-react';
+import { Download, FileText, Check, X, Loader2, AlertTriangle, Eye, RefreshCw, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formSubmissionsApi, FormSubmission } from '@/services/paper-setter.service';
 import { masterDataApi } from '@/services/api';
 import { toast } from 'sonner';
 import { RetryButton } from '@/components/RetryButton';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
+import { TableRowsSkeleton } from '@/components/TableSkeleton';
 import { ApproveFormButton } from '@/components/ApproveFormButton';
 import { RejectFormButton } from '@/components/RejectFormButton';
 import { twMerge } from 'tailwind-merge';
@@ -116,17 +117,38 @@ export default function Form6Page() {
     refetchInterval: 30000, // Refetch every 30 seconds to keep stats fresh
   });
 
+  const ITEMS_PER_PAGE = 20;
+
   // Fetch all submissions with filters
-  const { data, isFetching, error } = useQuery({
+  const { data, isFetching, isLoading, error } = useQuery({
     queryKey: ['form-submissions', formType, districtId, statusFilter, page],
     queryFn: () => formSubmissionsApi.getAll(
       formType !== 'all' ? formType : undefined,
       page,
-      20,
+      ITEMS_PER_PAGE,
       districtId !== 'all' ? districtId : undefined,
       statusFilter !== 'all' ? statusFilter : undefined
     ),
+    placeholderData: (previousData) => previousData,
   });
+
+  const totalPages = data ? Math.ceil((data.total || 0) / ITEMS_PER_PAGE) : 1;
+
+  // Prefetch next page
+  useEffect(() => {
+    if (page < totalPages) {
+      queryClient.prefetchQuery({
+        queryKey: ['form-submissions', formType, districtId, statusFilter, page + 1],
+        queryFn: () => formSubmissionsApi.getAll(
+          formType !== 'all' ? formType : undefined,
+          page + 1,
+          ITEMS_PER_PAGE,
+          districtId !== 'all' ? districtId : undefined,
+          statusFilter !== 'all' ? statusFilter : undefined
+        ),
+      });
+    }
+  }, [page, totalPages, formType, districtId, statusFilter, queryClient]);
 
   // Fetch form details for viewing
   const { data: viewData, isLoading: viewLoading } = useQuery({
@@ -622,19 +644,19 @@ export default function Form6Page() {
           </div>
         </div>
 
-        {/* Loading State */}
-        {isFetching ? (
-          <div className="flex flex-col gap-2 items-center text-slate-500 dark:text-slate-400 justify-center h-32">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" /> Loading...
-          </div>
-        ) : error ? (
+        {/* Table */}
+        {error ? (
           <RetryButton
             queryKey={['form-submissions']}
             message="Failed to load form submissions"
           />
         ) : (
-          /* Table */
-          <div className="overflow-x-auto">
+          <div className={`overflow-x-auto relative transition-opacity duration-200 ${isFetching && !isLoading ? 'opacity-60' : ''}`}>
+            {isFetching && !isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-slate-900/50 z-10">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              </div>
+            )}
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">
@@ -647,6 +669,9 @@ export default function Form6Page() {
                 </tr>
               </thead>
               <tbody>
+                {isLoading ? (
+                  <TableRowsSkeleton rows={10} columns={6} />
+                ) : (
                 <AnimatePresence mode="popLayout">
                   {submissions.length === 0 ? (
                     <tr>
@@ -720,36 +745,67 @@ export default function Form6Page() {
                           </div>
                         </td>
                       </motion.tr>
-                    ))
+                    ))  
                   )}
                 </AnimatePresence>
+                )}
               </tbody>
             </table>
           </div>
         )}
 
         {/* Pagination */}
-        {total > 20 && (
+        {total > ITEMS_PER_PAGE && (
           <div className="flex items-center justify-between mt-4">
             <p className="text-slate-500 dark:text-slate-400 text-sm">
-              Showing {(page - 1) * 20 + 1} to {Math.min(page * 20, total)} of {total}
+              Showing {(page - 1) * ITEMS_PER_PAGE + 1} to {Math.min(page * ITEMS_PER_PAGE, total)} of {total}
             </p>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                disabled={page === 1}
+                disabled={page === 1 || isFetching}
                 onClick={() => setPage(p => p - 1)}
+                className="gap-1 shrink-0"
               >
+                <ChevronLeft className="h-4 w-4" />
                 Previous
               </Button>
+              <div className="flex items-center gap-1 overflow-x-auto max-w-[250px] md:max-w-[400px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent py-1">
+                {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={page === pageNum ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPage(pageNum)}
+                      disabled={isFetching}
+                      className="min-w-9 shrink-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
               <Button
                 variant="outline"
                 size="sm"
-                disabled={page * 20 >= total}
+                disabled={page >= totalPages || isFetching}
                 onClick={() => setPage(p => p + 1)}
+                className="gap-1 shrink-0"
               >
                 Next
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
