@@ -233,7 +233,7 @@ export function ProfilePhotoDialog({ open, onOpenChange }: ProfilePhotoDialogPro
                                     gaugeSecondaryColor="#e5e7eb"
                                     className="size-32"
                                 />
-                                <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
+                                <p className="mt-4 text-sm text-slate-600 dark:text-slate-400 animate-pulse">
                                     Uploading your photo...
                                 </p>
                             </motion.div>

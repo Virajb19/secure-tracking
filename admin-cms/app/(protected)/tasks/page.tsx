@@ -412,18 +412,18 @@ export default function TasksPage() {
                     <div className="text-sm text-slate-500 dark:text-slate-400">
                         Showing {((page - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(page * ITEMS_PER_PAGE, total)} of {total} tasks
                     </div>
-                    <div className="flex items-center gap-2 overflow-x-auto max-w-full">
+                    <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setPage(p => Math.max(1, p - 1))}
                             disabled={page === 1 || isFetching}
-                            className="gap-1 flex-shrink-0"
+                            className="gap-1 shrink-0"
                         >
                             <ChevronLeft className="h-4 w-4" />
                             Previous
                         </Button>
-                        <div className="flex items-center gap-1 overflow-x-auto">
+                        <div className="flex items-center gap-1 overflow-x-auto max-w-[200px] md:max-w-none scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
                             {[...Array(Math.min(5, totalPages))].map((_, i) => {
                                 let pageNum: number;
                                 if (totalPages <= 5) {
@@ -442,7 +442,7 @@ export default function TasksPage() {
                                         size="sm"
                                         onClick={() => setPage(pageNum)}
                                         disabled={isFetching}
-                                        className="min-w-[36px] flex-shrink-0"
+                                        className="min-w-9 shrink-0"
                                     >
                                         {pageNum}
                                     </Button>
@@ -454,7 +454,7 @@ export default function TasksPage() {
                             size="sm"
                             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                             disabled={page === totalPages || isFetching}
-                            className="gap-1 flex-shrink-0"
+                            className="gap-1 shrink-0"
                         >
                             Next
                             <ChevronRight className="h-4 w-4" />

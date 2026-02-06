@@ -68,6 +68,8 @@ export default function Header() {
         },
     };
 
+    // toast.success(userProfilePic)
+
     return (
         <header className="sticky top-0 z-30 bg-white/60 dark:bg-slate-900/60 backdrop-blur-lg border-b border-slate-200 dark:border-slate-800">
             <div className="flex h-19 items-center justify-between px-6">
@@ -120,7 +122,8 @@ export default function Header() {
                                                 alt={userName || 'User'}
                                                 width={45}
                                                 height={45}
-                                                className="rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 group-hover:border-blue-500 dark:group-hover:border-blue-400 transition-colors"
+                                                // if you write "size-14" class it will make image round but will not cover the complete image and without this image will be fully covered but will not be round 
+                                                className="rounded-full size-14 object-cover border-2 border-slate-200 dark:border-slate-700 group-hover:border-blue-500 dark:group-hover:border-blue-400 transition-colors"
                                             />
                                             {/* Hover overlay */}
                                             <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">

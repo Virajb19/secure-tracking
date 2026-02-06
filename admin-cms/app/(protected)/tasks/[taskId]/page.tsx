@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { MainLayout } from '@/components/layout';
 import { tasksApi } from '@/services/api';
 import { Task, TaskEvent, TaskStatus, EventType } from '@/types';
 
@@ -114,33 +113,33 @@ export default function TaskDetailPage() {
 
     if (loading) {
         return (
-            <MainLayout title="Task Details" subtitle="Loading...">
+            <div className="space-y-6">
                 <div className="flex items-center justify-center h-64">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-blue-500"></div>
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 dark:border-slate-700 border-t-blue-500"></div>
                 </div>
-            </MainLayout>
+            </div>
         );
     }
 
     if (error || !task) {
         return (
-            <MainLayout title="Task Details" subtitle="Error">
-                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-8 text-center">
-                    <p className="text-red-400">{error || 'Task not found'}</p>
-                    <Link href="/tasks" className="text-blue-400 hover:text-blue-300 mt-4 inline-block">
+            <div className="space-y-6">
+                <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-8 text-center">
+                    <p className="text-red-600 dark:text-red-400">{error || 'Task not found'}</p>
+                    <Link href="/tasks" className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 mt-4 inline-block">
                         ← Back to Tasks
                     </Link>
                 </div>
-            </MainLayout>
+            </div>
         );
     }
 
     return (
-        <MainLayout title="Task Details" subtitle={task.sealed_pack_code}>
+        <div className="space-y-6">
             {/* Back Button */}
             <Link
                 href="/tasks"
-                className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-6 transition-colors"
+                className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -428,6 +427,6 @@ export default function TaskDetailPage() {
                     </div>
                 </div>
             </div>
-        </MainLayout>
+        </div>
     );
 }
