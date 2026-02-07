@@ -203,7 +203,7 @@ export default function UsersPage() {
   const totalUsers = usersResponse?.total || 0;
 
   const { data: districts = [] } = useGetDistricts();
-  const { data: schools = [] } = useGetSchools(districtFilter !== 'all' ? districtFilter : undefined);
+  const { data: schools = [], isFetching: isFetchingSchools } = useGetSchools(districtFilter !== 'all' ? districtFilter : undefined);
   const { data: classes = [] } = useGetClasses();
   const { data: subjects = [] } = useGetSubjects();
   
@@ -616,9 +616,16 @@ export default function UsersPage() {
             </SelectContent>
           </Select>
 
-          <Select value={schoolFilter} onValueChange={(v) => { setSchoolFilter(v); resetPage(); }}>
+          <Select value={schoolFilter} onValueChange={(v) => { setSchoolFilter(v); resetPage(); }} disabled={isFetchingSchools}>
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
-              <SelectValue placeholder="School" />
+              {isFetchingSchools ? (
+                <span className="flex-center gap-2 text-slate-400">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading schools...
+                </span>
+              ) : (
+                <SelectValue placeholder="School" />
+              )}
             </SelectTrigger>
             <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
               <SelectItem value="all" className="text-white hover:bg-slate-700">All Schools</SelectItem>

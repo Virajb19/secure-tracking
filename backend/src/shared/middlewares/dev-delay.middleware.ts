@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { env } from 'process';
 
 /**
  * Development Delay Middleware
@@ -15,7 +16,7 @@ export class DevDelayMiddleware implements NestMiddleware {
     constructor(private configService: ConfigService) {}
 
     async use(req: Request, res: Response, next: NextFunction) {
-        const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+        const nodeEnv = env.NODE_ENV || this.configService.get<string>('NODE_ENV', 'development');
         
 
          if (nodeEnv === 'production') {

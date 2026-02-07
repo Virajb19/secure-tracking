@@ -126,6 +126,20 @@ export const authApi = {
       console.error('Failed to log logout action:', error);
     }
   },
+  // Get current user profile — validates session by checking accessToken cookie
+  getMe: async (): Promise<{
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    role: string;
+    gender: string;
+    profile_image_url: string | null;
+    is_active: boolean;
+  }> => {
+    const response = await api.get('/auth/me');
+    return response.data;
+  },
 }
 
 export interface UserFilterParams {

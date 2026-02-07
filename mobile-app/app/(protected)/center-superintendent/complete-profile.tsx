@@ -162,20 +162,25 @@ export default function CompleteProfileScreen() {
             Alert.alert('Error', 'Please select a school');
             return;
         }
-        if (!highestQualification.trim()) {
-            Alert.alert('Error', 'Please enter your highest qualification');
+        if (highestQualification.trim().length < 2) {
+            Alert.alert('Error', 'Qualification must be at least 2 characters');
             return;
         }
         if (!designation.trim()) {
             Alert.alert('Error', 'Please enter your designation');
             return;
         }
+        const experience = parseInt(yearsOfExperience);
+        if (isNaN(experience) || experience < 0 || experience > 60) {
+            Alert.alert('Error', 'Years of experience must be between 0 and 60');
+            return;
+        }
 
         submitMutation.mutate({
             school_id: selectedSchool,
-            highest_qualification: highestQualification,
-            years_of_experience: parseInt(yearsOfExperience) || 0,
-            designation: designation,
+            highest_qualification: highestQualification.trim(),
+            years_of_experience: experience,
+            designation: designation.trim(),
         });
     };
 

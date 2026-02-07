@@ -64,9 +64,10 @@ interface AuthState {
   userProfilePic: string | null;
   loading: boolean;
   isHydrated: boolean;
+  isAuthenticated: boolean
 
-  isAuthenticated: () => boolean;
   hydrate: () => void;
+  checkSession: () => Promise<void>;
   login: (email: string, password: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfilePhoto: (photoUrl: string) => void;
@@ -79,14 +80,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   userProfilePic: null,
   loading: true,
   isHydrated: false,
+  isAuthenticated: false,
 
-  // UI gate only — real security is backend JWT + SSR guard
-  isAuthenticated: () => {
-    const { role, isHydrated } = get();
-    return isHydrated && (role === 'ADMIN' || role === 'SUPER_ADMIN');
-  },
+  // UI gate — checks both local hydration and server-validated session
+  // isAuthenticated: () => {
+  //   const { role, isHydrated, sessionValid } = get();
+  //   return isHydrated && sessionValid && (role === 'ADMIN' || role === 'SUPER_ADMIN');
+  // },
 
-  // Read user info from localStorage on mount
+  // Read user info from localStorage on mount, then validate session with server
   hydrate: () => {
     if (typeof window === 'undefined') return;
 
@@ -103,9 +105,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       userName,
       userEmail,
       userProfilePic,
-      loading: false,
       isHydrated: true,
     });
+
+    // Validate session with server (accessToken is HttpOnly, can't check client-side)
+    get().checkSession();
+  },
+
+  // Validate session by calling GET /auth/me — the only way to verify accessToken
+  checkSession: async () => {
+    set({ loading: true });
+    try {
+        await authApi.getMe();
+        set({ isAuthenticated: true, loading: false });
+    } catch {
+       set({ role: null, userName: null, userEmail: null, userProfilePic: null, isAuthenticated: false, loading: false });
+    }
   },
 
   // Login — backend sets HttpOnly cookies, we store user info in localStorage

@@ -109,7 +109,7 @@ export default function SEBAOfficerCompleteProfileScreen() {
     const { data: districts = [], isLoading: loadingDistricts } = useQuery({
         queryKey: ['districts'],
         queryFn: async () => {
-            const response = await apiClient.get('/districts');
+            const response = await apiClient.get('/master-data/districts');
             return response.data;
         },
     });
@@ -118,7 +118,8 @@ export default function SEBAOfficerCompleteProfileScreen() {
     const { data: schools = [], isLoading: loadingSchools } = useQuery({
         queryKey: ['schools', selectedDistrict],
         queryFn: async () => {
-            const response = await apiClient.get(`/schools?district_id=${selectedDistrict}`);
+            const params = selectedDistrict ? { districtId: selectedDistrict } : {};
+            const response = await apiClient.get('/master-data/schools', { params });
             return response.data;
         },
         enabled: !!selectedDistrict,
@@ -174,12 +175,13 @@ export default function SEBAOfficerCompleteProfileScreen() {
             Alert.alert('Error', 'Please select a school/office');
             return;
         }
-        if (!yearsOfExperience || parseInt(yearsOfExperience) < 0) {
-            Alert.alert('Error', 'Please enter valid years of experience');
-            return;
-        }
         if (!designation) {
             Alert.alert('Error', 'Please select your designation');
+            return;
+        }
+        const experience = parseInt(yearsOfExperience);
+        if (isNaN(experience) || experience < 0 || experience > 60) {
+            Alert.alert('Error', 'Years of experience must be between 0 and 60');
             return;
         }
 
@@ -195,8 +197,8 @@ export default function SEBAOfficerCompleteProfileScreen() {
                     onPress: () => {
                         submitMutation.mutate({
                             school_id: selectedSchool,
-                            highest_qualification: designation, // Using designation as qualification for SEBA
-                            years_of_experience: parseInt(yearsOfExperience),
+                            highest_qualification: designation.trim(), // Using designation as qualification for SEBA
+                            years_of_experience: experience,
                             teaching_classes: [], // SEBA officers don't have teaching classes
                         });
                     },
