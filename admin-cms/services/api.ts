@@ -48,7 +48,10 @@ function forceLogout() {
   document.cookie = 'userRole=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/api/auth';
-  window.location.href = '/login';
+  // Don't redirect if already on login page (prevents infinite reload loop)
+  if (!window.location.pathname.includes('/login')) {
+    window.location.href = '/login';
+  }
 }
 
 // No request interceptor needed — accessToken is sent automatically
@@ -59,7 +62,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const url = originalRequest?.url || '';
-    const isAuthRoute = url.includes('/auth/admin/login') || url.includes('/auth/refresh');
+    const isAuthRoute = url.includes('/auth/admin/login') || url.includes('/auth/refresh') || url.includes('/auth/me');
 
     // Only attempt refresh on 401, not on auth routes, and not already retried
     if (error.response?.status === 401 && !isAuthRoute && !originalRequest._retry && typeof window !== 'undefined') {

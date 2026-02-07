@@ -108,8 +108,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isHydrated: true,
     });
 
-    // Validate session with server (accessToken is HttpOnly, can't check client-side)
-    get().checkSession();
+    // Only validate session if user was previously logged in (role in localStorage)
+    // If no role, user never logged in — skip server call to avoid 401 → refresh → forceLogout loop
+    if (role) {
+      get().checkSession();
+    } else {
+      set({ loading: false });
+    }
   },
 
   // Validate session by calling GET /auth/me — the only way to verify accessToken
@@ -117,7 +122,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ loading: true });
     try {
         await authApi.getMe();
-        set({ isAuthenticated: true, loading: false });
+        const { isHydrated, role} = get();
+        set({ isAuthenticated: isHydrated && (role === 'ADMIN' || role === 'SUPER_ADMIN'), loading: false });
     } catch {
        set({ role: null, userName: null, userEmail: null, userProfilePic: null, isAuthenticated: false, loading: false });
     }
