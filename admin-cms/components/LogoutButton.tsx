@@ -15,12 +15,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { set } from 'zod';
+import { sleep } from '@/lib/utils';
+
 
 export function LogoutButton() {
   const [showConfirm, setShowConfirm] = useState(false);
   const logout = useAuthStore((state) => state.logout);
-  const router = useRouter();
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -31,14 +31,7 @@ export function LogoutButton() {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Ensure localStorage is cleared even if logout fails
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('userName');
-      localStorage.removeItem('userProfilePic');
-
       setIsLoggingOut(false);
-      // Redirect after everything is cleared
       window.location.href = '/login';
     }
   }
@@ -80,6 +73,7 @@ export function LogoutButton() {
                 e.preventDefault();
                 await handleLogout();
                 setShowConfirm(false);
+                await sleep(500); // Wait for the dialog to close before redirecting
               }}
               disabled={isLoggingOut}
               className="bg-red-600 hover:bg-red-500 text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"

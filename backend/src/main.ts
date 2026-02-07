@@ -3,7 +3,10 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { join } from 'path';
 import { ZodValidationPipe } from 'nestjs-zod';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { env } from './env.validation';
+import fr from 'zod/v4/locales/fr.js';
 
 /**
  * Application Bootstrap.
@@ -23,9 +26,15 @@ async function bootstrap() {
     // This automatically validates all DTOs using nestjs-zod
     app.useGlobalPipes(new ZodValidationPipe());
 
+    // Enable cookie parsing for HttpOnly refresh token cookies
+    app.use(cookieParser());
+
     // Enable CORS for mobile app and CMS
+    const frontendOrigin = env.CORS_ORIGIN || 'http://localhost:3000';
+    console.log(`Enabling CORS for origin: ${frontendOrigin}`);
+
     app.enableCors({
-        origin: configService.get<string>('CORS_ORIGIN', '*'),
+        origin: configService.get<string>('CORS_ORIGIN') || frontendOrigin,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true,

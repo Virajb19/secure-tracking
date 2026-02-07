@@ -5,29 +5,31 @@ import { UserRole } from '@/types';
 
 export interface ServerAuthData {
   isAuthenticated: boolean;
-  token: string | null;
   role: UserRole | null;
-  userName: string | null;
-  userProfilePic: string | null;
 }
 
+/**
+ * Server-side auth check for Next.js route protection.
+ *
+ * Checks both:
+ * 1. userRole cookie (non-HttpOnly, set by client on login)
+ * 2. accessToken cookie (HttpOnly, set by backend on login)
+ *
+ * This prevents users from manually setting userRole without a valid session.
+ * The real security is still enforced by backend JWT validation on every API request.
+ */
 export async function getServerAuth(): Promise<ServerAuthData> {
   const cookieStore = await cookies();
-  
-  const token = cookieStore.get('accessToken')?.value || null;
-  const role = cookieStore.get('userRole')?.value as UserRole | null;
-  const userName = cookieStore.get('userName')?.value || null;
-  const userProfilePic = cookieStore.get('userProfilePic')?.value || null;
 
+  const role = cookieStore.get('userRole')?.value as UserRole | null;
+  const accessToken = cookieStore.get('accessToken')?.value;
+
+  console.log(accessToken ? 'Access token found in cookies' : 'No access token in cookies');
+
+  // Must have both a valid role AND an accessToken cookie
   const isAuthenticated = Boolean(
-    token && (role === 'ADMIN' || role === 'SUPER_ADMIN')
+    accessToken && (role === 'ADMIN' || role === 'SUPER_ADMIN')
   );
 
-  return {
-    isAuthenticated,
-    token,
-    role,
-    userName,
-    userProfilePic,
-  };
+  return { isAuthenticated, role };
 }

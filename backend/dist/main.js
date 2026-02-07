@@ -1,17 +1,25 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const core_1 = require("@nestjs/core");
 const config_1 = require("@nestjs/config");
 const path_1 = require("path");
 const nestjs_zod_1 = require("nestjs-zod");
+const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const app_module_1 = require("./app.module");
+const env_validation_1 = require("./env.validation");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const configService = app.get(config_1.ConfigService);
     app.setGlobalPrefix('api');
     app.useGlobalPipes(new nestjs_zod_1.ZodValidationPipe());
+    app.use((0, cookie_parser_1.default)());
+    const frontendOrigin = env_validation_1.env.CORS_ORIGIN || 'http://localhost:3000';
+    console.log(`Enabling CORS for origin: ${frontendOrigin}`);
     app.enableCors({
-        origin: configService.get('CORS_ORIGIN', '*'),
+        origin: configService.get('CORS_ORIGIN') || frontendOrigin,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true,

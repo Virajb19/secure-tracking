@@ -41,6 +41,7 @@ var __importStar = (this && this.__importStar) || (function () {
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var AuthService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
@@ -53,13 +54,14 @@ const prisma_1 = require("../prisma");
 const bcrypt = __importStar(require("bcrypt"));
 const crypto = __importStar(require("crypto"));
 const env_validation_1 = require("../env.validation");
-let AuthService = class AuthService {
+let AuthService = AuthService_1 = class AuthService {
     constructor(usersService, jwtService, auditLogsService, db, configService) {
         this.usersService = usersService;
         this.jwtService = jwtService;
         this.auditLogsService = auditLogsService;
         this.db = db;
         this.configService = configService;
+        this.logger = new common_1.Logger(AuthService_1.name);
     }
     async hasCompletedProfile(userId, role) {
         if (role === client_1.UserRole.ADMIN || role === client_1.UserRole.SUPER_ADMIN) {
@@ -84,15 +86,17 @@ let AuthService = class AuthService {
             default: throw new Error(`Unknown unit: ${unit}`);
         }
     }
-    async generateRefreshToken(userId) {
+    async generateRefreshToken(userId, tokenFamily) {
         const rawToken = crypto.randomBytes(64).toString('hex');
         const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
         const expiresIn = this.configService.get('REFRESH_TOKEN_EXPIRES_IN', '7d');
         const expiresAt = new Date(Date.now() + this.parseDuration(expiresIn));
+        const family = tokenFamily || crypto.randomUUID();
         await this.db.refreshToken.create({
             data: {
                 token_hash: tokenHash,
                 user_id: userId,
+                token_family: family,
                 expires_at: expiresAt,
             },
         });
@@ -107,7 +111,10 @@ let AuthService = class AuthService {
         await this.db.refreshToken.deleteMany({
             where: {
                 user_id: userId,
-                expires_at: { lt: new Date() },
+                OR: [
+                    { expires_at: { lt: new Date() } },
+                    { is_revoked: true, created_at: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+                ],
             },
         });
     }
@@ -284,20 +291,31 @@ let AuthService = class AuthService {
             include: { user: true },
         });
         if (!storedToken) {
+            this.logger.warn(`Refresh token reuse detected (token not found). Possible token theft.`);
             throw new common_1.UnauthorizedException('Invalid refresh token. Please login again.');
+        }
+        if (storedToken.is_revoked) {
+            this.logger.warn(`Refresh token reuse detected for user ${storedToken.user_id}, family ${storedToken.token_family}. Revoking all tokens in family.`);
+            await this.db.refreshToken.deleteMany({
+                where: { token_family: storedToken.token_family },
+            });
+            throw new common_1.UnauthorizedException('Suspicious activity detected. All sessions revoked. Please login again.');
         }
         if (storedToken.expires_at < new Date()) {
             await this.db.refreshToken.delete({ where: { id: storedToken.id } });
             throw new common_1.UnauthorizedException('Refresh token expired. Please login again.');
         }
-        await this.db.refreshToken.delete({ where: { id: storedToken.id } });
+        await this.db.refreshToken.update({
+            where: { id: storedToken.id },
+            data: { is_revoked: true },
+        });
         const payload = {
             sub: storedToken.user.id,
             phone: storedToken.user.phone,
             role: storedToken.user.role,
         };
         const newAccessToken = this.jwtService.sign(payload);
-        const newRefreshToken = await this.generateRefreshToken(storedToken.user.id);
+        const newRefreshToken = await this.generateRefreshToken(storedToken.user.id, storedToken.token_family);
         return {
             access_token: newAccessToken,
             refresh_token: newRefreshToken,
@@ -310,7 +328,7 @@ let AuthService = class AuthService {
     }
 };
 exports.AuthService = AuthService;
-exports.AuthService = AuthService = __decorate([
+exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [users_service_1.UsersService,
         jwt_1.JwtService,

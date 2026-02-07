@@ -1,20 +1,19 @@
 import { create } from 'zustand'
 import { UserRole } from '@/types'
 import { authApi } from '@/services/api'
-import { toast } from 'sonner';
 
 // ========================================
-// COOKIE HELPERS
+// COOKIE HELPER (userRole only — for SSR route guards)
 // ========================================
-function setCookie(name: string, value: string, days: number = 7) {
+function setRoleCookie(role: string, days: number = 7) {
   if (typeof document === 'undefined') return;
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+  document.cookie = `userRole=${encodeURIComponent(role)}; expires=${expires}; path=/; SameSite=Lax`;
 }
 
-function deleteCookie(name: string) {
+function deleteRoleCookie() {
   if (typeof document === 'undefined') return;
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+  document.cookie = `userRole=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
 }
 
 // ========================================
@@ -28,14 +27,8 @@ interface NavigationState {
 
 export const useNavigationStore = create<NavigationState>((set) => ({
   isNavigating: false,
-
-  startNavigation: () => {
-    set({ isNavigating: true });
-  },
-
-  stopNavigation: () => {
-    set({ isNavigating: false });
-  },
+  startNavigation: () => set({ isNavigating: true }),
+  stopNavigation: () => set({ isNavigating: false }),
 }))
 
 // ========================================
@@ -49,23 +42,25 @@ interface SidebarState {
 
 export const useSidebarStore = create<SidebarState>((set) => ({
   isCollapsed: false,
-
-  toggleSidebar: () => {
-    set((state) => ({ isCollapsed: !state.isCollapsed }));
-  },
-
-  setSidebarCollapsed: (collapsed: boolean) => {
-    set({ isCollapsed: collapsed });
-  },
+  toggleSidebar: () => set((state) => ({ isCollapsed: !state.isCollapsed })),
+  setSidebarCollapsed: (collapsed: boolean) => set({ isCollapsed: collapsed }),
 }))
 
 // ========================================
 // AUTH STORE
 // ========================================
+// Token storage:
+//   accessToken   → HttpOnly cookie (backend-managed, never in JS)
+//   refreshToken  → HttpOnly cookie (backend-managed, never in JS)
+//   userRole      → localStorage + non-HttpOnly cookie (cookie for SSR guards)
+//   userName      → localStorage
+//   userEmail     → localStorage
+//   userProfilePic → localStorage (Appwrite URL from backend)
+// ========================================
 interface AuthState {
-  token: string | null;
   role: UserRole | null;
   userName: string | null;
+  userEmail: string | null;
   userProfilePic: string | null;
   loading: boolean;
   isHydrated: boolean;
@@ -78,124 +73,102 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  token: null,
   role: null,
   userName: null,
+  userEmail: null,
   userProfilePic: null,
   loading: true,
   isHydrated: false,
 
-  // ----------------------------------------
-  // AUTH CHECK
-  // ----------------------------------------
+  // UI gate only — real security is backend JWT + SSR guard
   isAuthenticated: () => {
-    const { token, role } = get();
-    return Boolean(token && (role === 'ADMIN' || role === 'SUPER_ADMIN'));
+    const { role, isHydrated } = get();
+    return isHydrated && (role === 'ADMIN' || role === 'SUPER_ADMIN');
   },
 
-  // ----------------------------------------
-  // HYDRATE FROM localStorage
-  // ----------------------------------------
+  // Read user info from localStorage on mount
   hydrate: () => {
     if (typeof window === 'undefined') return;
 
-    const token = localStorage.getItem('accessToken');
     const role = localStorage.getItem('userRole') as UserRole | null;
     const userName = localStorage.getItem('userName');
-    const userProfilePic = localStorage.getItem('userProfilePic');
+    const userEmail = localStorage.getItem('userEmail');
+    const rawPic = localStorage.getItem('userProfilePic');
+    // Guard against stale "[object Object]" or other invalid values
+    const userProfilePic = (rawPic && rawPic.startsWith('http')) ? rawPic : null;
+    if (!userProfilePic && rawPic) localStorage.removeItem('userProfilePic');
 
     set({
-      token,
       role,
       userName,
+      userEmail,
       userProfilePic,
       loading: false,
       isHydrated: true,
     });
   },
 
-  // ----------------------------------------
-  // LOGIN
-  // ----------------------------------------
+  // Login — backend sets HttpOnly cookies, we store user info in localStorage
   login: async (email, password, phone) => {
     const res = await authApi.login(email, password, phone);
 
-    // toast.success(JSON.stringify(res));
-
-    const accessToken = res.access_token;
-    const refreshToken = res.refresh_token;
     const userRole = res.user.role;
     const name = res.user.name || 'Administrator';
-    const profilePic = res.user.profile_image_url || null;
+    const userEmail = res.user.email || email;
+    // profile_image_url can be null/undefined/object — only store valid URL strings
+    const rawPic = res.user.profile_image_url;
+    const profilePic = (typeof rawPic === 'string' && rawPic.length > 0) ? rawPic : null;
 
-    // Set localStorage
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
     localStorage.setItem('userRole', userRole);
     localStorage.setItem('userName', name);
-    if (profilePic) {
-      localStorage.setItem('userProfilePic', profilePic);
-    }
+    localStorage.setItem('userEmail', userEmail);
+    if (profilePic) localStorage.setItem('userProfilePic', profilePic);
+    else localStorage.removeItem('userProfilePic');
 
-    // Set cookies for server-side auth
-    setCookie('accessToken', accessToken);
-    setCookie('userRole', userRole);
-    setCookie('userName', name);
-    if (profilePic) {
-      setCookie('userProfilePic', profilePic);
-    }
+    setRoleCookie(userRole);
 
     set({
-      token: accessToken,
       role: userRole,
       userName: name,
+      userEmail,
       userProfilePic: profilePic,
       loading: false,
+      isHydrated: true,
     });
   },
 
-  // ----------------------------------------
-  // LOGOUT
-  // ----------------------------------------
+  // Logout — backend clears HttpOnly cookies, we clear localStorage + cookies client-side
   logout: async () => {
-    // Call logout API to log the action and clear storage
-    await authApi.logout();
+    try {
+      await authApi.logout();
+    } catch {
+      // Continue cleanup even if backend call fails
+    }
 
-    // toast.success('Logged out successfully');
-
-    // Clear localStorage
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
+    localStorage.removeItem('userEmail');
     localStorage.removeItem('userProfilePic');
+    deleteRoleCookie();
 
-    // Clear cookies
-    deleteCookie('accessToken');
-    deleteCookie('userRole');
-    deleteCookie('userName');
-    deleteCookie('userProfilePic');
+    // Clear HttpOnly auth cookies client-side as fallback
+    // (backend already clears them, but if that call failed we still want them gone)
+    if (typeof document !== 'undefined') {
+      document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+      document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/api/auth';
+    }
 
     set({
-      token: null,
       role: null,
       userName: null,
+      userEmail: null,
       userProfilePic: null,
       loading: false,
     });
   },
 
-  // ----------------------------------------
-  // UPDATE PROFILE PHOTO
-  // ----------------------------------------
   updateProfilePhoto: (photoUrl: string) => {
-    // Update localStorage
     localStorage.setItem('userProfilePic', photoUrl);
-
-    // Update cookie
-    setCookie('userProfilePic', photoUrl);
-
-    // Update state
     set({ userProfilePic: photoUrl });
   },
 }));

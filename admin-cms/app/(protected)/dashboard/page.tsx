@@ -1,70 +1,18 @@
 import { cookies } from 'next/headers';
 import Dashboard from './Dashboard';
 
-// Types
-interface RoleStats {
-    role: string;
-    count: number;
-}
-
-interface ActiveUsersStats {
-    active: number;
-    total: number;
-    inactive: number;
-}
-
-interface HelpdeskSummary {
-    total: number;
-    pending: number;
-    resolved: number;
-}
-
-interface GenderStats {
-    MALE: number;
-    FEMALE: number;
-    OTHER: number;
-    total: number;
-}
-
-interface DistrictUserStats {
-    district_id: string;
-    district_name: string;
-    user_count: number;
-}
-
-interface PendingActionsSummary {
-    inactive_users: number;
-    pending_form_approvals: number;
-    pending_paper_setter: number;
-    pending_helpdesk: number;
-    total: number;
-}
-
-interface AuditLog {
-    id: string;
-    action: string;
-    entity_type: string;
-    entity_id: string | null;
-    user_id: string | null;
-    ip_address: string | null;
-    created_at: string;
-}
-
-interface AuditLogsResponse {
-    data: AuditLog[];
-    total: number;
-    hasMore: boolean;
-}
-
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
 
 async function fetchWithAuth(endpoint: string, cookieStore: Awaited<ReturnType<typeof cookies>>) {
-    const token = cookieStore.get('accessToken')?.value;
+    // Forward all cookies from the incoming request to the backend.
+    // The accessToken HttpOnly cookie will be included, authenticating the request.
+    const allCookies = cookieStore.getAll()
+        .map(c => `${c.name}=${c.value}`)
+        .join('; ');
 
-    // Use axios here
     const response = await fetch(`${API_URL}${endpoint}`, {
         headers: {
-            'Authorization': `Bearer ${token}`,
+            'Cookie': allCookies,
             'Content-Type': 'application/json',
         },
         next: { revalidate: 60 }, // Revalidate every 60 seconds

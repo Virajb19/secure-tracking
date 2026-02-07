@@ -52,11 +52,13 @@ const platform_express_1 = require("@nestjs/platform-express");
 const multer_1 = require("multer");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const config_1 = require("@nestjs/config");
 const auth_service_1 = require("./auth.service");
 const login_dto_1 = require("./dto/login.dto");
 const register_dto_1 = require("./dto/register.dto");
 const decorators_1 = require("../shared/decorators");
 const users_service_1 = require("../users/users.service");
+const env_validation_1 = require("../env.validation");
 const profileImageMulterOptions = {
     storage: (0, multer_1.memoryStorage)(),
     limits: {
@@ -73,27 +75,107 @@ const profileImageMulterOptions = {
     },
 };
 let AuthController = class AuthController {
-    constructor(authService, usersService) {
+    constructor(authService, usersService, configService) {
         this.authService = authService;
         this.usersService = usersService;
+        this.configService = configService;
     }
-    async login(loginDto, request) {
+    setRefreshTokenCookie(res, refreshToken) {
+        const isProduction = this.configService.get('NODE_ENV') === 'production';
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            path: '/api/auth',
+            maxAge: this.parseMaxAge(),
+        });
+    }
+    clearRefreshTokenCookie(res) {
+        const isProduction = this.configService.get('NODE_ENV') === 'production';
+        res.cookie('refreshToken', '', {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            path: '/api/auth',
+            maxAge: 0,
+        });
+    }
+    setAccessTokenCookie(res, accessToken) {
+        const isProduction = env_validation_1.env.NODE_ENV === 'production';
+        res.cookie('accessToken', accessToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            path: '/',
+            maxAge: this.parseAccessTokenMaxAge(),
+        });
+    }
+    clearAccessTokenCookie(res) {
+        const isProduction = env_validation_1.env.NODE_ENV === 'production';
+        res.cookie('accessToken', '', {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            path: '/',
+            maxAge: 0,
+        });
+    }
+    parseMaxAge() {
+        const duration = this.configService.get('REFRESH_TOKEN_EXPIRES_IN', '7d');
+        const match = duration.match(/^(\d+)(s|m|h|d)$/);
+        if (!match)
+            return 7 * 24 * 60 * 60 * 1000;
+        const value = parseInt(match[1]);
+        switch (match[2]) {
+            case 's': return value * 1000;
+            case 'm': return value * 60 * 1000;
+            case 'h': return value * 60 * 60 * 1000;
+            case 'd': return value * 24 * 60 * 60 * 1000;
+            default: return 7 * 24 * 60 * 60 * 1000;
+        }
+    }
+    parseAccessTokenMaxAge() {
+        const duration = this.configService.get('JWT_EXPIRES_IN', '15m');
+        const match = duration.match(/^(\d+)(s|m|h|d)$/);
+        if (!match)
+            return 15 * 60 * 1000;
+        const value = parseInt(match[1]);
+        switch (match[2]) {
+            case 's': return value * 1000;
+            case 'm': return value * 60 * 1000;
+            case 'h': return value * 60 * 60 * 1000;
+            case 'd': return value * 24 * 60 * 60 * 1000;
+            default: return 15 * 60 * 1000;
+        }
+    }
+    async login(loginDto, request, res) {
         const ipAddress = this.extractIpAddress(request);
-        return this.authService.login(loginDto, ipAddress);
+        const result = await this.authService.login(loginDto, ipAddress);
+        this.setRefreshTokenCookie(res, result.refresh_token);
+        this.setAccessTokenCookie(res, result.access_token);
+        return result;
     }
     async register(registerDto, request) {
         const ipAddress = this.extractIpAddress(request);
         return this.authService.register(registerDto, ipAddress);
     }
-    async adminLogin(loginDto, request) {
+    async adminLogin(loginDto, request, res) {
         const ipAddress = this.extractIpAddress(request);
-        return this.authService.adminLogin(loginDto, ipAddress);
+        const result = await this.authService.adminLogin(loginDto, ipAddress);
+        console.log(result);
+        this.setRefreshTokenCookie(res, result.refresh_token);
+        this.setAccessTokenCookie(res, result.access_token);
+        return result;
     }
-    async refresh(body) {
-        if (!body.refresh_token) {
+    async refresh(body, request, res) {
+        const refreshToken = request.cookies?.refreshToken || body.refresh_token;
+        if (!refreshToken) {
             throw new common_1.BadRequestException('refresh_token is required');
         }
-        return this.authService.refreshAccessToken(body.refresh_token);
+        const result = await this.authService.refreshAccessToken(refreshToken);
+        this.setRefreshTokenCookie(res, result.refresh_token);
+        this.setAccessTokenCookie(res, result.access_token);
+        return result;
     }
     extractIpAddress(request) {
         const forwarded = request.headers['x-forwarded-for'];
@@ -119,9 +201,11 @@ let AuthController = class AuthController {
             is_active: user.is_active,
         };
     }
-    async logout(request) {
+    async logout(request, res) {
         const user = request.user;
         const ipAddress = this.extractIpAddress(request);
+        this.clearRefreshTokenCookie(res);
+        this.clearAccessTokenCookie(res);
         return this.authService.logout(user.userId, ipAddress);
     }
     async uploadProfileImage(image) {
@@ -149,8 +233,9 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Req)()),
+    __param(2, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [login_dto_1.LoginDto, Object]),
+    __metadata("design:paramtypes", [login_dto_1.LoginDto, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
 __decorate([
@@ -168,16 +253,19 @@ __decorate([
     (0, decorators_1.Roles)('ADMIN', 'SUPER_ADMIN'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Req)()),
+    __param(2, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [login_dto_1.LoginDto, Object]),
+    __metadata("design:paramtypes", [login_dto_1.LoginDto, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "adminLogin", null);
 __decorate([
     (0, common_1.Post)('refresh'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __param(2, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "refresh", null);
 __decorate([
@@ -194,8 +282,9 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
 __decorate([
@@ -210,6 +299,7 @@ __decorate([
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService,
-        users_service_1.UsersService])
+        users_service_1.UsersService,
+        config_1.ConfigService])
 ], AuthController);
 //# sourceMappingURL=auth.controller.js.map

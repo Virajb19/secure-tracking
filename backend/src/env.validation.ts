@@ -6,7 +6,8 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
   JWT_EXPIRES_IN: z.string().regex(/^(\d+)(s|m|h|d)$/, "JWT_EXPIRES_IN must be like 30m, 24h, 7d"),
   REFRESH_TOKEN_EXPIRES_IN: z.string().regex(/^(\d+)(s|m|h|d)$/, "REFRESH_TOKEN_EXPIRES_IN must be like 7d, 30d").default("7d"),
-  PORT: z.coerce.number().int().positive().default(3000),
+  CORS_ORIGIN: z.url('CORS_ORIGIN must be a valid URL').min(1, 'CORS_ORIGIN cannot be empty').default('http://localhost:3000'),
+  PORT: z.coerce.number().int().positive().default(3001),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   UPLOAD_DEST: z.string().min(1, "UPLOAD_DEST is required"),
   MAX_FILE_SIZE: z.coerce.number().int().positive().max(50 * 1024 * 1024, "MAX_FILE_SIZE too large (max 50MB)"),
@@ -15,7 +16,7 @@ const envSchema = z.object({
   APPWRITE_API_KEY: z.string().min(20, "APPWRITE_API_KEY is required"),
   APPWRITE_PROJECT_ID: z.string().min(5, "APPWRITE_PROJECT_ID is required"),
   APPWRITE_BUCKET_ID: z.string().min(5, "APPWRITE_BUCKET_ID is required"),
-  APPWRITE_ENDPOINT: z.string().url("APPWRITE_ENDPOINT must be a valid URL"),
+  APPWRITE_ENDPOINT: z.url("APPWRITE_ENDPOINT must be a valid URL"),
 
   // Firebase Configuration (for push notifications)
   FIREBASE_PROJECT_ID: z.string().min(1, "FIREBASE_PROJECT_ID is required"),

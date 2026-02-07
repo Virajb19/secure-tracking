@@ -4,6 +4,7 @@ import {
     Get,
     Body,
     Req,
+    Res,
     HttpCode,
     HttpStatus,
     UseInterceptors,
@@ -13,15 +14,17 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '@/shared/guards/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { memoryStorage } from 'multer';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ConfigService } from '@nestjs/config';
 import { AuthService, LoginResponse, RegisterResponse, RefreshResponse } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { Roles } from '@/shared/decorators';
 import { UsersService } from '../users/users.service';
+import { env } from '@/env.validation';
 
 /**
  * Multer config for profile image upload
@@ -62,7 +65,103 @@ export class AuthController {
     constructor(
         private readonly authService: AuthService,
         private readonly usersService: UsersService,
+        private readonly configService: ConfigService,
     ) { }
+
+    /**
+     * Set refresh token as an HttpOnly secure cookie on the response.
+     */
+    private setRefreshTokenCookie(res: Response, refreshToken: string): void {
+        const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,                          // JS cannot access this cookie
+            secure: isProduction,                    // HTTPS only in production
+            sameSite: isProduction ? 'strict' : 'lax', // Strict in prod, Lax in dev for cross-port
+            path: '/api/auth',                       // Only sent to auth endpoints
+            maxAge: this.parseMaxAge(),               // Match refresh token expiry
+        });
+    }
+
+    /**
+     * Clear the refresh token cookie.
+     */
+    private clearRefreshTokenCookie(res: Response): void {
+        const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+
+        res.cookie('refreshToken', '', {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            path: '/api/auth',
+            maxAge: 0,
+        });
+    }
+
+    /**
+     * Set access token as an HttpOnly secure cookie on the response.
+     * This enables cookie-based auth — the JWT strategy reads from this cookie.
+     */
+    private setAccessTokenCookie(res: Response, accessToken: string): void {
+        const isProduction = env.NODE_ENV === 'production';
+
+        res.cookie('accessToken', accessToken, {
+            httpOnly: true,                          // JS cannot access this cookie
+            secure: isProduction,                    // HTTPS only in production
+            sameSite: isProduction ? 'strict' : 'lax', // Strict in prod, Lax in dev for cross-port
+            path: '/',                               // Sent with ALL requests (needed for Next.js SSR cookie forwarding)
+            maxAge: this.parseAccessTokenMaxAge(),    // Match JWT expiry
+        });
+    }
+
+    /**
+     * Clear the access token cookie.
+     */
+    private clearAccessTokenCookie(res: Response): void {
+        const isProduction = env.NODE_ENV === 'production';
+
+        res.cookie('accessToken', '', {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            path: '/',
+            maxAge: 0,
+        });
+    }
+
+    /**
+     * Parse REFRESH_TOKEN_EXPIRES_IN env var to milliseconds for cookie maxAge.
+     */
+    private parseMaxAge(): number {
+        const duration = this.configService.get<string>('REFRESH_TOKEN_EXPIRES_IN', '7d');
+        const match = duration.match(/^(\d+)(s|m|h|d)$/);
+        if (!match) return 7 * 24 * 60 * 60 * 1000; // fallback 7 days
+        const value = parseInt(match[1]);
+        switch (match[2]) {
+            case 's': return value * 1000;
+            case 'm': return value * 60 * 1000;
+            case 'h': return value * 60 * 60 * 1000;
+            case 'd': return value * 24 * 60 * 60 * 1000;
+            default: return 7 * 24 * 60 * 60 * 1000;
+        }
+    }
+
+    /**
+     * Parse JWT_EXPIRES_IN env var to milliseconds for access token cookie maxAge.
+     */
+    private parseAccessTokenMaxAge(): number {
+        const duration = this.configService.get<string>('JWT_EXPIRES_IN', '15m');
+        const match = duration.match(/^(\d+)(s|m|h|d)$/);
+        if (!match) return 15 * 60 * 1000; // fallback 15 minutes
+        const value = parseInt(match[1]);
+        switch (match[2]) {
+            case 's': return value * 1000;
+            case 'm': return value * 60 * 1000;
+            case 'h': return value * 60 * 60 * 1000;
+            case 'd': return value * 24 * 60 * 60 * 1000;
+            default: return 15 * 60 * 1000;
+        }
+    }
 
     /**
      * User login endpoint.
@@ -82,9 +181,16 @@ export class AuthController {
     async login(
         @Body() loginDto: LoginDto,
         @Req() request: Request,
+        @Res({ passthrough: true }) res: Response,
     ): Promise<LoginResponse> {
         const ipAddress = this.extractIpAddress(request);
-        return this.authService.login(loginDto, ipAddress);
+        const result = await this.authService.login(loginDto, ipAddress);
+
+        // Set tokens as HttpOnly cookies
+        this.setRefreshTokenCookie(res, result.refresh_token);
+        this.setAccessTokenCookie(res, result.access_token);
+
+        return result;
     }
 
     /**
@@ -127,29 +233,52 @@ export class AuthController {
     async adminLogin(
         @Body() loginDto: LoginDto,
         @Req() request: Request,
+        @Res({ passthrough: true }) res: Response,
     ): Promise<LoginResponse> {
         const ipAddress = this.extractIpAddress(request);
-        return this.authService.adminLogin(loginDto, ipAddress);
+        const result = await this.authService.adminLogin(loginDto, ipAddress);
+
+        console.log(result);
+
+        // Set tokens as HttpOnly cookies
+        this.setRefreshTokenCookie(res, result.refresh_token);
+        this.setAccessTokenCookie(res, result.access_token);
+
+        return result;
     }
 
     /**
      * Refresh access token endpoint.
      * 
+     * Reads refresh token from HttpOnly cookie (admin CMS) or request body (mobile app).
      * Uses a valid refresh token to issue a new access token and
      * a rotated refresh token. The old refresh token is revoked.
      * 
-     * @param body - Object containing the refresh_token
+     * @param body - Optional object containing the refresh_token (for mobile app backward compat)
+     * @param request - HTTP request (cookies contain refresh token for CMS)
      * @returns New access_token and refresh_token
      */
     @Post('refresh')
     @HttpCode(HttpStatus.OK)
     async refresh(
-        @Body() body: { refresh_token: string },
+        @Body() body: { refresh_token?: string },
+        @Req() request: Request,
+        @Res({ passthrough: true }) res: Response,
     ): Promise<RefreshResponse> {
-        if (!body.refresh_token) {
+        // Prefer HttpOnly cookie, fall back to body (mobile app backward compat)
+        const refreshToken = request.cookies?.refreshToken || body.refresh_token;
+
+        if (!refreshToken) {
             throw new BadRequestException('refresh_token is required');
         }
-        return this.authService.refreshAccessToken(body.refresh_token);
+
+        const result = await this.authService.refreshAccessToken(refreshToken);
+
+        // Set the new tokens as HttpOnly cookies
+        this.setRefreshTokenCookie(res, result.refresh_token);
+        this.setAccessTokenCookie(res, result.access_token);
+
+        return result;
     }
 
     /**
@@ -206,9 +335,17 @@ export class AuthController {
     @Post('logout')
     @HttpCode(HttpStatus.OK)
     @UseGuards(JwtAuthGuard)
-    async logout(@Req() request: Request): Promise<{ message: string }> {
+    async logout(
+        @Req() request: Request,
+        @Res({ passthrough: true }) res: Response,
+    ): Promise<{ message: string }> {
         const user = request.user as { userId: string };
         const ipAddress = this.extractIpAddress(request);
+
+        // Clear auth cookies
+        this.clearRefreshTokenCookie(res);
+        this.clearAccessTokenCookie(res);
+
         return this.authService.logout(user.userId, ipAddress);
     }
 

@@ -16,7 +16,6 @@ import { UserRole } from '@/types';
 // ========================================
 
 interface AuthContextType {
-    token: string | null;
     role: UserRole | null;
     isAuthenticated: boolean;
     loading: boolean;
@@ -33,7 +32,6 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const router = useRouter();
 
-    const [token, setToken] = useState<string | null>(null);
     const [role, setRole] = useState<UserRole | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -41,11 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // INIT AUTH FROM localStorage
     // ----------------------------------------
     useEffect(() => {
-        const storedToken = localStorage.getItem('accessToken');
         const storedRole = localStorage.getItem('userRole') as UserRole | null;
 
-        if (storedToken && (storedRole === 'ADMIN' || storedRole === 'SUPER_ADMIN')) {
-            setToken(storedToken);
+        if (storedRole === 'ADMIN' || storedRole === 'SUPER_ADMIN') {
             setRole(storedRole);
         }
 
@@ -58,15 +54,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const login = async (email: string, password: string, phone?: string) => {
         const res = await authApi.login(email, password, phone);
 
-        // Map snake_case response to camelCase storage/state
-        const accessToken = res.access_token;
+        // accessToken & refreshToken → HttpOnly cookies (set by backend).
+        // User info → localStorage for UI display.
         const userRole = res.user.role;
 
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', res.refresh_token);
         localStorage.setItem('userRole', userRole);
 
-        setToken(accessToken);
+        // Also set userRole cookie for SSR route guards
+        const expires = new Date(Date.now() + 7 * 864e5).toUTCString();
+        document.cookie = `userRole=${encodeURIComponent(userRole)}; expires=${expires}; path=/; SameSite=Lax`;
+
         setRole(userRole);
 
         return
@@ -76,10 +73,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // LOGOUT
     // ----------------------------------------
     const logout = async () => {
-        // Call API to log the logout action (async, non-blocking)
+        // Backend clears HttpOnly auth cookies
         await authApi.logout();
 
-        setToken(null);
+        // Clear localStorage & SSR role cookie
+        localStorage.removeItem('userRole');
+        document.cookie = 'userRole=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+
         setRole(null);
 
         router.push('/login');
@@ -88,9 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return (
         <AuthContext.Provider
             value={{
-                token,
                 role,
-                isAuthenticated: Boolean(token && (role === 'ADMIN' || role === 'SUPER_ADMIN')),
+                isAuthenticated: Boolean(role === 'ADMIN' || role === 'SUPER_ADMIN'),
                 loading,
                 login,
                 logout,

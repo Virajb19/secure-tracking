@@ -2,6 +2,7 @@
 
 import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { LoginResponse, Task, TaskEvent, AuditLog, User, CreateTaskDto, District, School, Circular, CreateCircularDto } from '@/types';
+import { toast } from 'sonner';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 console.log('API BASE URL:', API_BASE_URL);
@@ -13,18 +14,19 @@ export const api: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Send HttpOnly cookies with every request
 });
 
 // ============================
 // TOKEN REFRESH LOGIC
 // ============================
 let isRefreshing = false;
-let failedQueue: { resolve: (token: string) => void; reject: (err: unknown) => void }[] = [];
+let failedQueue: { resolve: () => void; reject: (err: unknown) => void }[] = [];
 
-const processQueue = (error: unknown, token: string | null = null) => {
+const processQueue = (error: unknown) => {
   failedQueue.forEach(({ resolve, reject }) => {
-    if (token) {
-      resolve(token);
+    if (!error) {
+      resolve();
     } else {
       reject(error);
     }
@@ -33,31 +35,24 @@ const processQueue = (error: unknown, token: string | null = null) => {
 };
 
 /**
- * Clears all auth data from localStorage and cookies, then redirects to login.
+ * Clears all auth data and redirects to login.
+ * HttpOnly auth cookies (accessToken, refreshToken) are cleared by the backend.
+ * We clear localStorage user info and the SSR userRole cookie here.
  */
 function forceLogout() {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
   localStorage.removeItem('userRole');
   localStorage.removeItem('userName');
+  localStorage.removeItem('userEmail');
   localStorage.removeItem('userProfilePic');
-  // Clear cookies
-  ['accessToken', 'userRole', 'userName', 'userProfilePic'].forEach((name) => {
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-  });
+  document.cookie = 'userRole=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/api/auth';
   window.location.href = '/login';
 }
 
-api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return config;
-});
+// No request interceptor needed — accessToken is sent automatically
+// as an HttpOnly cookie via withCredentials: true
 
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
@@ -68,19 +63,13 @@ api.interceptors.response.use(
 
     // Only attempt refresh on 401, not on auth routes, and not already retried
     if (error.response?.status === 401 && !isAuthRoute && !originalRequest._retry && typeof window !== 'undefined') {
-      const refreshToken = localStorage.getItem('refreshToken');
-
-      if (!refreshToken) {
-        forceLogout();
-        return Promise.reject(error);
-      }
 
       if (isRefreshing) {
         // Queue this request until refresh completes
-        return new Promise<string>((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then((newToken) => {
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return new Promise<void>((resolve, reject) => {
+          failedQueue.push({ resolve: () => resolve(), reject });
+        }).then(() => {
+          // Retry — the new accessToken cookie is already set by the backend
           return api(originalRequest);
         }).catch((err) => Promise.reject(err));
       }
@@ -89,26 +78,15 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refresh_token: refreshToken,
-        });
+        // Both refreshToken (sent) and new accessToken (received) are HttpOnly cookies.
+        // The backend sets the new accessToken cookie in the response automatically.
+        await api.post('/auth/refresh');
 
-        const newAccessToken: string = data.access_token;
-        const newRefreshToken: string = data.refresh_token;
-
-        localStorage.setItem('accessToken', newAccessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
-
-        // Update cookie for server-side auth
-        const expires = new Date(Date.now() + 7 * 864e5).toUTCString();
-        document.cookie = `accessToken=${encodeURIComponent(newAccessToken)}; expires=${expires}; path=/; SameSite=Lax`;
-
-        // Retry the original request
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        processQueue(null, newAccessToken);
+        // Retry the original request — cookies are now updated
+        processQueue(null);
         return api(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
+        processQueue(refreshError);
         forceLogout();
         return Promise.reject(refreshError);
       } finally {
@@ -139,19 +117,13 @@ export const authApi = {
     const response = await api.post<LoginResponse>('/auth/admin/login', payload);
     return response.data;
   },
-  // Logout - logs the action to audit logs before clearing local storage
+  // Logout - logs the action to audit logs. Backend clears HttpOnly cookies.
   logout: async (): Promise<void> => {
     try {
       await api.post('/auth/logout');
     } catch (error) {
       // Logout should succeed even if API call fails
       console.error('Failed to log logout action:', error);
-    }
-    // Always clear local storage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userRole');
     }
   },
 }

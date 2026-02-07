@@ -41,6 +41,7 @@ export declare class AuthService {
     private readonly auditLogsService;
     private readonly db;
     private readonly configService;
+    private readonly logger;
     constructor(usersService: UsersService, jwtService: JwtService, auditLogsService: AuditLogsService, db: PrismaService, configService: ConfigService);
     private hasCompletedProfile;
     private parseDuration;

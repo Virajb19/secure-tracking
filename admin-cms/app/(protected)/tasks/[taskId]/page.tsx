@@ -75,7 +75,7 @@ export default function TaskDetailPage() {
             // Fetch attendance records
             try {
                 const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/tasks/${taskId}/attendance`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` },
+                    credentials: 'include', // Send HttpOnly cookies
                 });
                 if (res.ok) {
                     const data = await res.json();

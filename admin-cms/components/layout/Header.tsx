@@ -22,7 +22,9 @@ function getGreeting(): string {
 export default function Header() {
     const role = useAuthStore((state) => state.role);
     const userName = useAuthStore((state) => state.userName);
-    const userProfilePic = useAuthStore((state) => state.userProfilePic);
+    const rawProfilePic = useAuthStore((state) => state.userProfilePic);
+    // Guard against non-URL values (e.g. stale "[object Object]" in localStorage)
+    const userProfilePic = (typeof rawProfilePic === 'string' && rawProfilePic.startsWith('http')) ? rawProfilePic : null;
     const [greeting, setGreeting] = useState('Welcome');
     const [isPhotoDialogOpen, setIsPhotoDialogOpen] = useState(false);
 

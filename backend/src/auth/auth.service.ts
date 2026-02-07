@@ -4,6 +4,7 @@ import {
     ForbiddenException,
     BadRequestException,
     ConflictException,
+    Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -71,6 +72,8 @@ export interface RegisterResponse {
  */
 @Injectable()
 export class AuthService {
+    private readonly logger = new Logger(AuthService.name);
+
     constructor(
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
@@ -116,19 +119,24 @@ export class AuthService {
 
     /**
      * Generate a cryptographically secure refresh token, hash it, and store in DB.
+     * @param userId - The user ID to associate the token with
+     * @param tokenFamily - Optional token family for rotation chain. If not provided, a new family is created.
      * @returns The raw refresh token (to send to client)
      */
-    private async generateRefreshToken(userId: string): Promise<string> {
+    private async generateRefreshToken(userId: string, tokenFamily?: string): Promise<string> {
         const rawToken = crypto.randomBytes(64).toString('hex');
         const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
         const expiresIn = this.configService.get<string>('REFRESH_TOKEN_EXPIRES_IN', '7d');
         const expiresAt = new Date(Date.now() + this.parseDuration(expiresIn));
 
+        const family = tokenFamily || crypto.randomUUID();
+
         await this.db.refreshToken.create({
             data: {
                 token_hash: tokenHash,
                 user_id: userId,
+                token_family: family,
                 expires_at: expiresAt,
             },
         });
@@ -146,13 +154,17 @@ export class AuthService {
     }
 
     /**
-     * Clean up expired refresh tokens for a user.
+     * Clean up expired and old revoked refresh tokens for a user.
      */
     private async cleanupExpiredTokens(userId: string): Promise<void> {
         await this.db.refreshToken.deleteMany({
             where: {
                 user_id: userId,
-                expires_at: { lt: new Date() },
+                OR: [
+                    { expires_at: { lt: new Date() } },
+                    // Clean up revoked tokens older than 7 days (kept for reuse detection)
+                    { is_revoked: true, created_at: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+                ],
             },
         });
     }
@@ -528,11 +540,14 @@ export class AuthService {
 
     /**
      * Refresh access token using a valid refresh token.
-     * Implements token rotation: old refresh token is revoked, new one is issued.
+     * Implements token rotation with reuse detection:
+     * - Old refresh token is deleted, new one is issued in the same token_family.
+     * - If a previously consumed (deleted) token is reused, the entire token family
+     *   is revoked to prevent stolen token abuse.
      * 
      * @param refreshTokenRaw - The raw refresh token from the client
      * @returns New access token and refresh token
-     * @throws UnauthorizedException if refresh token is invalid or expired
+     * @throws UnauthorizedException if refresh token is invalid, expired, or reused
      */
     async refreshAccessToken(refreshTokenRaw: string): Promise<RefreshResponse> {
         const tokenHash = crypto.createHash('sha256').update(refreshTokenRaw).digest('hex');
@@ -544,18 +559,38 @@ export class AuthService {
         });
 
         if (!storedToken) {
+            // REUSE DETECTION: Token not found means it was already consumed.
+            // An attacker may be replaying a stolen token.
+            // We can't know the family here since the token is gone,
+            // but we log the suspicious activity.
+            this.logger.warn(`Refresh token reuse detected (token not found). Possible token theft.`);
             throw new UnauthorizedException('Invalid refresh token. Please login again.');
+        }
+
+        // If the token was already revoked (reuse detection)
+        if (storedToken.is_revoked) {
+            // REUSE DETECTED: This token was already consumed but not yet cleaned up.
+            // Revoke the ENTIRE token family to protect the user.
+            this.logger.warn(
+                `Refresh token reuse detected for user ${storedToken.user_id}, family ${storedToken.token_family}. Revoking all tokens in family.`,
+            );
+            await this.db.refreshToken.deleteMany({
+                where: { token_family: storedToken.token_family },
+            });
+            throw new UnauthorizedException('Suspicious activity detected. All sessions revoked. Please login again.');
         }
 
         // Check if token is expired
         if (storedToken.expires_at < new Date()) {
-            // Delete the expired token
             await this.db.refreshToken.delete({ where: { id: storedToken.id } });
             throw new UnauthorizedException('Refresh token expired. Please login again.');
         }
 
-        // Token rotation: delete the used refresh token
-        await this.db.refreshToken.delete({ where: { id: storedToken.id } });
+        // Token rotation: mark the used token as revoked (keep it for reuse detection)
+        await this.db.refreshToken.update({
+            where: { id: storedToken.id },
+            data: { is_revoked: true },
+        });
 
         // Generate new access token
         const payload = {
@@ -566,8 +601,11 @@ export class AuthService {
 
         const newAccessToken = this.jwtService.sign(payload);
 
-        // Generate new refresh token (rotation)
-        const newRefreshToken = await this.generateRefreshToken(storedToken.user.id);
+        // Generate new refresh token in the SAME family (rotation chain)
+        const newRefreshToken = await this.generateRefreshToken(
+            storedToken.user.id,
+            storedToken.token_family,
+        );
 
         return {
             access_token: newAccessToken,
