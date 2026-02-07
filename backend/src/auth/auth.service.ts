@@ -430,7 +430,7 @@ export class AuthService {
                 null,
                 ipAddress,
             );
-            throw new UnauthorizedException('Invalid credentials');
+            throw new UnauthorizedException('Login failed. Please check your credentials.');
         }
 
         // ONLY allow ADMIN and SUPER_ADMIN to login via CMS
@@ -458,7 +458,7 @@ export class AuthService {
                 user.id,
                 ipAddress,
             );
-            throw new UnauthorizedException('Invalid credentials');
+            throw new UnauthorizedException('Login failed. Please check your credentials.');
         }
 
         // check if phone matches
@@ -471,7 +471,7 @@ export class AuthService {
                 user.id,
                 ipAddress,
             );
-            throw new UnauthorizedException('Invalid credentials');
+            throw new UnauthorizedException('Incorrect phone number for the given email');
         }
 
         // Check if user is active

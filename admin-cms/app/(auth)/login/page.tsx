@@ -49,9 +49,16 @@ export default function LoginPage() {
       //   router.push('/dashboard');
       // }, 100);
       router.push('/dashboard');
-    } catch (err: unknown) {
+    } catch (err: any) {
       // const message = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
-      const message = "Login failed. Please check your credentials.";
+      let message = "Login failed. Please check your credentials.";
+
+        if (err?.response?.data?.message) {
+              message = err.response.data.message;
+         } else if (err instanceof Error) {
+              message = err.message;
+         }
+
       setServerError(message);
       toast.error(message, { position: 'top-center', duration: 6000, closeButton: false });
     }

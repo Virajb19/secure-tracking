@@ -231,7 +231,7 @@ let AuthService = class AuthService {
         const user = await this.usersService.findByEmail(loginDto.email);
         if (!user) {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', null, null, ipAddress);
-            throw new common_1.UnauthorizedException('Invalid credentials');
+            throw new common_1.UnauthorizedException('Login failed. Please check your credentials.');
         }
         if (user.role !== client_1.UserRole.ADMIN && user.role !== client_1.UserRole.SUPER_ADMIN) {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
@@ -242,12 +242,12 @@ let AuthService = class AuthService {
             : await bcrypt.compare(loginDto.password, user.password);
         if (!isPasswordValid) {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
-            throw new common_1.UnauthorizedException('Invalid credentials');
+            throw new common_1.UnauthorizedException('Login failed. Please check your credentials.');
         }
         const userWithPhone = await this.usersService.findByPhone(loginDto.phone);
         if (!userWithPhone || userWithPhone.id !== user.id) {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
-            throw new common_1.UnauthorizedException('Invalid credentials');
+            throw new common_1.UnauthorizedException('Incorrect phone number for the given email');
         }
         if (!user.is_active) {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);

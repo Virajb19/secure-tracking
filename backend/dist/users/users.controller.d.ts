@@ -35,15 +35,15 @@ export declare class UsersController {
     }, currentUser: User, request: Request): Promise<{
         email: string | null;
         name: string;
-        id: string;
-        password: string;
         phone: string;
+        password: string;
         role: import("@prisma/client").$Enums.UserRole;
+        is_active: boolean;
+        id: string;
+        created_at: Date;
         gender: import("@prisma/client").$Enums.Gender | null;
         profile_image_url: string | null;
         device_id: string | null;
-        is_active: boolean;
-        created_at: Date;
         push_token: string | null;
         coordinator_subject: string | null;
         coordinator_class: number | null;
