@@ -56,7 +56,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
     // Redirect to login if not authenticated
     useEffect(() => {
-        if (!loading && !isAuthenticated()) {
+        if (!loading && !isAuthenticated) {
             router.push('/login');
         }
     }, [isAuthenticated, loading, router]);
@@ -80,7 +80,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     }
 
     // Don't render if not authenticated (will redirect)
-    if (!isAuthenticated()) {
+    if (!isAuthenticated) {
         return null;
     }
 

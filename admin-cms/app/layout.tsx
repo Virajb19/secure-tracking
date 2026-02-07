@@ -25,7 +25,7 @@ export default function RootLayout({
       <body className={`${inter.variable} antialiased bg-background text-foreground`}>
           <Providers>
                 {/* Client-side store rehydration */}
-                 <ClientHydrate />
+                 {/* <ClientHydrate /> */}
                  
               {children}
           </Providers>

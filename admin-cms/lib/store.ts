@@ -110,11 +110,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // Only validate session if user was previously logged in (role in localStorage)
     // If no role, user never logged in — skip server call to avoid 401 → refresh → forceLogout loop
-    if (role) {
+    // if (role) {
       get().checkSession();
-    } else {
-      set({ loading: false });
-    }
+    // } else {
+    //   set({ loading: false });
+    // }
   },
 
   // Validate session by calling GET /auth/me — the only way to verify accessToken
