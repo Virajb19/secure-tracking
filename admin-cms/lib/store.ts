@@ -117,6 +117,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // }
   },
 
+  // Keep security always server side 
   // Validate session by calling GET /auth/me — the only way to verify accessToken
   checkSession: async () => {
     set({ loading: true });
@@ -126,6 +127,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isAuthenticated: isHydrated && (role === 'ADMIN' || role === 'SUPER_ADMIN'), loading: false });
     } catch {
        set({ role: null, userName: null, userEmail: null, userProfilePic: null, isAuthenticated: false, loading: false });
+    } finally {
+      set({ loading: false });
     }
   },
 

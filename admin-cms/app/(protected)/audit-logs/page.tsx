@@ -32,15 +32,14 @@ const tableRowVariants = {
     transition: { delay: i * 0.03, duration: 0.3 }
   }),
   hover: {
-    backgroundColor: 'rgba(51, 65, 85, 0.5)',
     transition: { duration: 0.2 }
   }
 };
 
 const cardVariants = {
   hidden: { opacity: 0, scale: 0.95 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     scale: 1,
     transition: { duration: 0.3 }
   }
@@ -199,7 +198,7 @@ export default function AuditLogsPage() {
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-8 p-2"
       variants={containerVariants}
       initial="hidden"
@@ -232,18 +231,18 @@ export default function AuditLogsPage() {
       </motion.div>
 
       {/* Logs Table */}
-      <motion.div 
-        className="bg-linear-to-br from-slate-900 via-slate-900 to-slate-800 rounded-2xl border border-slate-700/50 overflow-hidden shadow-xl"
+      <motion.div
+        className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
         variants={cardVariants}
       >
         {allLogs.length === 0 && !isLoading ? (
-          <motion.div 
-            className="text-center py-16"
+          <motion.div
+            className="text-center py-16 bg-white dark:bg-transparent"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <Shield className="h-16 w-16 text-slate-700 mx-auto mb-4" />
-            <div className="text-slate-400 text-lg">No audit logs found</div>
+            <Shield className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
+            <div className="text-slate-600 dark:text-slate-400 text-lg">No audit logs found</div>
             <p className="text-slate-500 text-sm mt-2">System activity will appear here</p>
           </motion.div>
         ) : (
@@ -251,33 +250,33 @@ export default function AuditLogsPage() {
             {/* Inline loader when refetching with existing data */}
             {isFetching && !isFetchingNextPage && allLogs.length > 0 && (
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                <div className="flex items-center gap-3 bg-slate-800 px-4 py-3 rounded-xl shadow-xl border border-slate-700">
-                  <div className='size-5 border-2 border-t-[3px] border-white/20 border-t-amber-400 rounded-full animate-spin' />
-                  <span className="text-slate-300 text-sm font-medium">Refreshing...</span>
+                <div className="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-3 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700">
+                  <div className='size-5 border-2 border-t-[3px] border-slate-300 dark:border-white/20 border-t-amber-400 rounded-full animate-spin' />
+                  <span className="text-slate-700 dark:text-slate-300 text-sm font-medium">Refreshing...</span>
                 </div>
               </div>
             )}
             <table className="w-full">
-              <thead className="sticky top-0 z-10 backdrop-blur-md bg-slate-800/80">
-                <tr className="bg-slate-800/50 border-b border-slate-700">
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+              <thead className="sticky top-0 z-10 backdrop-blur-md bg-slate-100/80 dark:bg-slate-800/80">
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <Clock className="h-4 w-4 inline mr-1" />
                     Timestamp
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <Activity className="h-4 w-4 inline mr-1" />
                     Action
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <FileText className="h-4 w-4 inline mr-1" />
                     Entity Type
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">Entity ID</th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Entity ID</th>
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <User className="h-4 w-4 inline mr-1" />
                     User ID
                   </th>
-                  <th className="text-left py-4 px-5 text-slate-400 font-medium text-sm">
+                  <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                     <Globe className="h-4 w-4 inline mr-1" />
                     IP Address
                   </th>
@@ -289,17 +288,17 @@ export default function AuditLogsPage() {
                     const actionStyle = getActionStyle(log.action);
                     const isNew = index >= previousLength;
                     return (
-                      <motion.tr 
+                      <motion.tr
                         key={log.id}
                         custom={isNew ? index - previousLength : index}
                         variants={tableRowVariants}
                         initial={isNew ? "hidden" : false}
                         animate="visible"
                         whileHover="hover"
-                        className="border-b border-slate-800/50"
+                        className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-700/50"
                       >
                         <td className="py-4 px-5">
-                          <span className="text-slate-300 text-sm">{formatDate(log.created_at)}</span>
+                          <span className="text-slate-700 dark:text-slate-300 text-sm">{formatDate(log.created_at)}</span>
                         </td>
                         <td className="py-4 px-5">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${actionStyle.bg} ${actionStyle.text}`}>
@@ -307,20 +306,20 @@ export default function AuditLogsPage() {
                           </span>
                         </td>
                         <td className="py-4 px-5">
-                          <span className="text-slate-300 text-sm">{log.entity_type}</span>
+                          <span className="text-slate-700 dark:text-slate-300 text-sm">{log.entity_type}</span>
                         </td>
                         <td className="py-4 px-5">
-                          <span className="text-xs font-mono text-slate-400 bg-slate-800 px-2 py-1 rounded">
+                          <span className="text-xs font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
                             {log.entity_id ? log.entity_id.slice(0, 8) + '...' : '-'}
                           </span>
                         </td>
                         <td className="py-4 px-5">
-                          <span className="text-xs font-mono text-slate-400 bg-slate-800 px-2 py-1 rounded">
+                          <span className="text-xs font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
                             {log.user_id ? log.user_id.slice(0, 8) + '...' : '-'}
                           </span>
                         </td>
                         <td className="py-4 px-5">
-                          <span className="text-sm text-slate-400 font-mono">{log.ip_address || '-'}</span>
+                          <span className="text-sm text-slate-600 dark:text-slate-400 font-mono">{log.ip_address || '-'}</span>
                         </td>
                       </motion.tr>
                     );
@@ -332,18 +331,18 @@ export default function AuditLogsPage() {
         )}
 
         {/* Loading / Status */}
-        <div className="px-6 py-4 border-t border-slate-700/50">
+        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-transparent">
           {isLoading && allLogs.length === 0 ? (
             <div className="flex items-center justify-center gap-3">
-              <div className='size-5 border-2 border-t-[3px] border-white/20 border-t-amber-400 rounded-full animate-spin' />
-              <span className="text-slate-400 text-sm">Loading logs...</span>
+              <div className='size-5 border-2 border-t-[3px] border-slate-300 dark:border-white/20 border-t-amber-400 rounded-full animate-spin' />
+              <span className="text-slate-600 dark:text-slate-400 text-sm">Loading logs...</span>
             </div>
           ) : isError ? (
             <RetryButton queryKey={['auditLogs']} message={(error as Error)?.message || 'Failed to load audit logs'} />
           ) : isFetchingNextPage ? (
             <div className="flex items-center justify-center gap-2">
-              <div className='size-4 border-2 border-t-[3px] border-white/20 border-t-amber-400 rounded-full animate-spin' />
-              <span className="text-slate-400 text-sm">Loading more...</span>
+              <div className='size-4 border-2 border-t-[3px] border-slate-300 dark:border-white/20 border-t-amber-400 rounded-full animate-spin' />
+              <span className="text-slate-600 dark:text-slate-400 text-sm">Loading more...</span>
             </div>
           ) : hasNextPage ? (
             <p className="text-center text-sm text-slate-500">Scroll down to load more</p>

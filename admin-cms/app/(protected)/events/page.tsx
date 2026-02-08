@@ -74,8 +74,8 @@ const tableRowVariants = {
 
 const cardVariants = {
   hidden: { opacity: 0, scale: 0.95 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     scale: 1,
     transition: { duration: 0.3 }
   }
@@ -84,7 +84,7 @@ const cardVariants = {
 // Skeleton row for loading state
 const EventTableSkeleton = () => (
   <>
-    {Array.from({ length: 5 }).map((_, index) => (
+    {Array.from({ length: 10 }).map((_, index) => (
       <tr key={index} className="border-b border-slate-100 dark:border-slate-800/50">
         <td className="py-4 px-5">
           <Skeleton className="h-5 w-8 bg-slate-200 dark:bg-slate-700" />
@@ -130,7 +130,7 @@ const eventTypeLabels: Record<SchoolEventType, string> = {
 // View Event Button - disabled while any delete is in progress
 function ViewEventButton({ eventId, onClick }: { eventId: string; onClick: () => void }) {
   const isDeletingAny = useIsMutating({ mutationKey: ['delete-event'] }) > 0;
-  
+
   return (
     <motion.button
       onClick={onClick}
@@ -163,14 +163,14 @@ export default function EventsPage() {
   const [toDate, setToDate] = useState<string>('');
   const [districtFilter, setDistrictFilter] = useState<string>('all');
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
-  
+
   // Search filter (server-side)
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Debounce the search (Server-side filtering)
   const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
-  
+
   const pageSize = 20;
 
   const [isDownloading, setIsDownloading] = useState(false);
@@ -251,16 +251,16 @@ export default function EventsPage() {
       setIsDownloading(true);
 
       const doc = new jsPDF();
-      
+
       // Title
       doc.setFontSize(18);
       doc.setTextColor(33, 37, 41);
       doc.text('Events Report', 14, 22);
-      
+
       // Subtitle with filters
       doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
-      
+
       // Build filter text - handle empty dates gracefully
       const filterParts: string[] = [];
       if (fromDate) filterParts.push(`From: ${formatDate(fromDate)}`);
@@ -273,10 +273,10 @@ export default function EventsPage() {
       if (eventTypeFilter !== 'all') {
         filterParts.push(`Type: ${eventTypeLabels[eventTypeFilter as SchoolEventType] || eventTypeFilter}`);
       }
-      
+
       doc.text(filterParts.join(' | '), 14, 30);
       doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 14, 36);
-      
+
       // Table
       const tableData = allEvents.map((event, index) => [
         index + 1,
@@ -287,7 +287,7 @@ export default function EventsPage() {
         event.creator?.name || '-',
         `${event.male_participants || 0}M / ${event.female_participants || 0}F`,
       ]);
-      
+
       autoTable(doc, {
         head: [['#', 'Event Name', 'Type', 'Date', 'Venue', 'Created By', 'Participants']],
         body: tableData,
@@ -295,7 +295,7 @@ export default function EventsPage() {
         styles: { fontSize: 8 },
         headStyles: { fillColor: [79, 70, 229] },
       });
-      
+
       // Build filename
       const datePart = fromDate && toDate ? `${fromDate}-to-${toDate}` : new Date().toISOString().split('T')[0];
       doc.save(`events-report-${datePart}.pdf`);
@@ -308,37 +308,14 @@ export default function EventsPage() {
     }
   };
 
-  if (isError) {
-    return (
-      <motion.div 
-        className="space-y-8 p-2"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <motion.div variants={itemVariants}>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
-              <CalendarDays className="h-6 w-6 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-white">Events</h1>
-          </div>
-        </motion.div>
-        <motion.div 
-          className="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 text-center"
-          variants={cardVariants}
-        >
-          <RetryButton queryKey={['events-infinite', apiFilters]} message="Failed to load events" />
-        </motion.div>
-      </motion.div>
-    );
-  }
+  // Error state is now handled inline in the table to show "No events found" 
+  // instead of blocking the entire page - users can still adjust filters
 
   const upcomingCount = allEvents.filter(e => new Date(e.event_date) >= new Date()).length;
   const pastCount = allEvents.filter(e => new Date(e.event_date) < new Date()).length;
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-8 p-2"
       variants={containerVariants}
       initial={false}
@@ -376,7 +353,7 @@ export default function EventsPage() {
       </motion.div>
 
       {/* Filters */}
-      <motion.div 
+      <motion.div
         className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-xl"
         variants={cardVariants}
       >
@@ -391,7 +368,7 @@ export default function EventsPage() {
               className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-blue-500/50 text-slate-900 dark:text-white"
             />
           </div>
-          
+
           <div className="min-w-[180px]">
             <label className="text-slate-500 dark:text-slate-400 text-sm mb-2 block">To Date</label>
             <Input
@@ -409,10 +386,10 @@ export default function EventsPage() {
               <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-blue-500/50 text-slate-900 dark:text-white">
                 <SelectValue placeholder="All Districts" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                <SelectItem value="all" className="text-white hover:bg-slate-700">All Districts</SelectItem>
+              <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Districts</SelectItem>
                 {districts.map((d) => (
-                  <SelectItem key={d.id} value={d.id} className="text-white hover:bg-slate-700">{d.name}</SelectItem>
+                  <SelectItem key={d.id} value={d.id} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">{d.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -425,10 +402,10 @@ export default function EventsPage() {
               <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-blue-500/50 text-slate-900 dark:text-white">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                <SelectItem value="all" className="text-white hover:bg-slate-700">All Types</SelectItem>
+              <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Types</SelectItem>
                 {Object.entries(eventTypeLabels).map(([key, label]) => (
-                  <SelectItem key={key} value={key} className="text-white hover:bg-slate-700">{label}</SelectItem>
+                  <SelectItem key={key} value={key} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">{label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -457,15 +434,15 @@ export default function EventsPage() {
             className="bg-green-600 group hover:bg-green-700 text-white flex items-center gap-2"
             disabled={isDownloading || allEvents.length === 0}
           >
-             {isDownloading ? (
-                   <>
-                      <Loader2 className='size-5 text-white animate-spin'/>
-                      Downloading...
-                   </>              
+            {isDownloading ? (
+              <>
+                <Loader2 className='size-5 text-white animate-spin' />
+                Downloading...
+              </>
             ) : (
               <>
-                 <Download className="h-5 w-5 group-hover:-translate-y-1 group-hover:scale-110 transition-transform disabled:cursor-not-allowed" />
-                 Download PDF
+                <Download className="h-5 w-5 group-hover:-translate-y-1 group-hover:scale-110 transition-transform disabled:cursor-not-allowed" />
+                Download PDF
               </>
             )}
           </Button>
@@ -473,20 +450,11 @@ export default function EventsPage() {
       </motion.div>
 
       {/* Events Table */}
-      <motion.div 
+      <motion.div
         className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
         variants={cardVariants}
       >
         <div className="overflow-x-auto relative">
-          {/* Loading overlay when refetching */}
-          {isFetching && !isFetchingNextPage && allEvents.length > 0 && (
-            <div className="absolute inset-0 bg-slate-900/50 z-10 flex items-center justify-center">
-              <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
-                <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                <span className="text-slate-300 text-sm">Refreshing...</span>
-              </div>
-            </div>
-          )}
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
@@ -506,12 +474,12 @@ export default function EventsPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {(isLoading || (isFetching && !isFetchingNextPage)) ? (
                 <EventTableSkeleton />
-              ) : allEvents.length === 0 ? (
+              ) : (isError || allEvents.length === 0) ? (
                 <tr>
                   <td colSpan={7} className="py-16">
-                    <motion.div 
+                    <motion.div
                       className="text-center"
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -525,7 +493,7 @@ export default function EventsPage() {
               ) : (
                 <AnimatePresence mode="popLayout">
                   {allEvents.map((event, index) => (
-                    <motion.tr 
+                    <motion.tr
                       key={event.id}
                       custom={index}
                       variants={tableRowVariants}
@@ -541,8 +509,8 @@ export default function EventsPage() {
                       </td>
                       <td className="py-4 px-5">
                         {event.flyer_url ? (
-                          <img 
-                            src={getImageUrl(event.flyer_url) || ''} 
+                          <img
+                            src={getImageUrl(event.flyer_url) || ''}
                             alt={event.title}
                             className="w-16 h-12 rounded-lg object-cover"
                             onError={(e) => {
@@ -589,7 +557,7 @@ export default function EventsPage() {
             </tbody>
           </table>
         </div>
-        
+
         {/* Load More / Status */}
         {allEvents.length > 0 && (
           <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50">
@@ -634,8 +602,8 @@ export default function EventsPage() {
               {/* Event Photos */}
               {eventDetails.flyer_url && (
                 <div className="px-6">
-                  <img 
-                    src={getImageUrl(eventDetails.flyer_url) || ''} 
+                  <img
+                    src={getImageUrl(eventDetails.flyer_url) || ''}
                     alt={eventDetails.title}
                     className="w-full h-64 object-cover rounded-lg"
                     onError={(e) => {
@@ -644,11 +612,11 @@ export default function EventsPage() {
                   />
                 </div>
               )}
-              
+
               {/* Event Title & Description */}
               <div className="px-6 space-y-3">
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">{eventDetails.title}</h3>
-                
+
                 {eventDetails.description && (
                   <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                     {eventDetails.description}
@@ -667,7 +635,7 @@ export default function EventsPage() {
                       )}
                     </span>
                   </div>
-                  
+
                   {/* Venue */}
                   {eventDetails.location && (
                     <div className="flex items-start gap-2 text-slate-700 dark:text-slate-300">
@@ -675,23 +643,23 @@ export default function EventsPage() {
                       <span>{eventDetails.location}</span>
                     </div>
                   )}
-                  
+
                   {/* Participants */}
                   <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                     <span className="font-semibold text-red-500">Participants:</span>
                     <span>
-                      {eventDetails.male_participants !== null && eventDetails.male_participants !== undefined 
-                        ? `${String(eventDetails.male_participants).padStart(2, '0')} (MALE)` 
+                      {eventDetails.male_participants !== null && eventDetails.male_participants !== undefined
+                        ? `${String(eventDetails.male_participants).padStart(2, '0')} (MALE)`
                         : '00 (MALE)'
                       }
                       {' | '}
-                      {eventDetails.female_participants !== null && eventDetails.female_participants !== undefined 
-                        ? `${eventDetails.female_participants} (FEMALE)` 
+                      {eventDetails.female_participants !== null && eventDetails.female_participants !== undefined
+                        ? `${eventDetails.female_participants} (FEMALE)`
                         : '00 (FEMALE)'
                       }
                     </span>
                   </div>
-                  
+
                   {/* Activity Type */}
                   {eventDetails.activity_type && (
                     <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
@@ -699,7 +667,7 @@ export default function EventsPage() {
                       <span>{eventDetails.activity_type}</span>
                     </div>
                   )}
-                  
+
                   {/* Created By */}
                   <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                     <span className="font-semibold text-red-500">Created by:</span>

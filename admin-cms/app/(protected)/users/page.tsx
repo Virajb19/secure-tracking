@@ -12,11 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  Search, 
-  Mail, 
-  Loader2, 
-  Users, 
+import {
+  Search,
+  Mail,
+  Loader2,
+  Users,
   Filter,
   Hash,
   Building2,
@@ -25,24 +25,18 @@ import {
   BookOpen,
   Bell,
   Eye,
-  Check,
-  X,
-  Clock,
-  CheckCircle,
-  XCircle,
   Phone,
   User as UserIcon,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDebounceCallback, useLocalStorage } from 'usehooks-ts';
-import { 
-  useGetUsers, 
-  useGetDistricts, 
-  useGetSchools, 
-  useGetClasses, 
+import {
+  useGetUsers,
+  useGetDistricts,
+  useGetSchools,
+  useGetClasses,
   useGetSubjects,
-  useApproveUser,
 } from '@/services/user.service';
 import { userStarsApi } from '@/services/paper-setter.service';
 import { usersApi } from '@/services/api';
@@ -63,7 +57,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import CopyEmailButton from '@/components/CopyEmailButton';
 
@@ -94,15 +87,14 @@ const tableRowVariants = {
     }
   }),
   hover: {
-    backgroundColor: 'rgba(51, 65, 85, 0.5)',
     transition: { duration: 0.2 }
   }
 };
 
 const cardVariants = {
   hidden: { opacity: 0, scale: 0.95 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     scale: 1,
     transition: { duration: 0.3 }
   }
@@ -133,7 +125,6 @@ export default function UsersPage() {
   const [schoolFilter, setSchoolFilter] = useLocalStorage('users-schoolFilter', 'all');
   const [classFilter, setClassFilter] = useLocalStorage('users-classFilter', 'all');
   const [subjectFilter, setSubjectFilter] = useLocalStorage('users-subjectFilter', 'all');
-  const [approvalStatusFilter, setApprovalStatusFilter] = useLocalStorage('users-approvalStatus', 'all');
   const [showOnlyInactive, setShowOnlyInactive] = useLocalStorage('users-showOnlyInactive', false);
   const [currentPage, setCurrentPage] = useLocalStorage('users-currentPage', 1);
   const itemsPerPage = 25;
@@ -141,13 +132,7 @@ export default function UsersPage() {
   // Dialogs state
   const [userDetailDialogOpen, setUserDetailDialogOpen] = useState(false);
   const [selectedUserForDetail, setSelectedUserForDetail] = useState<User | null>(null);
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [selectedUserForReject, setSelectedUserForReject] = useState<User | null>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
 
-  // Approve/Reject mutation
-  const approveUserMutation = useApproveUser();
-  
   // Debounce search input using useDebounceCallback
   const debouncedSetSearch = useDebounceCallback((value: string) => {
     setDebouncedSearch(value);
@@ -165,13 +150,12 @@ export default function UsersPage() {
     if (schoolFilter !== 'all') filters.school_id = schoolFilter;
     if (classFilter !== 'all') filters.class_level = parseInt(classFilter);
     if (subjectFilter !== 'all') filters.subject = subjectFilter;
-    if (approvalStatusFilter !== 'all') filters.approval_status = approvalStatusFilter;
     if (debouncedSearch) filters.search = debouncedSearch;
     if (showOnlyInactive) filters.is_active = false;
     return filters;
-  }, [currentPage, roleFilter, districtFilter, schoolFilter, classFilter, subjectFilter, approvalStatusFilter, debouncedSearch, showOnlyInactive]);
+  }, [currentPage, roleFilter, districtFilter, schoolFilter, classFilter, subjectFilter, debouncedSearch, showOnlyInactive]);
 
-  
+
   // ❌ Never use useInfiniteQuery for textbook-style paginated tables
   //    (Page numbers: 1, 2, 3, jump to page N)
   //
@@ -195,7 +179,7 @@ export default function UsersPage() {
   // Infinite scroll -> audit logs,( load more button OR auto load on scroll )
 
   // Never do overfetching Fetch what frontend needs
-  
+
   // Fetch data with server-side pagination
   const { data: usersResponse, isLoading, isFetching, isError, error } = useGetUsers(apiFilters);
   const users = usersResponse?.data || [];
@@ -206,13 +190,13 @@ export default function UsersPage() {
   const { data: schools = [], isFetching: isFetchingSchools } = useGetSchools(districtFilter !== 'all' ? districtFilter : undefined);
   const { data: classes = [] } = useGetClasses();
   const { data: subjects = [] } = useGetSubjects();
-  
+
   // Fetch starred user IDs
   const { data: starredUserIds = [] } = useQuery({
     queryKey: ['starred-users'],
     queryFn: userStarsApi.getStarredIds,
   });
-  
+
   const queryClient = useQueryClient();
 
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -251,7 +235,7 @@ export default function UsersPage() {
   // Helper to get classes and subjects
   const getClassesAndSubjects = (user: User) => {
     if (!user.faculty?.teaching_assignments?.length) return '-';
-    
+
     const assignments = user.faculty.teaching_assignments;
     const formatted = assignments.map(ta => `Class ${ta.class_level} (${ta.subject})`);
     return formatted.join(', ');
@@ -276,35 +260,6 @@ export default function UsersPage() {
   const openNotificationDialog = (userId?: string) => {
     setCurrentUserForNotification(userId || null);
     setNotificationDialogOpen(true);
-  };
-
-  // Handle approve user
-  const handleApprove = async (userId: string) => {
-    try {
-      await approveUserMutation.mutateAsync({ userId, status: 'APPROVED' });
-      toast.success('User approved successfully');
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to approve user');
-    }
-  };
-
-  // Handle reject user
-  const handleReject = async () => {
-    if (!selectedUserForReject) return;
-    
-    try {
-      await approveUserMutation.mutateAsync({ 
-        userId: selectedUserForReject.id, 
-        status: 'REJECTED',
-        rejectionReason: rejectionReason || undefined
-      });
-      toast.success('User rejected');
-      setRejectDialogOpen(false);
-      setSelectedUserForReject(null);
-      setRejectionReason('');
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to reject user');
-    }
   };
 
   // Export users as CSV and trigger download
@@ -345,7 +300,7 @@ export default function UsersPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `users-${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -364,9 +319,9 @@ export default function UsersPage() {
       return (
         <tr>
           <td colSpan={8} className="py-16">
-            <RetryButton 
-              queryKey={['users', apiFilters]} 
-              message="Failed to load users" 
+            <RetryButton
+              queryKey={['users', apiFilters]}
+              message="Failed to load users"
               subMessage={typeof error?.message === 'string' ? error.message : undefined}
             />
           </td>
@@ -377,14 +332,14 @@ export default function UsersPage() {
     if (users.length === 0) {
       return (
         <tr>
-          <td colSpan={8} className="py-16">
-            <motion.div 
+          <td colSpan={8} className="py-16 bg-white dark:bg-transparent">
+            <motion.div
               className="text-center"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
             >
-              <Users className="h-16 w-16 text-slate-700 mx-auto mb-4" />
-              <div className="text-slate-400 text-lg">No users found</div>
+              <Users className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
+              <div className="text-slate-600 dark:text-slate-400 text-lg">No users found</div>
               <p className="text-slate-500 text-sm mt-2">Try adjusting your filters</p>
             </motion.div>
           </td>
@@ -395,8 +350,8 @@ export default function UsersPage() {
     return (
       <AnimatePresence>
         {users.map((user, index) => (
-          <motion.tr 
-            key={user.id} 
+          <motion.tr
+            key={user.id}
             custom={index}
             variants={tableRowVariants}
             initial="hidden"
@@ -423,8 +378,8 @@ export default function UsersPage() {
               {user.faculty?.highest_qualification || '-'}
             </td>
             <td className="py-4 px-5 text-slate-700 dark:text-slate-300">
-              {user.faculty?.years_of_experience 
-                ? `${user.faculty.years_of_experience} Years` 
+              {user.faculty?.years_of_experience
+                ? `${user.faculty.years_of_experience} Years`
                 : '-'}
             </td>
             <td className="py-4 px-5 text-slate-700 dark:text-slate-300 max-w-xs">
@@ -432,29 +387,6 @@ export default function UsersPage() {
             </td>
             <td className="py-4 px-5 text-slate-700 dark:text-slate-300 max-w-xs">
               <span className="line-clamp-2">{getClassesAndSubjects(user)}</span>
-            </td>
-            <td className="py-4 px-5">
-              {user.faculty?.approval_status === 'PENDING' && (
-                <Badge className="bg-amber-500/20 text-amber-500 border border-amber-500/30 flex items-center gap-1 w-fit">
-                  <Clock className="h-3 w-3" />
-                  Pending
-                </Badge>
-              )}
-              {user.faculty?.approval_status === 'APPROVED' && (
-                <Badge className="bg-green-500/20 text-green-500 border border-green-500/30 flex items-center gap-1 w-fit">
-                  <CheckCircle className="h-3 w-3" />
-                  Approved
-                </Badge>
-              )}
-              {user.faculty?.approval_status === 'REJECTED' && (
-                <Badge className="bg-red-500/20 text-red-500 border border-red-500/30 flex items-center gap-1 w-fit">
-                  <XCircle className="h-3 w-3" />
-                  Rejected
-                </Badge>
-              )}
-              {!user.faculty?.approval_status && (
-                <span className="text-slate-500 text-sm">-</span>
-              )}
             </td>
             <td className="py-4 px-5">
               <div className="flex items-center gap-2">
@@ -471,36 +403,7 @@ export default function UsersPage() {
                 >
                   <Eye className="h-5 w-5" />
                 </motion.button>
-                
-                {/* Approve/Reject buttons for PENDING users */}
-                {user.faculty?.approval_status === 'PENDING' && (
-                  <>
-                    <motion.button
-                      onClick={() => handleApprove(user.id)}
-                      disabled={approveUserMutation.isPending}
-                      className="p-2 text-green-500 hover:text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-all disabled:opacity-50"
-                      title="Approve User"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <Check className="h-5 w-5" />
-                    </motion.button>
-                    <motion.button
-                      onClick={() => {
-                        setSelectedUserForReject(user);
-                        setRejectDialogOpen(true);
-                      }}
-                      disabled={approveUserMutation.isPending}
-                      className="p-2 text-red-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all disabled:opacity-50"
-                      title="Reject User"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <X className="h-5 w-5" />
-                    </motion.button>
-                  </>
-                )}
-                
+
                 <UserStatusToggle userId={user.id} isActive={user.is_active} />
                 <motion.button
                   onClick={() => openNotificationDialog(user.id)}
@@ -512,9 +415,9 @@ export default function UsersPage() {
                   <Mail className="h-5 w-5" />
                 </motion.button>
                 <ResetDeviceButton userId={user.id} userName={user.name} />
-                <StarButton 
-                  userId={user.id} 
-                  isStarred={starredUserIds.includes(user.id)} 
+                <StarButton
+                  userId={user.id}
+                  isStarred={starredUserIds.includes(user.id)}
                 />
               </div>
             </td>
@@ -525,7 +428,7 @@ export default function UsersPage() {
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-8 p-2"
       variants={containerVariants}
       initial="hidden"
@@ -552,8 +455,8 @@ export default function UsersPage() {
           </div>
           <div className="flex items-center gap-3">
             <RefreshTableButton queryKey={['users', apiFilters]} isFetching={isFetching} />
-            <DownloadXlsxButton 
-              onDownload={() => exportUsersAsCSV(users)} 
+            <DownloadXlsxButton
+              onDownload={() => exportUsersAsCSV(users)}
               disabled={users.length === 0}
             />
           </div>
@@ -561,7 +464,7 @@ export default function UsersPage() {
       </motion.div>
 
       {/* Filters Card */}
-      <motion.div 
+      <motion.div
         className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-xl"
         variants={cardVariants}
       >
@@ -592,10 +495,10 @@ export default function UsersPage() {
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="User Type" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
-              <SelectItem value="all" className=" dark:text-white hover:bg-slate-700">All User Types</SelectItem>
+            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+              <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All User Types</SelectItem>
               {displayRoles.map((role) => (
-                <SelectItem key={role} value={role} className="text-black dark:text-white hover:bg-slate-700">
+                <SelectItem key={role} value={role} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
                   {roleLabels[role]}
                 </SelectItem>
               ))}
@@ -606,10 +509,10 @@ export default function UsersPage() {
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="District" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
-              <SelectItem value="all" className="text-white hover:bg-slate-700">All Districts</SelectItem>
+            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+              <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Districts</SelectItem>
               {districts.map((district) => (
-                <SelectItem key={district.id} value={district.id} className="text-white hover:bg-slate-700">
+                <SelectItem key={district.id} value={district.id} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
                   {district.name}
                 </SelectItem>
               ))}
@@ -627,10 +530,10 @@ export default function UsersPage() {
                 <SelectValue placeholder="School" />
               )}
             </SelectTrigger>
-            <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
-              <SelectItem value="all" className="text-white hover:bg-slate-700">All Schools</SelectItem>
+            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+              <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Schools</SelectItem>
               {schools.map((school) => (
-                <SelectItem key={school.id} value={school.id} className="text-white hover:bg-slate-700">
+                <SelectItem key={school.id} value={school.id} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
                   {school.name}
                 </SelectItem>
               ))}
@@ -641,10 +544,10 @@ export default function UsersPage() {
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="Class" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
-              <SelectItem value="all" className="text-white hover:bg-slate-700">All Classes</SelectItem>
+            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+              <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Classes</SelectItem>
               {classes.map((cls) => (
-                <SelectItem key={cls} value={cls.toString()} className="text-white hover:bg-slate-700">
+                <SelectItem key={cls} value={cls.toString()} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
                   Class {cls}
                 </SelectItem>
               ))}
@@ -655,12 +558,12 @@ export default function UsersPage() {
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               <SelectValue placeholder="Subject" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
-              <SelectItem value="all" className="text-white hover:bg-slate-700">All Subjects</SelectItem>
+            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+              <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Subjects</SelectItem>
               {subjects.map((subject) => {
                 // Handle both string and object formats
                 return (
-                  <SelectItem key={subject} value={subject} className="text-white hover:bg-slate-700">
+                  <SelectItem key={subject} value={subject} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
                     {subject}
                   </SelectItem>
                 );
@@ -668,39 +571,12 @@ export default function UsersPage() {
             </SelectContent>
           </Select>
 
-          <Select value={approvalStatusFilter} onValueChange={(v) => { setApprovalStatusFilter(v); resetPage(); }}>
-            <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
-              <SelectValue placeholder="Approval Status" />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-100 dark:bg-slate-800 border-slate-700">
-              <SelectItem value="all" className="text-white hover:bg-slate-700">All Statuses</SelectItem>
-              <SelectItem value="PENDING" className="text-white hover:bg-slate-700">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-amber-500" />
-                  Pending
-                </div>
-              </SelectItem>
-              <SelectItem value="APPROVED" className="text-white hover:bg-slate-700">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  Approved
-                </div>
-              </SelectItem>
-              <SelectItem value="REJECTED" className="text-white hover:bg-slate-700">
-                <div className="flex items-center gap-2">
-                  <XCircle className="h-4 w-4 text-red-500" />
-                  Rejected
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <button
-              className={`w-full p-2 rounded-lg duration-300 ${showOnlyInactive 
-                ? "bg-linear-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white border border-transparent" 
+              className={`w-full p-2 rounded-lg duration-300 ${showOnlyInactive
+                ? "bg-linear-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white border border-transparent"
                 : "bg-blue-500 border-slate-300 dark:border-transparent hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700/50  dark:hover:text-white"
-              }`}
+                }`}
               onClick={() => {
                 setShowOnlyInactive(!showOnlyInactive);
                 resetPage();
@@ -714,7 +590,7 @@ export default function UsersPage() {
         {/* Bulk Actions */}
         <AnimatePresence mode="wait">
           {selectedUsers.length > 0 && (
-            <motion.div 
+            <motion.div
               className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-center justify-between"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -741,14 +617,14 @@ export default function UsersPage() {
       </motion.div>
 
       {/* Users Table */}
-      <motion.div 
+      <motion.div
         className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
         variants={cardVariants}
       >
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                 <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
                   <div className="flex items-center gap-2">
                     <Checkbox
@@ -777,10 +653,6 @@ export default function UsersPage() {
                   <BookOpen className="h-4 w-4 inline mr-1" />
                   Classes & Subjects
                 </th>
-                <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
-                  <Clock className="h-4 w-4 inline mr-1" />
-                  Status
-                </th>
                 <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Actions</th>
               </tr>
             </thead>
@@ -791,7 +663,7 @@ export default function UsersPage() {
         </div>
 
         {/* Pagination Controls - Always show, centered */}
-        <motion.div 
+        <motion.div
           className="flex flex-col items-center gap-4 p-4 border-t border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30"
           variants={itemVariants}
         >
@@ -807,21 +679,21 @@ export default function UsersPage() {
             </Button>
             <div className="flex items-center gap-1 max-w-[250px] overflow-x-auto overflow-hidden scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
               {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((pageNum) => (
-                  <motion.div key={pageNum} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button
-                      variant={currentPage === pageNum ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(pageNum)}
-                      disabled={isFetching}
-                      className={`flex-shrink-0 ${currentPage === pageNum 
-                        ? "bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white border-0 min-w-[36px]" 
-                        : "bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white min-w-[36px]"
+                <motion.div key={pageNum} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    disabled={isFetching}
+                    className={`flex-shrink-0 ${currentPage === pageNum
+                      ? "bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white border-0 min-w-[36px]"
+                      : "bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white min-w-[36px]"
                       }`}
-                    >
-                      {pageNum}
-                    </Button>
-                  </motion.div>
-                ))}
+                  >
+                    {pageNum}
+                  </Button>
+                </motion.div>
+              ))}
             </div>
             <Button
               variant="outline"
@@ -848,7 +720,7 @@ export default function UsersPage() {
         onOpenChange={setNotificationDialogOpen}
         recipientUserIds={currentUserForNotification ? [currentUserForNotification] : selectedUsers}
         selectedUsers={
-          currentUserForNotification 
+          currentUserForNotification
             ? users.filter(u => u.id === currentUserForNotification)
             : users.filter(u => selectedUsers.includes(u.id))
         }
@@ -867,7 +739,7 @@ export default function UsersPage() {
               Review complete user profile information before approving or rejecting
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedUserForDetail && (
             <div className="space-y-6">
               {/* Basic Info */}
@@ -894,12 +766,12 @@ export default function UsersPage() {
                   </div>
                   <div>
                     <label className="text-sm text-slate-500">Email</label>
-                     <div className='flex items-center gap-2'>
-                       <p className="text-slate-900 dark:text-white font-medium">{selectedUserForDetail.email || '-'}</p>
-                       {selectedUserForDetail.email && (
-                          <CopyEmailButton email={selectedUserForDetail.email} />
-                         )}
-                     </div>
+                    <div className='flex items-center gap-2'>
+                      <p className="text-slate-900 dark:text-white font-medium">{selectedUserForDetail.email || '-'}</p>
+                      {selectedUserForDetail.email && (
+                        <CopyEmailButton email={selectedUserForDetail.email} />
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -964,65 +836,10 @@ export default function UsersPage() {
                   </div>
                 </div>
               )}
-
-              {/* Approval Status */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 space-y-3">
-                <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-amber-500" />
-                  Approval Status
-                </h3>
-                <div className="flex items-center gap-4">
-                  {selectedUserForDetail.faculty?.approval_status === 'PENDING' && (
-                    <Badge className="bg-amber-500/20 text-amber-500 border border-amber-500/30 flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Pending Approval
-                    </Badge>
-                  )}
-                  {selectedUserForDetail.faculty?.approval_status === 'APPROVED' && (
-                    <Badge className="bg-green-500/20 text-green-500 border border-green-500/30 flex items-center gap-1">
-                      <CheckCircle className="h-3 w-3" />
-                      Approved
-                    </Badge>
-                  )}
-                  {selectedUserForDetail.faculty?.approval_status === 'REJECTED' && (
-                    <Badge className="bg-red-500/20 text-red-500 border border-red-500/30 flex items-center gap-1">
-                      <XCircle className="h-3 w-3" />
-                      Rejected
-                    </Badge>
-                  )}
-                </div>
-              </div>
             </div>
           )}
 
           <DialogFooter className="flex gap-2 mt-4">
-            {selectedUserForDetail?.faculty?.approval_status === 'PENDING' && (
-              <>
-                <Button
-                  onClick={() => {
-                    handleApprove(selectedUserForDetail.id);
-                    setUserDetailDialogOpen(false);
-                  }}
-                  disabled={approveUserMutation.isPending}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Approve
-                </Button>
-                <Button
-                  onClick={() => {
-                    setUserDetailDialogOpen(false);
-                    setSelectedUserForReject(selectedUserForDetail);
-                    setRejectDialogOpen(true);
-                  }}
-                  variant="destructive"
-                  disabled={approveUserMutation.isPending}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Reject
-                </Button>
-              </>
-            )}
             <Button
               variant="outline"
               onClick={() => setUserDetailDialogOpen(false)}
@@ -1033,66 +850,7 @@ export default function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Reject User Dialog */}
-      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-red-500" />
-              Reject User
-            </DialogTitle>
-            <DialogDescription className="text-slate-500">
-              Are you sure you want to reject {selectedUserForReject?.name}? You can optionally provide a reason.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                Rejection Reason (Optional)
-              </label>
-              <Textarea
-                placeholder="Enter reason for rejection..."
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white"
-                rows={3}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2 mt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setRejectDialogOpen(false);
-                setRejectionReason('');
-              }}
-              className="border-slate-300 dark:border-slate-600"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleReject}
-              disabled={approveUserMutation.isPending}
-              variant="destructive"
-            >
-              {approveUserMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Rejecting...
-                </>
-              ) : (
-                <>
-                  <X className="h-4 w-4 mr-2" />
-                  Reject User
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </motion.div>
   );
 }
+

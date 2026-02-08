@@ -25,12 +25,12 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { 
-  Upload, 
-  FileText, 
-  Loader2, 
-  ChevronDown, 
-  ChevronUp, 
+import {
+  Upload,
+  FileText,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
   Send,
   Eye,
   Calendar,
@@ -84,8 +84,8 @@ const tableRowVariants = {
 
 const cardVariants = {
   hidden: { opacity: 0, scale: 0.95 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     scale: 1,
     transition: { duration: 0.3 }
   }
@@ -95,6 +95,7 @@ export default function CircularsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
   const [isSchoolListExpanded, setIsSchoolListExpanded] = useState(false);
+  const [schoolSearch, setSchoolSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const pageSize = 20;
@@ -159,7 +160,7 @@ export default function CircularsPage() {
   });
 
   // Fetch schools based on selected district
-  const { data: schools = [] } = useQuery<School[]>({
+  const { data: schools = [], isFetching: schoolsFetching } = useQuery<School[]>({
     queryKey: ['schools', selectedDistrictId],
     queryFn: () => masterDataApi.getSchools(selectedDistrictId !== 'all' ? selectedDistrictId : undefined),
     enabled: !!selectedDistrictId && selectedDistrictId !== 'all',
@@ -218,8 +219,8 @@ export default function CircularsPage() {
   const handleViewFile = (fileUrl: string) => {
     if (fileUrl && fileUrl !== '#') {
       // Open Appwrite file URL directly in new tab
-      const fullUrl = fileUrl.startsWith('http') 
-        ? fileUrl 
+      const fullUrl = fileUrl.startsWith('http')
+        ? fileUrl
         : `${process.env.NEXT_PUBLIC_API_BASE_URL}${fileUrl}`;
       window.open(fullUrl, '_blank', 'noopener,noreferrer');
     }
@@ -234,7 +235,7 @@ export default function CircularsPage() {
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-8 p-2"
       variants={containerVariants}
       initial="hidden"
@@ -253,7 +254,7 @@ export default function CircularsPage() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create New Circular</h1>
         </div>
 
-        <motion.div 
+        <motion.div
           className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-xl"
           variants={cardVariants}
         >
@@ -305,7 +306,7 @@ export default function CircularsPage() {
               </motion.div>
 
               {/* Issued By and Dates Row */}
-              <motion.div 
+              <motion.div
                 className="grid grid-cols-1 md:grid-cols-3 gap-4"
                 variants={itemVariants}
               >
@@ -374,7 +375,7 @@ export default function CircularsPage() {
               </motion.div>
 
               {/* Filters Row */}
-              <motion.div 
+              <motion.div
                 className="grid grid-cols-1 md:grid-cols-2 gap-4"
                 variants={itemVariants}
               >
@@ -391,6 +392,7 @@ export default function CircularsPage() {
                       <Select onValueChange={(value) => {
                         field.onChange(value);
                         setSelectedSchools([]);
+                        setSchoolSearch('');
                       }} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-blue-500/50 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
@@ -426,12 +428,11 @@ export default function CircularsPage() {
                       </FormLabel>
                       <FormControl>
                         <div className="flex items-center gap-2">
-                          <motion.label 
-                            className={`flex items-center gap-3 h-10 px-4 rounded-lg cursor-pointer transition-all border flex-1 ${
-                              selectedFile 
-                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-600 dark:text-emerald-400' 
-                                : 'bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-400 dark:hover:border-slate-500'
-                            }`}
+                          <motion.label
+                            className={`flex items-center gap-3 h-10 px-4 rounded-lg cursor-pointer transition-all border flex-1 ${selectedFile
+                              ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-600 dark:text-emerald-400'
+                              : 'bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-400 dark:hover:border-slate-500'
+                              }`}
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.99 }}
                           >
@@ -486,7 +487,7 @@ export default function CircularsPage() {
               {/* Multi-Select Schools Section */}
               <AnimatePresence>
                 {selectedDistrictId && selectedDistrictId !== 'all' && (
-                  <motion.div 
+                  <motion.div
                     className="space-y-3"
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -496,7 +497,7 @@ export default function CircularsPage() {
                     <div className="flex items-center justify-between">
                       <label className="text-slate-700 dark:text-slate-300 text-sm font-medium flex items-center gap-2">
                         <Building2 className="h-4 w-4 text-cyan-500" />
-                        Select Schools 
+                        Select Schools
                         <span className="bg-blue-500/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full text-xs">
                           {selectedSchools.length} selected
                         </span>
@@ -510,7 +511,7 @@ export default function CircularsPage() {
                         >
                           {selectedSchools.length === schools.length ? 'Deselect All' : 'Select All'}
                         </motion.button>
-                        
+
                         <motion.button
                           type="button"
                           onClick={() => setIsSchoolListExpanded(!isSchoolListExpanded)}
@@ -532,46 +533,68 @@ export default function CircularsPage() {
                         </motion.button>
                       </div>
                     </div>
-                    
-                    <motion.div 
-                      className={`bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 rounded-xl p-3 overflow-y-auto transition-all duration-300 ${
-                        isSchoolListExpanded ? 'max-h-72' : 'max-h-36'
-                      }`}
+
+                    {/* School Search Input */}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input
+                        placeholder="Search schools by name or code..."
+                        value={schoolSearch}
+                        onChange={(e) => setSchoolSearch(e.target.value)}
+                        className="pl-10 bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      />
+                    </div>
+
+                    <motion.div
+                      className={`bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 rounded-xl p-3 overflow-y-auto transition-all duration-300 ${isSchoolListExpanded ? 'max-h-72' : 'max-h-36'
+                        }`}
                       layout
                     >
-                      {schools.length === 0 ? (
+                      {schoolsFetching ? (
+                        <div className="flex items-center justify-center py-6 gap-2">
+                          <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                          <span className="text-slate-500 text-sm">Loading schools...</span>
+                        </div>
+                      ) : schools.length === 0 ? (
                         <p className="text-slate-500 text-sm text-center py-4">No schools found in this district</p>
-                      ) : (
-                        <div className="space-y-1">
-                          {schools.map((school, index) => (
-                            <motion.label
-                              key={school.id}
-                              className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors ${
-                                selectedSchools.includes(school.id)
+                      ) : (() => {
+                        const filteredSchools = schools.filter(school =>
+                          school.name.toLowerCase().includes(schoolSearch.toLowerCase()) ||
+                          school.registration_code?.toLowerCase().includes(schoolSearch.toLowerCase())
+                        );
+                        return filteredSchools.length === 0 ? (
+                          <p className="text-slate-500 text-sm text-center py-4">No schools match your search</p>
+                        ) : (
+                          <div className="space-y-1">
+                            {filteredSchools.map((school, index) => (
+                              <motion.label
+                                key={school.id}
+                                className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors ${selectedSchools.includes(school.id)
                                   ? 'bg-blue-500/10 border border-blue-500/30'
                                   : 'hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-transparent'
-                              }`}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: index * 0.02 }}
-                            >
-                              <Checkbox
-                                checked={selectedSchools.includes(school.id)}
-                                onCheckedChange={(checked) => handleSchoolToggle(school.id, checked as boolean)}
-                                className="border-slate-400 dark:border-slate-500 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
-                              />
-                              <span className="text-slate-700 dark:text-slate-300 text-sm flex-1">{school.name}</span>
-                              <span className="text-slate-500 dark:text-slate-500 text-xs font-mono bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded">
-                                {school.registration_code}
-                              </span>
-                            </motion.label>
-                          ))}
-                        </div>
-                      )}
+                                  }`}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.02 }}
+                              >
+                                <Checkbox
+                                  checked={selectedSchools.includes(school.id)}
+                                  onCheckedChange={(checked) => handleSchoolToggle(school.id, checked as boolean)}
+                                  className="border-slate-400 dark:border-slate-500 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                                />
+                                <span className="text-slate-700 dark:text-slate-300 text-sm flex-1">{school.name}</span>
+                                <span className="text-slate-500 dark:text-slate-500 text-xs font-mono bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded">
+                                  {school.registration_code}
+                                </span>
+                              </motion.label>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </motion.div>
-                    
+
                     {selectedSchools.length === 0 && (
-                      <motion.p 
+                      <motion.p
                         className="text-amber-400 text-xs bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-center gap-2"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -586,7 +609,7 @@ export default function CircularsPage() {
               {/* Info message for global circulars */}
               <AnimatePresence>
                 {(!selectedDistrictId || selectedDistrictId === 'all') && (
-                  <motion.p 
+                  <motion.p
                     className="text-blue-400 text-xs bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex items-center gap-2"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -606,7 +629,7 @@ export default function CircularsPage() {
                   className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white py-6 text-lg font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50"
                 >
                   {form.formState.isSubmitting ? (
-                    <motion.div 
+                    <motion.div
                       className="flex items-center gap-2"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -615,7 +638,7 @@ export default function CircularsPage() {
                       Creating Circular...
                     </motion.div>
                   ) : (
-                    <motion.div 
+                    <motion.div
                       className="flex items-center gap-2"
                       whileHover={{ scale: 1.02 }}
                     >
@@ -647,7 +670,7 @@ export default function CircularsPage() {
             </span>
             <RefreshTableButton queryKey={['circulars', searchQuery]} isFetching={circularsFetching && !isFetchingNextPage} />
           </div>
-          
+
           {/* Search Input */}
           <div className="relative w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -663,7 +686,7 @@ export default function CircularsPage() {
           </div>
         </div>
 
-        <motion.div 
+        <motion.div
           className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl relative"
           variants={cardVariants}
         >
@@ -688,7 +711,7 @@ export default function CircularsPage() {
               <span className="text-slate-400">Loading circulars...</span>
             </div>
           ) : circularsError ? (
-            <motion.div 
+            <motion.div
               className="text-center py-16"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -696,14 +719,14 @@ export default function CircularsPage() {
               <RetryButton queryKey={['circulars', searchQuery]} message="Failed to load circulars" />
             </motion.div>
           ) : allCirculars.length === 0 ? (
-            <motion.div 
+            <motion.div
               className="text-center py-16"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
             >
-            <FileText className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
-            <div className="text-slate-500 dark:text-slate-400 text-lg">No circulars found</div>
-            <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Create your first circular above</p>
+              <FileText className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
+              <div className="text-slate-500 dark:text-slate-400 text-lg">No circulars found</div>
+              <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Create your first circular above</p>
             </motion.div>
           ) : (
             <div className="overflow-x-auto">
@@ -784,7 +807,7 @@ export default function CircularsPage() {
               </table>
             </div>
           )}
-          
+
           {/* Load More / Status */}
           {allCirculars.length > 0 && (
             <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50">

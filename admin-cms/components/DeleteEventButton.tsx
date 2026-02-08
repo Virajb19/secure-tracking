@@ -26,29 +26,29 @@ interface DeleteEventButtonProps {
 
 export function DeleteEventButton({ eventId, eventTitle, onDeletingChange }: DeleteEventButtonProps) {
   const [open, setOpen] = useState(false);
-  
+
   // Check if any delete-event mutation is in progress
   const isDeletingAny = useIsMutating({ mutationKey: ['delete-event'] }) > 0;
 
   const queryClient = useQueryClient();
 
   const deleteEventMutation = useMutation({
-       mutationKey: ['delete-event'],
-          mutationFn: async (eventId: string) => {
-            return eventsApi.delete(eventId);
-          },
-          onSuccess: () => {
-            showSuccessToast('Event deleted successfully');
-            setOpen(false);        
-          },
-          onError: (error: any) => {
-            console.log(error?.response?.data?.message || 'Failed to delete event');
-            showErrorToast(error?.response?.data?.message || 'Failed to delete event');
-          },
-          onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['events'], exact: false });
-            queryClient.invalidateQueries({ queryKey: ['events-infinite'], exact: false });
-          }
+    mutationKey: ['delete-event'],
+    mutationFn: async (eventId: string) => {
+      return eventsApi.delete(eventId);
+    },
+    onSuccess: () => {
+      showSuccessToast('Event deleted successfully');
+      setOpen(false);
+    },
+    onError: (error: any) => {
+      console.log(error?.response?.data?.message || 'Failed to delete event');
+      showErrorToast(error?.response?.data?.message || 'Failed to delete event');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['events-infinite'], exact: false });
+    }
   })
 
   const handleDelete = async () => {
@@ -56,7 +56,7 @@ export function DeleteEventButton({ eventId, eventTitle, onDeletingChange }: Del
       onDeletingChange?.(true);
       await deleteEventMutation.mutateAsync(eventId);
     } catch (error: any) {
-       console.log('Error deleting event:', error);
+      console.log('Error deleting event:', error);
     } finally {
       onDeletingChange?.(false);
     }
@@ -72,24 +72,24 @@ export function DeleteEventButton({ eventId, eventTitle, onDeletingChange }: Del
           whileTap={{ scale: isDeletingAny ? 1 : 0.9 }}
           disabled={deleteEventMutation.isPending}
         >
-             {deleteEventMutation.isPending ? (
-                <div className='size-4 border-2 border-t-[3px] border-white/20 border-t-red-600 rounded-full animate-spin'/>
-            ) : (
-               <Trash2 size={18} />
-            )}
+          {deleteEventMutation.isPending ? (
+            <div className='size-4 border-2 border-t-[3px] border-slate-200 dark:border-white/20 border-t-red-600 rounded-full animate-spin' />
+          ) : (
+            <Trash2 size={18} />
+          )}
         </motion.button>
       </AlertDialogTrigger>
-      <AlertDialogContent className="bg-slate-900 border-slate-700/50 rounded-2xl">
+      <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700/50 rounded-2xl">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-white text-lg font-semibold">Delete Event</AlertDialogTitle>
-          <AlertDialogDescription className="text-slate-400">
+          <AlertDialogTitle className="text-slate-900 dark:text-white text-lg font-semibold">Delete Event</AlertDialogTitle>
+          <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
             Are you sure you want to delete "{eventTitle}"?
             <br />
-            <span className="text-red-400 font-medium">This action cannot be undone.</span>
+            <span className="text-red-500 dark:text-red-400 font-medium">This action cannot be undone.</span>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="gap-3 mt-4">
-          <AlertDialogCancel className="bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white transition-all duration-200">
+          <AlertDialogCancel className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-all duration-200">
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction

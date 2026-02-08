@@ -14,7 +14,6 @@ import {
 import { Search, Bell, FileText, Calendar, Building2, Tag, Paperclip, MessageSquare, RefreshCw, Loader2 } from 'lucide-react';
 import { DeleteNoticeButton } from '@/components/DeleteNoticeButton';
 import { ViewNoticeButton } from '@/components/ViewNoticeButton';
-import { ExpandableText } from '@/components/ExpandableText';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
 import { TableRowsSkeleton } from '@/components/TableSkeleton';
 import { useQueryClient } from '@tanstack/react-query';
@@ -413,22 +412,20 @@ export default function NotificationsPage() {
                           {notice.title}
                         </span>
                       </td>
-                      <td className="py-4 px-5">
+                      <td className="py-4 px-5 min-w-[120px]">
                         <Badge className={typeStyles[notice.type] || typeStyles['GENERAL']}>
                           {noticeTypeLabels[notice.type as NoticeType] || 'General'}
                         </Badge>
                       </td>
-                      <td className="py-4 px-5 max-w-[300px]">
-                        <ExpandableText
-                          text={notice.content}
-                          maxLength={60}
-                          className="text-slate-600 dark:text-slate-400 text-sm"
-                        />
+                      <td className="py-4 px-5 max-w-[400px]">
+                        <span className="text-slate-600 dark:text-slate-400 text-sm whitespace-pre-wrap">
+                          {notice.content}
+                        </span>
                       </td>
-                      <td className="py-4 px-5 text-slate-700 dark:text-slate-300 max-w-[200px] truncate" title={notice.school?.name || 'All Schools'}>
+                      <td className="py-4 px-5 text-slate-700 dark:text-slate-300 min-w-[150px]">
                         {notice.school?.name || 'All Schools'}
                       </td>
-                      <td className="py-4 px-5 text-slate-600 dark:text-slate-400">{formatDate(notice.created_at)}</td>
+                      <td className="py-4 px-5 text-slate-600 dark:text-slate-400 min-w-[100px] whitespace-nowrap">{formatDate(notice.created_at)}</td>
                       <td className="py-4 px-5">
                         <Badge className={notice.file_url
                           ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'

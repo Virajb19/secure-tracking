@@ -25,6 +25,7 @@ export function DeleteTicketButton({ ticketId }: DeleteTicketButtonProps) {
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation({
+    mutationKey: ['delete-ticket'],
     mutationFn: helpdeskApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['helpdesk-tickets'] });
@@ -46,7 +47,7 @@ export function DeleteTicketButton({ ticketId }: DeleteTicketButtonProps) {
           whileTap={{ scale: 0.9 }}
         >
           {deleteMutation.isPending ? (
-             <div className='size-4 border-2 border-t-[3px] border-white/20 border-t-red-600 rounded-full animate-spin'/>
+            <div className='size-4 border-2 border-t-[3px] border-slate-200 dark:border-white/20 border-t-red-600 rounded-full animate-spin' />
           ) : (
             <Trash2 className="h-5 w-5 text-red-600" />
           )}
