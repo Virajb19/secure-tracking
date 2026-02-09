@@ -36,7 +36,7 @@ const prisma = new PrismaClient();
 
 const randomElement = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const randomInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
-const randomDecimal = (min: number, max: number, decimals: number = 7): number => 
+const randomDecimal = (min: number, max: number, decimals: number = 7): number =>
     parseFloat((Math.random() * (max - min) + min).toFixed(decimals));
 const randomBoolean = (probability: number = 0.5): boolean => Math.random() < probability;
 
@@ -108,7 +108,7 @@ const designations = [
 ];
 
 const qualifications = [
-    'M.Ed', 'B.Ed', 'M.A.', 'M.Sc.', 'M.Com.', 'Ph.D.', 'B.A.', 'B.Sc.', 'B.Com.', 
+    'M.Ed', 'B.Ed', 'M.A.', 'M.Sc.', 'M.Com.', 'Ph.D.', 'B.A.', 'B.Sc.', 'B.Com.',
     'M.Phil.', 'NET', 'SET', 'D.Ed', 'M.A. (English)', 'M.Sc. (Mathematics)', 'M.Sc. (Physics)'
 ];
 
@@ -186,12 +186,12 @@ const formTypes = ['6A', '6B', '6C_LOWER', '6C_HIGHER', '6D'];
 const generateName = (): string => `${randomElement(firstNames)} ${randomElement(lastNames)}`;
 const generateEmail = (index: number): string => `user${index}_${Date.now() % 100000}@example.com`;
 const generatePhone = (index: number): string => `${randomInt(70000, 99999)}${String(index).padStart(5, '0')}`;
-const generateSchoolName = (district: string, index: number): string => 
+const generateSchoolName = (district: string, index: number): string =>
     `${randomElement(schoolPrefixes)} ${randomElement(schoolSuffixes)}, ${district} #${index}`;
 const generateRegCode = (index: number): string => `SCH${String(index).padStart(6, '0')}`;
 const generatePackCode = (index: number): string => `SP${new Date().getFullYear()}${String(index).padStart(6, '0')}`;
 const generateCircularNo = (index: number): string => `CIRC/${new Date().getFullYear()}/${String(index).padStart(4, '0')}`;
-const generateImageHash = (): string => 
+const generateImageHash = (): string =>
     Array.from({ length: 64 }, () => randomElement('0123456789abcdef'.split(''))).join('');
 
 const generateDate = (startYear: number, endYear: number): Date => {
@@ -231,6 +231,7 @@ async function main() {
     await prisma.paperSetterSelection.deleteMany();
     await prisma.notificationLog.deleteMany();
     await prisma.helpdesk.deleteMany();
+    await prisma.circularSchool.deleteMany();  // M2M join table - delete before circulars
     await prisma.circular.deleteMany();
     await prisma.noticeRecipient.deleteMany();
     await prisma.notice.deleteMany();
@@ -257,15 +258,15 @@ async function main() {
 
     // ==================== ADMIN, SUBJECT COORDINATOR, ASSISTANT (KEEP INTACT) ====================
     console.log('Creating Admin, Subject Coordinator, Assistant...');
-    await prisma.user.create({data: {name: 'Ritik Raj', email: 'admin@gmail.com', password: plainPassword, role: 'ADMIN', is_active: true, phone: '1234567890', gender: 'MALE', profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin', created_at: new Date()}});
-    await prisma.user.create({data: {name: 'Viraj Bhardwaj', email: 'viraj@gmail.com', password: plainPassword, role: 'SUBJECT_COORDINATOR', is_active: true, phone: '9896008137', gender: 'MALE', profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin', created_at: new Date()}});
-    await prisma.user.create({data: {name: 'Bittu Raja', email: 'bittu@gmail.com', password: plainPassword, role: 'ASSISTANT', is_active: true, phone: '9876543210', gender: 'MALE', profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin', created_at: new Date()}});
+    await prisma.user.create({ data: { name: 'Ritik Raj', email: 'admin@gmail.com', password: plainPassword, role: 'ADMIN', is_active: true, phone: '1234567890', gender: 'MALE', profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin', created_at: new Date() } });
+    await prisma.user.create({ data: { name: 'Viraj Bhardwaj', email: 'viraj@gmail.com', password: plainPassword, role: 'SUBJECT_COORDINATOR', is_active: true, phone: '9896008137', gender: 'MALE', profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin', created_at: new Date() } });
+    await prisma.user.create({ data: { name: 'Bittu Raja', email: 'bittu@gmail.com', password: plainPassword, role: 'ASSISTANT', is_active: true, phone: '9876543210', gender: 'MALE', profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin', created_at: new Date() } });
     console.log('✅ Admin, Subject Coordinator, Assistant created\n');
 
     // ==================== DISTRICTS (16 Nagaland Districts) ====================
     console.log('🗺️  Creating 16 Nagaland districts...');
     const districts = await Promise.all(
-        nagalandDistricts.map((d, i) => 
+        nagalandDistricts.map((d, i) =>
             prisma.district.create({
                 data: {
                     name: d.name,
@@ -290,7 +291,7 @@ async function main() {
     // ==================== SCHOOLS (4000 records - weighted by district) ====================
     console.log('🏫 Creating 4000 schools (weighted distribution)...');
     const schoolData: { name: string; registration_code: string; district_id: string; created_at: Date }[] = [];
-    
+
     for (let i = 0; i < 4000; i++) {
         const district = getWeightedDistrict();
         schoolData.push({
@@ -305,7 +306,7 @@ async function main() {
     await processBatch(schoolData, 500, async (batch) => {
         await prisma.school.createMany({ data: batch });
     });
-    
+
     const schools = await prisma.school.findMany();
     console.log(`✅ Created ${schools.length} schools\n`);
 
@@ -319,7 +320,7 @@ async function main() {
 
     // ==================== USERS (18000+ records with VERY UNEVEN distribution) ====================
     console.log('👥 Creating 18000+ users with uneven district distribution...');
-    
+
     // User counts
     const SUPER_ADMIN_COUNT = 3;
     const ADMIN_COUNT = 20;
@@ -327,14 +328,14 @@ async function main() {
     const HEADMASTER_COUNT = 4000; // One per school approximately
     const TEACHER_COUNT = 15000;
     const CENTER_SUPERINTENDENT_COUNT = 800;
-    
-    const totalUsers = SUPER_ADMIN_COUNT + ADMIN_COUNT + SEBA_OFFICER_COUNT + 
-                       HEADMASTER_COUNT + TEACHER_COUNT + CENTER_SUPERINTENDENT_COUNT;
+
+    const totalUsers = SUPER_ADMIN_COUNT + ADMIN_COUNT + SEBA_OFFICER_COUNT +
+        HEADMASTER_COUNT + TEACHER_COUNT + CENTER_SUPERINTENDENT_COUNT;
 
     // Create uneven distribution - some districts have 10x more than others
     // This creates a nice histogram with varying bar heights
     const userDistribution: { district: typeof districtData[0]; count: number }[] = [];
-    
+
     // Calculate user counts per district based on weights
     let assignedUsers = 0;
     for (let i = 0; i < districtData.length; i++) {
@@ -356,14 +357,14 @@ async function main() {
     console.log('');
 
     // Create users in batches by role
-    const allUserData: { 
-        name: string; 
-        email: string; 
-        password: string; 
-        phone: string; 
-        role: UserRole; 
-        gender: Gender; 
-        is_active: boolean; 
+    const allUserData: {
+        name: string;
+        email: string;
+        password: string;
+        phone: string;
+        role: UserRole;
+        gender: Gender;
+        is_active: boolean;
         device_id: string | null;
         created_at: Date;
         districtId?: string;
@@ -479,8 +480,8 @@ async function main() {
     // Insert users in batches
     console.log(`📝 Inserting ${allUserData.length} users in batches...`);
     await processBatch(allUserData, 500, async (batch) => {
-        await prisma.user.createMany({ 
-            data: batch.map(({ districtId, ...user }) => user) 
+        await prisma.user.createMany({
+            data: batch.map(({ districtId, ...user }) => user)
         });
     });
 
@@ -505,7 +506,7 @@ async function main() {
 
     // ==================== FACULTY (15000+ records) ====================
     console.log('👨‍🏫 Creating faculty records for teachers and headmasters...');
-    
+
     const facultyData: {
         user_id: string;
         school_id: string;
@@ -538,7 +539,7 @@ async function main() {
     // Assign teachers to schools (distributed based on school's district weight)
     // Each school gets approximately 3-4 teachers on average
     const schoolsById = new Map(schools.map(s => [s.id, s]));
-    
+
     for (let i = 0; i < teachers.length; i++) {
         const school = schools[i % schools.length];
         facultyData.push({
@@ -577,7 +578,7 @@ async function main() {
             const classLevel = randomElement(classLevels);
             const subject = randomElement(subjects);
             const key = `${faculty.id}-${classLevel}-${subject}`;
-            
+
             if (!assignmentSet.has(key)) {
                 assignmentSet.add(key);
                 teachingAssignments.push({
@@ -614,15 +615,15 @@ async function main() {
 
     // ==================== STUDENT STRENGTH (20000 records - 5 classes × 4000 schools) ====================
     console.log('🎓 Creating student strength records...');
-    const studentStrengthData: { 
-        school_id: string; 
-        class_level: number; 
-        boys: number; 
-        girls: number; 
-        sections: number; 
-        created_at: Date 
+    const studentStrengthData: {
+        school_id: string;
+        class_level: number;
+        boys: number;
+        girls: number;
+        sections: number;
+        created_at: Date
     }[] = [];
-    
+
     for (const school of schools) {
         for (const classLevel of classLevels) {
             studentStrengthData.push({
@@ -662,7 +663,7 @@ async function main() {
         const startTime = generateFutureDate(90);
         const endTime = new Date(startTime);
         endTime.setHours(endTime.getHours() + randomInt(2, 10));
-        
+
         let status: TaskStatus;
         if (i < 1000) status = 'COMPLETED';
         else if (i < 1600) status = 'IN_PROGRESS';
@@ -712,7 +713,7 @@ async function main() {
     for (const task of tasks) {
         const isLegacy = randomBoolean(0.2);
         const types = isLegacy ? legacyEventTypes : eventTypesTask;
-        
+
         if (task.status === 'COMPLETED') {
             for (const eventType of types) {
                 taskEvents.push({
@@ -755,7 +756,7 @@ async function main() {
         'USER_LOGIN', 'USER_LOGOUT', 'USER_REGISTERED', 'TASK_CREATED', 'TASK_UPDATED',
         'PROFILE_UPDATED', 'FACULTY_APPROVED', 'EVENT_CREATED', 'NOTICE_PUBLISHED'
     ];
-    
+
     const auditData = Array.from({ length: 3000 }, () => ({
         user_id: randomBoolean(0.95) ? randomElement(users).id : null,
         action: randomElement(auditActions),
@@ -797,7 +798,7 @@ async function main() {
         const eventDate = generateFutureDate(180);
         const eventEndDate = randomBoolean(0.3) ? new Date(eventDate.getTime() + randomInt(1, 3) * 24 * 60 * 60 * 1000) : null;
         const district = getWeightedDistrict();
-        
+
         eventData.push({
             title: `${randomElement(['Annual', 'Monthly', 'Special', 'District'])} ${eventType} ${i + 1}`,
             description: `Event description for ${eventType}. This event aims to enhance the educational experience and bring together students, teachers, and parents for collaborative learning.`,
@@ -836,7 +837,7 @@ async function main() {
         responded_at: Date | null;
         created_at: Date;
     }[] = [];
-    
+
     for (const event of events.slice(0, 800)) {
         const numInvites = randomInt(2, 5);
         for (let j = 0; j < numInvites; j++) {
@@ -855,7 +856,7 @@ async function main() {
             }
         }
     }
-    
+
     await processBatch(invitations, 500, async (batch) => {
         await prisma.eventInvitation.createMany({ data: batch });
     });
@@ -893,7 +894,8 @@ async function main() {
     // ==================== CIRCULARS (800 records - ADMIN ONLY) ====================
     console.log('📄 Creating 800 circulars (admin-created only)...');
     const circularData = Array.from({ length: 800 }, (_, i) => {
-        const isDistrictLevel = randomBoolean(0.5);
+        const isDistrictLevel = randomBoolean(0.3);  // 30% district-level
+        const isMultiSchool = !isDistrictLevel && randomBoolean(0.4);  // 40% of remaining are multi-school
         const district = getWeightedDistrict();
         return {
             circular_no: generateCircularNo(i + 1),
@@ -905,16 +907,54 @@ async function main() {
             effective_date: generateFutureDate(30),
             is_active: randomBoolean(0.95),
             district_id: isDistrictLevel ? district.id : null,
-            school_id: !isDistrictLevel && randomBoolean(0.3) ? randomElement(schools).id : null,
+            // Only set school_id for single-school circulars (not multi-school)
+            school_id: (!isDistrictLevel && !isMultiSchool && randomBoolean(0.5)) ? randomElement(schools).id : null,
             created_by: randomElement(admins).id,
             created_at: generateDate(2024, 2025),
+            _isMultiSchool: isMultiSchool,  // Marker for CircularSchool creation
+            _districtId: district.id,  // Store for filtering schools
         };
     });
 
     await processBatch(circularData, 200, async (batch) => {
-        await prisma.circular.createMany({ data: batch });
+        await prisma.circular.createMany({
+            data: batch.map(({ _isMultiSchool, _districtId, ...c }) => c)
+        });
     });
-    console.log(`✅ Created 800 circulars\n`);
+
+    const circulars = await prisma.circular.findMany();
+    console.log(`✅ Created ${circulars.length} circulars\n`);
+
+    // ==================== CIRCULAR SCHOOLS (M2M for multi-school circulars) ====================
+    console.log('🔗 Creating CircularSchool M2M entries for multi-school circulars...');
+    const circularSchoolData: { circular_id: string; school_id: string }[] = [];
+
+    // For each multi-school circular, link it to 3-8 random schools from a district
+    for (let i = 0; i < circularData.length; i++) {
+        const circularMeta = circularData[i];
+        if (circularMeta._isMultiSchool) {
+            const circular = circulars[i];
+            // Get schools from the district
+            const districtSchools = schools.filter(s => s.district_id === circularMeta._districtId);
+            const numSchools = Math.min(randomInt(3, 8), districtSchools.length);
+
+            // Pick random schools
+            const shuffled = [...districtSchools].sort(() => 0.5 - Math.random());
+            for (let j = 0; j < numSchools; j++) {
+                circularSchoolData.push({
+                    circular_id: circular.id,
+                    school_id: shuffled[j].id,
+                });
+            }
+        }
+    }
+
+    if (circularSchoolData.length > 0) {
+        await processBatch(circularSchoolData, 500, async (batch) => {
+            await prisma.circularSchool.createMany({ data: batch });
+        });
+    }
+    console.log(`✅ Created ${circularSchoolData.length} CircularSchool M2M entries\n`);
 
     // ==================== HELPDESK TICKETS (500 records) ====================
     console.log('🎫 Creating 500 helpdesk tickets...');
@@ -976,7 +1016,7 @@ async function main() {
         const subject = randomElement(subjects);
         const classLevel = randomElement([10, 12]);
         const key = `${teacher.id}-${subject}-${classLevel}`;
-        
+
         if (!selectionSet.has(key)) {
             selectionSet.add(key);
             paperSetterSelections.push({
@@ -1003,7 +1043,7 @@ async function main() {
     console.log('🏦 Creating 500 bank details...');
     const bankNames = ['State Bank of India', 'HDFC Bank', 'ICICI Bank', 'Axis Bank', 'Punjab National Bank', 'Bank of Baroda', 'Canara Bank'];
     const selectedTeachers = teachers.slice(0, 500);
-    
+
     const bankData = selectedTeachers.map((teacher, i) => ({
         user_id: teacher.id,
         account_number: `${randomInt(100000000, 999999999)}`,
@@ -1028,12 +1068,12 @@ async function main() {
         starred_user_id: string;
         created_at: Date;
     }[] = [];
-    
+
     for (let i = 0; i < 300; i++) {
         const admin = randomElement(admins);
         const starredUser = randomElement([...teachers.slice(0, 3000), ...headmasters.slice(0, 1000)]);
         const key = `${admin.id}-${starredUser.id}`;
-        
+
         if (!starSet.has(key)) {
             starSet.add(key);
             userStars.push({
@@ -1043,7 +1083,7 @@ async function main() {
             });
         }
     }
-    
+
     await prisma.userStar.createMany({ data: userStars });
     console.log(`✅ Created ${userStars.length} user stars\n`);
 
@@ -1061,13 +1101,13 @@ async function main() {
         approved_at: Date | null;
         created_at: Date;
     }[] = [];
-    
+
     for (let i = 0; i < 600; i++) {
         const school = randomElement(schools);
         const headmaster = randomElement(headmasters);
         const formType = randomElement(formTypes);
         const key = `${school.id}-${formType}`;
-        
+
         if (!formSubmissionSet.has(key)) {
             formSubmissionSet.add(key);
             const status = randomElement(['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'] as FormSubmissionStatus[]);
@@ -1084,7 +1124,7 @@ async function main() {
             });
         }
     }
-    
+
     await processBatch(formSubmissions, 200, async (batch) => {
         await prisma.formSubmission.createMany({ data: batch });
     });
@@ -1127,7 +1167,7 @@ async function main() {
     console.log(`   - Avg ${(schools.length / districts.length).toFixed(1)} schools per district`);
     console.log(`   - Avg ${(faculties.length / schools.length).toFixed(1)} faculty per school`);
     console.log(`   - Avg ${(teachingAssignments.length / teachingFaculty.length).toFixed(1)} assignments per teaching faculty`);
-    
+
     console.log('\n📊 District-wise User Distribution (for histogram):');
     for (const d of districtData) {
         const districtSchools = schools.filter(s => s.district_id === d.id);

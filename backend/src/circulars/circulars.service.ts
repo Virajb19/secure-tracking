@@ -75,19 +75,33 @@ export class CircularsService {
         const districtId = faculty?.school?.district_id;
 
         // Build filter conditions for visibility:
-        // 1. Global circulars (no school_id AND no district_id)
-        // 2. District-level circulars (matches user's district, no school_id)
-        // 3. School-level circulars (matches user's school)
+        // 1. Global circulars (no school_id AND no district_id AND no targeted schools)
+        // 2. District-level circulars (matches user's district, no school_id, no targeted schools)
+        // 3. School-level circulars (matches user's school via school_id)
+        // 4. Multi-school circulars (user's school is in targetedSchools M2M)
         const orConditions: object[] = [
-            { school_id: null, district_id: null }, // Global circulars
+            // Global circulars: no district, no school, no targeted schools
+            {
+                school_id: null,
+                district_id: null,
+                targetedSchools: { none: {} }
+            },
         ];
 
         if (districtId) {
-            orConditions.push({ district_id: districtId, school_id: null }); // District-level
+            // District-level circulars: matches district, no school, no targeted schools
+            orConditions.push({
+                district_id: districtId,
+                school_id: null,
+                targetedSchools: { none: {} }
+            });
         }
 
         if (schoolId) {
-            orConditions.push({ school_id: schoolId }); // School-level
+            // School-level circulars: direct school_id match
+            orConditions.push({ school_id: schoolId });
+            // Multi-school circulars: school is in M2M targetedSchools
+            orConditions.push({ targetedSchools: { some: { school_id: schoolId } } });
         }
 
         const where: any = {
@@ -245,8 +259,9 @@ export class CircularsService {
         }
 
         // IMPORTANT: Create ONE circular only!
-        // - If single school selected: link to that school
-        // - If multiple schools or no schools: create district/global level circular
+        // - If single school selected: use school_id (backward compatible)
+        // - If multiple schools: use CircularSchool M2M relation
+        // - If no schools: global/district level
         const singleSchoolId = schoolIds.length === 1 ? schoolIds[0] : null;
 
         const circular = await this.db.circular.create({
@@ -269,6 +284,17 @@ export class CircularsService {
                 creator: { select: { name: true } },
             },
         });
+
+        // If multiple schools selected, create CircularSchool entries (M2M)
+        if (schoolIds.length > 1) {
+            await this.db.circularSchool.createMany({
+                data: schoolIds.map(schoolId => ({
+                    circular_id: circular.id,
+                    school_id: schoolId,
+                })),
+            });
+            console.log(`[CircularsService] Created ${schoolIds.length} CircularSchool entries for circular ${circular.id}`);
+        }
 
         // Log the action
         await this.db.auditLog.create({
