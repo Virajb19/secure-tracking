@@ -10,7 +10,7 @@ export class CircularsService {
         private readonly db: PrismaService,
         private readonly appwrite: AppwriteService,
         private readonly notificationsService: NotificationsService,
-    ) {}
+    ) { }
 
     /**
      * Get all active circulars with pagination.
@@ -21,7 +21,7 @@ export class CircularsService {
         // Get user's school and district if they have a faculty profile
         const faculty = await this.db.faculty.findUnique({
             where: { user_id: userId },
-            select: { 
+            select: {
                 school_id: true,
                 school: { select: { district_id: true } }
             },
@@ -33,10 +33,13 @@ export class CircularsService {
             select: { role: true },
         });
 
-        // Admins see all circulars with pagination
-        if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
+        // CMS roles (Admin, SubjectCoordinator, Assistant) see all circulars with pagination
+        const isCmsRole = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ||
+            user?.role === 'SUBJECT_COORDINATOR' || user?.role === 'ASSISTANT';
+
+        if (isCmsRole) {
             const where: any = { is_active: true };
-            
+
             // Add search filter if provided
             if (search) {
                 where.OR = [
@@ -45,11 +48,11 @@ export class CircularsService {
                     { issued_by: { contains: search, mode: 'insensitive' } },
                 ];
             }
-            
+
             const [data, total] = await Promise.all([
                 this.db.circular.findMany({
                     where,
-                    orderBy: { issued_date: 'desc' },
+                    orderBy: [{ issued_date: 'desc' }, { created_at: 'desc' }],
                     take: limit,
                     skip: offset,
                     include: {
@@ -60,7 +63,7 @@ export class CircularsService {
                 }),
                 this.db.circular.count({ where }),
             ]);
-            
+
             return {
                 data,
                 total,
@@ -95,7 +98,7 @@ export class CircularsService {
         const [data, total] = await Promise.all([
             this.db.circular.findMany({
                 where,
-                orderBy: { issued_date: 'desc' },
+                orderBy: [{ issued_date: 'desc' }, { created_at: 'desc' }],
                 take: limit,
                 skip: offset,
                 include: {
@@ -135,7 +138,7 @@ export class CircularsService {
     async searchCirculars(userId: string, query: string) {
         const faculty = await this.db.faculty.findUnique({
             where: { user_id: userId },
-            select: { 
+            select: {
                 school_id: true,
                 school: { select: { district_id: true } }
             },
@@ -146,14 +149,16 @@ export class CircularsService {
             select: { role: true },
         });
 
-        const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+        // CMS roles see all circulars in search
+        const isCmsRole = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ||
+            user?.role === 'SUBJECT_COORDINATOR' || user?.role === 'ASSISTANT';
         const schoolId = faculty?.school_id;
         const districtId = faculty?.school?.district_id;
 
         // Build visibility filter
         let visibilityFilter: object = {};
-        
-        if (!isAdmin) {
+
+        if (!isCmsRole) {
             const orConditions: object[] = [
                 { school_id: null, district_id: null }, // Global
             ];
@@ -180,7 +185,7 @@ export class CircularsService {
                     visibilityFilter,
                 ],
             },
-            orderBy: { issued_date: 'desc' },
+            orderBy: [{ issued_date: 'desc' }, { created_at: 'desc' }],
             include: {
                 district: { select: { name: true } },
                 school: { select: { name: true } },
@@ -222,6 +227,15 @@ export class CircularsService {
             }
         }
 
+        // Generate circular number ONCE
+        const year = new Date().getFullYear();
+        const count = await this.db.circular.count({
+            where: {
+                circular_no: { startsWith: `CIRC/${year}/` },
+            },
+        });
+        const circularNo = `CIRC/${year}/${String(count + 1).padStart(4, '0')}`;
+
         // Determine school_ids - support both single school_id and multiple school_ids
         const schoolIds: string[] = [];
         if (dto.school_ids && dto.school_ids.length > 0) {
@@ -230,106 +244,56 @@ export class CircularsService {
             schoolIds.push(dto.school_id);
         }
 
-        const createdCirculars: any[] = [];
-        const year = new Date().getFullYear();
+        // IMPORTANT: Create ONE circular only!
+        // - If single school selected: link to that school
+        // - If multiple schools or no schools: create district/global level circular
+        const singleSchoolId = schoolIds.length === 1 ? schoolIds[0] : null;
 
-        // If no specific schools selected, create one global/district-level circular
+        const circular = await this.db.circular.create({
+            data: {
+                circular_no: circularNo,
+                title: dto.title,
+                description: dto.description || null,
+                file_url: fileUrl,
+                issued_by: dto.issued_by,
+                issued_date: new Date(dto.issued_date),
+                effective_date: dto.effective_date ? new Date(dto.effective_date) : null,
+                is_active: true,
+                district_id: dto.district_id || null,
+                school_id: singleSchoolId, // Only set if exactly 1 school selected
+                created_by: userId,
+            },
+            include: {
+                district: { select: { name: true } },
+                school: { select: { name: true } },
+                creator: { select: { name: true } },
+            },
+        });
+
+        // Log the action
+        await this.db.auditLog.create({
+            data: {
+                user_id: userId,
+                action: 'CIRCULAR_CREATED',
+                entity_type: 'Circular',
+                entity_id: circular.id,
+                ip_address: ip || null,
+            },
+        });
+
+        // Send notifications based on scope
         if (schoolIds.length === 0) {
-            const count = await this.db.circular.count({
-                where: {
-                    circular_no: { startsWith: `CIRC/${year}/` },
-                },
-            });
-            const circularNo = `CIRC/${year}/${String(count + 1).padStart(4, '0')}`;
-
-            const circular = await this.db.circular.create({
-                data: {
-                    circular_no: circularNo,
-                    title: dto.title,
-                    description: dto.description || null,
-                    file_url: fileUrl,
-                    issued_by: dto.issued_by,
-                    issued_date: new Date(dto.issued_date),
-                    effective_date: dto.effective_date ? new Date(dto.effective_date) : null,
-                    is_active: true,
-                    district_id: dto.district_id || null,
-                    school_id: null,
-                    created_by: userId,
-                },
-                include: {
-                    district: { select: { name: true } },
-                    school: { select: { name: true } },
-                    creator: { select: { name: true } },
-                },
-            });
-
-            createdCirculars.push(circular);
-
-            // Log the action
-            await this.db.auditLog.create({
-                data: {
-                    user_id: userId,
-                    action: 'CIRCULAR_CREATED',
-                    entity_type: 'Circular',
-                    entity_id: circular.id,
-                    ip_address: ip || null,
-                },
-            });
-
-            // Send notifications - if district-level, notify all schools in district
-            // If global, notify all teachers and headmasters
+            // Global or district-level: notify all in district or everyone
             await this.notifyCircularUsers(dto.title, dto.district_id, undefined);
+        } else if (schoolIds.length === 1) {
+            // Single school: notify that school
+            await this.notifyCircularUsers(dto.title, dto.district_id, schoolIds[0]);
         } else {
-            // Create a circular for each selected school
-            for (const schoolId of schoolIds) {
-                const count = await this.db.circular.count({
-                    where: {
-                        circular_no: { startsWith: `CIRC/${year}/` },
-                    },
-                });
-                const circularNo = `CIRC/${year}/${String(count + 1).padStart(4, '0')}`;
-
-                const circular = await this.db.circular.create({
-                    data: {
-                        circular_no: circularNo,
-                        title: dto.title,
-                        description: dto.description || null,
-                        file_url: fileUrl,
-                        issued_by: dto.issued_by,
-                        issued_date: new Date(dto.issued_date),
-                        effective_date: dto.effective_date ? new Date(dto.effective_date) : null,
-                        is_active: true,
-                        district_id: dto.district_id || null,
-                        school_id: schoolId,
-                        created_by: userId,
-                    },
-                    include: {
-                        district: { select: { name: true } },
-                        school: { select: { name: true } },
-                        creator: { select: { name: true } },
-                    },
-                });
-
-                createdCirculars.push(circular);
-
-                // Log the action for each circular
-                await this.db.auditLog.create({
-                    data: {
-                        user_id: userId,
-                        action: 'CIRCULAR_CREATED',
-                        entity_type: 'Circular',
-                        entity_id: circular.id,
-                        ip_address: ip || null,
-                    },
-                });
-            }
-
-            // Send Firebase notifications to all selected schools
+            // Multiple schools: notify each selected school
             await this.notifyMultipleSchools(dto.title, schoolIds);
         }
 
-        // Return first circular for backward compatibility, or all if multiple
-        return createdCirculars.length === 1 ? createdCirculars[0] : createdCirculars;
+        return circular;
     }
 
     /**
@@ -365,7 +329,7 @@ export class CircularsService {
         circularId: string,
         reason?: string | null,
         ip?: string | null,
-        ) {
+    ) {
         const circular = await this.db.circular.findUnique({
             where: { id: circularId },
         });
@@ -387,11 +351,11 @@ export class CircularsService {
         // Audit log (VERY IMPORTANT)
         await this.db.auditLog.create({
             data: {
-            user_id: adminId,
-            action: 'CIRCULAR_DELETED',
-            entity_type: 'Circular',
-            entity_id: circularId,
-            ip_address: ip || null,
+                user_id: adminId,
+                action: 'CIRCULAR_DELETED',
+                entity_type: 'Circular',
+                entity_id: circularId,
+                ip_address: ip || null,
             },
         });
 

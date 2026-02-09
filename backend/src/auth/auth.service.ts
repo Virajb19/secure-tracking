@@ -442,7 +442,7 @@ export class AuthService {
                 null,
                 ipAddress,
             );
-            throw new UnauthorizedException('Login failed. Please check your credentials.');
+            throw new UnauthorizedException('Login failed. Please check your email or password.');
         }
 
         // ONLY allow CMS roles to login via CMS
@@ -476,7 +476,7 @@ export class AuthService {
                 user.id,
                 ipAddress,
             );
-            throw new UnauthorizedException('Login failed. Please check your credentials.');
+            throw new UnauthorizedException('Login failed. Please check your email or password.');
         }
 
         // check if phone matches

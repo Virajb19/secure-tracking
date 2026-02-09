@@ -103,6 +103,9 @@ export default function CircularsPage() {
   const pageSize = 20;
   const queryClient = useQueryClient();
 
+  // Ref-based mutex lock to absolutely prevent double submissions
+  const isSubmittingRef = useRef(false);
+
   // Debounce the search
   const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
 
@@ -209,7 +212,8 @@ export default function CircularsPage() {
       return circularsApi.create(payload, selectedFile || undefined);
     },
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ['circulars'] });
+      // Invalidate all circular queries (matches any query starting with 'circulars')
+      queryClient.invalidateQueries({ queryKey: ['circulars'] });
       form.reset();
       setSelectedFile(null);
       setSelectedSchools([]);
@@ -223,7 +227,18 @@ export default function CircularsPage() {
   });
 
   const onSubmit = async (data: CircularFormSchema) => {
-    await createCircularMutation.mutateAsync(data);
+    // Ref-based mutex lock - synchronous check prevents ALL race conditions
+    if (isSubmittingRef.current || createCircularMutation.isPending) {
+      console.log('[CircularsPage] Blocked duplicate submission');
+      return;
+    }
+
+    isSubmittingRef.current = true;
+    try {
+      await createCircularMutation.mutateAsync(data);
+    } finally {
+      isSubmittingRef.current = false;
+    }
   };
 
   const handleViewFile = (fileUrl: string) => {
@@ -635,10 +650,10 @@ export default function CircularsPage() {
               <motion.div variants={itemVariants}>
                 <Button
                   type="submit"
-                  disabled={form.formState.isSubmitting}
+                  disabled={form.formState.isSubmitting || createCircularMutation.isPending}
                   className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white py-6 text-lg font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50"
                 >
-                  {form.formState.isSubmitting ? (
+                  {(form.formState.isSubmitting || createCircularMutation.isPending) ? (
                     <motion.div
                       className="flex items-center gap-2"
                       initial={{ opacity: 0 }}

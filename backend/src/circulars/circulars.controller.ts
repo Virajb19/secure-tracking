@@ -22,7 +22,7 @@ import { CreateCircularDto, CIRCULAR_MAX_FILE_SIZE } from './dto/create-circular
 @Controller('circulars')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CircularsController {
-    constructor(private readonly circularsService: CircularsService) {}
+    constructor(private readonly circularsService: CircularsService) { }
 
     /**
      * GET /circulars
@@ -30,7 +30,7 @@ export class CircularsController {
      * Anyone authenticated can view circulars.
      */
     @Get()
-    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SEBA_OFFICER, UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT, UserRole.SEBA_OFFICER, UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT)
     async getCirculars(
         @CurrentUser() user: User,
         @Query('limit') limit?: string,
@@ -50,7 +50,7 @@ export class CircularsController {
      * Search circulars by title or circular number.
      */
     @Get('search')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SEBA_OFFICER, UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT, UserRole.SEBA_OFFICER, UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT)
     async searchCirculars(
         @CurrentUser() user: User,
         @Query('q') query: string,
@@ -63,7 +63,7 @@ export class CircularsController {
      * Get a single circular by ID.
      */
     @Get(':id')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SEBA_OFFICER, UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT, UserRole.SEBA_OFFICER, UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT)
     async getCircularById(@Param('id') circularId: string) {
         return this.circularsService.getCircularById(circularId);
     }
@@ -75,7 +75,7 @@ export class CircularsController {
      * File uploads limited to 10MB.
      */
     @Post()
-    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     @UseInterceptors(FileInterceptor('file', {
         limits: { fileSize: CIRCULAR_MAX_FILE_SIZE }, // 10MB limit
     }))
@@ -88,12 +88,12 @@ export class CircularsController {
         // Handle school_ids[] array from form-data (comes as 'school_ids[]' key)
         const rawBody = body as any;
         if (rawBody['school_ids[]']) {
-            const schoolIds = Array.isArray(rawBody['school_ids[]']) 
-                ? rawBody['school_ids[]'] 
+            const schoolIds = Array.isArray(rawBody['school_ids[]'])
+                ? rawBody['school_ids[]']
                 : [rawBody['school_ids[]']];
             body.school_ids = schoolIds;
         }
-        
+
         return this.circularsService.createCircular(user.id, body, file, ip);
     }
 
@@ -102,14 +102,14 @@ export class CircularsController {
      * Soft delete a circular (Admin only).
      */
     @Delete('delete/:id')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async deleteCircular(
-    @CurrentUser() user: User,
-    @Body() body: DeleteCircularDto,
-    @Param('id') circularId: string,
-    @Ip() ip: string | null,
+        @CurrentUser() user: User,
+        @Body() body: DeleteCircularDto,
+        @Param('id') circularId: string,
+        @Ip() ip: string | null,
     ) {
-          return this.circularsService.deleteCircular(user.id, circularId, body.reason, ip);
+        return this.circularsService.deleteCircular(user.id, circularId, body.reason, ip);
     }
 
 }

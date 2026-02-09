@@ -62,10 +62,11 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const url = originalRequest?.url || '';
-    const isAuthRoute = url.includes('/auth/admin/login') || url.includes('/auth/refresh') || url.includes('/auth/me');
+    // Only skip refresh for login/refresh endpoints - NOT for /auth/me which should trigger refresh on 401
+    const skipRefresh = url.includes('/auth/admin/login') || url.includes('/auth/refresh');
 
-    // Only attempt refresh on 401, not on auth routes, and not already retried
-    if (error.response?.status === 401 && !isAuthRoute && !originalRequest._retry && typeof window !== 'undefined') {
+    // Only attempt refresh on 401, not on auth routes that shouldn't refresh, and not already retried
+    if (error.response?.status === 401 && !skipRefresh && !originalRequest._retry && typeof window !== 'undefined') {
 
       if (isRefreshing) {
         // Queue this request until refresh completes

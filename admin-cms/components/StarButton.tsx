@@ -67,7 +67,7 @@ export function StarButton({ userId, isStarred }: StarButtonProps) {
           : 'text-slate-400 hover:text-yellow-400 hover:bg-slate-200 dark:hover:bg-slate-700/50'
       }`}
       title={isStarred ? 'Remove from Favorites' : 'Add to Favorites'}
-      whileTap={{ scale: 0.9 }}
+      whileTap={{ scale: 0.97 }}
     >
       <Star 
         className={`h-5 w-5 transition-all ${

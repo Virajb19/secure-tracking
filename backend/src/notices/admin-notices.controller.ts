@@ -17,9 +17,9 @@ import { CreateNoticeDto, UpdateNoticeDto, SendNoticeDto } from './dto/notice.dt
 
 @Controller('admin/notices')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
 export class AdminNoticesController {
-    constructor(private readonly adminNoticesService: AdminNoticesService) {}
+    constructor(private readonly adminNoticesService: AdminNoticesService) { }
 
     /**
      * GET /admin/notices

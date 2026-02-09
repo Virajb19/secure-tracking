@@ -238,7 +238,7 @@ let AuthService = AuthService_1 = class AuthService {
         const user = await this.usersService.findByEmail(loginDto.email);
         if (!user) {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', null, null, ipAddress);
-            throw new common_1.UnauthorizedException('Login failed. Please check your credentials.');
+            throw new common_1.UnauthorizedException('Login failed. Please check your email or password.');
         }
         const allowedCmsRoles = [
             client_1.UserRole.ADMIN,
@@ -255,7 +255,7 @@ let AuthService = AuthService_1 = class AuthService {
             : await bcrypt.compare(loginDto.password, user.password);
         if (!isPasswordValid) {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
-            throw new common_1.UnauthorizedException('Login failed. Please check your credentials.');
+            throw new common_1.UnauthorizedException('Login failed. Please check your email or password.');
         }
         const userWithPhone = await this.usersService.findByPhone(loginDto.phone);
         if (!userWithPhone || userWithPhone.id !== user.id) {

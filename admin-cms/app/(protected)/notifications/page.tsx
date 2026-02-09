@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback, startTransition, useDeferredValue } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,6 @@ import { RefreshTableButton } from '@/components/RefreshTableButton';
 import { TableRowsSkeleton } from '@/components/TableSkeleton';
 import { useQueryClient } from '@tanstack/react-query';
 import noticesApi, { type Notice, type NoticeType, noticeTypeLabels, NOTICES_QUERY_KEY, useGetNoticesInfinite } from '@/services/notices.service';
-import { useDebounceCallback } from 'usehooks-ts';
 
 // Animation variants
 const containerVariants = {
@@ -89,10 +88,8 @@ const typeStyles: Record<string, string> = {
 export default function NotificationsPage() {
   const [selectedType, setSelectedType] = useState('all');
   const [searchInput, setSearchInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Debounce the search (Client-side filtering)
-  const debouncedSetSearch = useDebounceCallback(setSearchQuery, 500);
+  // Use deferred value for smooth typing - filtering is low priority
+  const deferredSearchQuery = useDeferredValue(searchInput);
 
   const pageSize = 50;
 
@@ -164,13 +161,13 @@ export default function NotificationsPage() {
   // Filter notices based on search (client-side filtering)
   const filteredNotices = useMemo(() => {
     return allNotices.filter((notice: Notice) => {
-      const matchesSearch = searchQuery === '' ||
-        notice.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        notice.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (notice.school?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+      const matchesSearch = deferredSearchQuery === '' ||
+        notice.title.toLowerCase().includes(deferredSearchQuery.toLowerCase()) ||
+        notice.content.toLowerCase().includes(deferredSearchQuery.toLowerCase()) ||
+        (notice.school?.name?.toLowerCase().includes(deferredSearchQuery.toLowerCase()) ?? false);
       return matchesSearch;
     });
-  }, [allNotices, searchQuery]);
+  }, [allNotices, deferredSearchQuery]);
 
   // Stats
   const withFileCount = allNotices.filter((n: Notice) => n.file_url).length;
@@ -294,10 +291,7 @@ export default function NotificationsPage() {
             <Input
               placeholder="Search by title, content, school..."
               value={searchInput}
-              onChange={(e) => {
-                setSearchInput(e.target.value);
-                debouncedSetSearch(e.target.value);
-              }}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="bg-slate-50 dark:bg-slate-800/50 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500"
             />
           </div>
@@ -380,7 +374,7 @@ export default function NotificationsPage() {
                 </tr>
               ) : /* Show skeleton rows when refetching (search, filter, refresh) but not load more */
                 ((isLoading && hasLoadedOnce.current) || (isFetching && !isFetchingNextPage)) ? (
-                  <TableRowsSkeleton rows={8} columns={8} />
+                  <TableRowsSkeleton rows={15} columns={8} />
                 ) : filteredNotices.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-16 text-center">

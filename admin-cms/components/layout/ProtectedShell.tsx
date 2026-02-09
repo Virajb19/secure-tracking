@@ -57,9 +57,9 @@ export default function ProtectedShell({ children }: ProtectedShellProps) {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className={twMerge("flex flex-col min-h-screen transition-all duration-300 ease-in-out", isCollapsed ? "ml-20" : "ml-72")}>
+      <div className={twMerge("flex flex-col transition-all duration-300 ease-in-out", isCollapsed ? "ml-20" : "ml-72")}>
         <Header />
-        <main className="flex-1 p-6 w-full">
+        <main className="p-6 w-full pb-8">
           {children}
         </main>
       </div>

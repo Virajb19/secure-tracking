@@ -118,10 +118,7 @@ export function ProfilePhotoDialog({ open, onOpenChange }: ProfilePhotoDialogPro
                 errorMessage = error.response.data.message;
             }
 
-            toast.error(errorMessage, {
-                duration: 4000,
-                icon: '❌',
-            });
+           showErrorToast(errorMessage, 4000);
 
             setTimeout(() => {
                 setUploadState('idle');

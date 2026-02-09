@@ -59,6 +59,7 @@ const register_dto_1 = require("./dto/register.dto");
 const decorators_1 = require("../shared/decorators");
 const users_service_1 = require("../users/users.service");
 const env_validation_1 = require("../env.validation");
+const client_1 = require("@prisma/client");
 const profileImageMulterOptions = {
     storage: (0, multer_1.memoryStorage)(),
     limits: {
@@ -250,7 +251,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)('admin/login'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, decorators_1.Roles)('ADMIN', 'SUPER_ADMIN'),
+    (0, decorators_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN, client_1.UserRole.SUBJECT_COORDINATOR, client_1.UserRole.ASSISTANT),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Req)()),
     __param(2, (0, common_1.Res)({ passthrough: true })),

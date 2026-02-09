@@ -82,11 +82,18 @@ const tableRowVariants = {
     opacity: 1,
     x: 0,
     transition: {
-      delay: i * 0.03,
-      duration: 0.3
+      delay: Math.min(0.3, i * 0.05), // Cap delay at 0.3s for many records
+      duration: 0.3,
+      ease: [0.25, 0.1, 0.25, 1] as const // easeOut cubic bezier
     }
   }),
+  exit: {
+    opacity: 0,
+    x: 20,
+    transition: { duration: 0.2 }
+  },
   hover: {
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
     transition: { duration: 0.2 }
   }
 };
@@ -362,7 +369,7 @@ export default function UsersPage() {
     }
 
     return (
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {users.map((user, index) => (
           <motion.tr
             key={user.id}
@@ -370,7 +377,9 @@ export default function UsersPage() {
             variants={tableRowVariants}
             initial="hidden"
             animate="visible"
+            exit="exit"
             whileHover="hover"
+            layout
             className="border-b border-slate-100 dark:border-slate-800/50 cursor-pointer"
           >
             <td className="py-4 px-5">
@@ -701,7 +710,7 @@ export default function UsersPage() {
             </Button>
             <div className="flex items-center gap-1 max-w-[250px] overflow-x-auto overflow-hidden scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
               {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((pageNum) => (
-                <motion.div key={pageNum} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <motion.div key={pageNum} whileTap={{ scale: 0.98 }}>
                   <Button
                     variant={currentPage === pageNum ? "default" : "outline"}
                     size="sm"

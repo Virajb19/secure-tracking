@@ -25,6 +25,7 @@ import { RegisterDto } from './dto/register.dto';
 import { Roles } from '@/shared/decorators';
 import { UsersService } from '../users/users.service';
 import { env } from '@/env.validation';
+import { UserRole } from '@prisma/client';
 
 /**
  * Multer config for profile image upload
@@ -219,7 +220,7 @@ export class AuthController {
      * Admin-only login endpoint for CMS.
      * 
      * SECURITY NOTES:
-     * - Only ADMIN and SUPER_ADMIN users can login via this endpoint
+     * - CMS roles (ADMIN, SUPER_ADMIN, SUBJECT_COORDINATOR, ASSISTANT) can login via this endpoint
      * - Other roles will receive a 403 Forbidden error
      * - Use this endpoint for the Admin CMS application
      * 
@@ -229,7 +230,7 @@ export class AuthController {
      */
     @Post('admin/login')
     @HttpCode(HttpStatus.OK)
-    @Roles('ADMIN', 'SUPER_ADMIN')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async adminLogin(
         @Body() loginDto: LoginDto,
         @Req() request: Request,
@@ -307,7 +308,7 @@ export class AuthController {
     async getMe(@Req() request: Request) {
         // The JWT strategy returns the full user object
         const user = request.user as any;
-        
+
         if (!user) {
             throw new BadRequestException('User not found');
         }

@@ -18,7 +18,7 @@ import { CreateHelpdeskDto } from './dto';
 @Controller('helpdesk')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class HelpdeskController {
-    constructor(private readonly helpdeskService: HelpdeskService) {}
+    constructor(private readonly helpdeskService: HelpdeskService) { }
 
     /**
      * POST /helpdesk
@@ -46,7 +46,7 @@ export class HelpdeskController {
      * Get all helpdesk tickets with pagination (Admin only).
      */
     @Get()
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async getAllTickets(
         @Query('limit') limit?: string,
         @Query('offset') offset?: string,
@@ -81,7 +81,7 @@ export class HelpdeskController {
      * Delete a helpdesk ticket (Admin only).
      */
     @Delete(':id')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async deleteTicket(@Param('id') ticketId: string) {
         return this.helpdeskService.deleteTicket(ticketId);
     }
@@ -91,7 +91,7 @@ export class HelpdeskController {
      * Mark a ticket as resolved (Admin only).
      */
     @Patch(':id/resolve')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async resolveTicket(@Param('id') ticketId: string) {
         return this.helpdeskService.resolveTicket(ticketId);
     }
@@ -101,7 +101,7 @@ export class HelpdeskController {
      * Toggle ticket status between resolved and pending (Admin only).
      */
     @Patch(':id/toggle-status')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async toggleStatus(@Param('id') ticketId: string) {
         return this.helpdeskService.toggleStatus(ticketId);
     }

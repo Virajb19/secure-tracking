@@ -32,7 +32,7 @@ export class PaperSetterController {
      * GET /api/paper-setter/search?subject=Mathematics&classLevel=10
      */
     @Get('search')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async searchTeachers(
         @CurrentUser() user: User,
         @Query('subject') subject: string,
@@ -54,7 +54,7 @@ export class PaperSetterController {
      * POST /api/paper-setter/select
      */
     @Post('select')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async selectTeacher(
         @CurrentUser() user: User,
         @Body() body: {
@@ -78,7 +78,7 @@ export class PaperSetterController {
      * GET /api/paper-setter/my-selections
      */
     @Get('my-selections')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async getMySelections(@CurrentUser() user: User) {
         return this.paperSetterService.getCoordinatorSelections(user.id);
     }
@@ -111,7 +111,7 @@ export class PaperSetterController {
      * POST /api/paper-setter/:id/official-order
      */
     @Post(':id/official-order')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     @UseInterceptors(FileInterceptor('file'))
     async uploadOfficialOrder(
         @CurrentUser() user: User,
@@ -126,7 +126,7 @@ export class PaperSetterController {
      * GET /api/paper-setter/school-count/:schoolId
      */
     @Get('school-count/:schoolId')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async getSchoolCount(@Param('schoolId') schoolId: string) {
         return this.paperSetterService.getSchoolSelectionCount(schoolId);
     }
@@ -136,7 +136,7 @@ export class PaperSetterController {
      * GET /api/paper-setter/check-duplicate
      */
     @Get('check-duplicate')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async checkDuplicateSelection(
         @Query('schoolId') schoolId: string,
         @Query('subject') subject: string,
@@ -156,7 +156,7 @@ export class PaperSetterController {
      * GET /api/paper-setter/all
      */
     @Get('all')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async getAllSelections(
         @Query('subject') subject?: string,
         @Query('classLevel') classLevel?: string,
@@ -182,7 +182,7 @@ export class PaperSetterController {
      * GET /api/paper-setter/school-wise
      */
     @Get('school-wise')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async getSchoolWiseSelections(
         @Query('subject') subject?: string,
         @Query('status') status?: SelectionStatus,
@@ -206,7 +206,7 @@ export class PaperSetterController {
      * DELETE /api/paper-setter/school/:schoolId
      */
     @Delete('school/:schoolId')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async deleteSchoolSelections(@Param('schoolId') schoolId: string) {
         const count = await this.paperSetterService.deleteSchoolSelections(schoolId);
         return { success: true, message: `${count} selections deleted`, deletedCount: count };
@@ -217,7 +217,7 @@ export class PaperSetterController {
      * DELETE /api/paper-setter/:id
      */
     @Delete(':id')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
     async deleteSelection(@Param('id') selectionId: string) {
         await this.paperSetterService.deleteSelection(selectionId);
         return { success: true, message: 'Selection deleted' };
