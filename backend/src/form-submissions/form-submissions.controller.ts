@@ -133,7 +133,7 @@ export class FormSubmissionsController {
      * Returns: pending, approvedToday, rejectedToday, totalProcessed
      */
     @Get('admin/stats')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ASSISTANT)
     async getStats() {
         return this.formSubmissionsService.getStats();
     }
@@ -142,7 +142,7 @@ export class FormSubmissionsController {
      * Get pending form submissions (admin only)
      */
     @Get('admin/pending')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ASSISTANT)
     async getPending(
         @Query('formType') formType?: string,
         @Query('page') page?: string,
@@ -161,7 +161,7 @@ export class FormSubmissionsController {
      * Get all form submissions with optional filters (admin only)
      */
     @Get('admin/all')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ASSISTANT)
     async getAll(
         @Query('formType') formType?: string,
         @Query('page') page?: string,
@@ -183,7 +183,7 @@ export class FormSubmissionsController {
      */
     @Post(':id/approve')
     @HttpCode(HttpStatus.OK)
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ASSISTANT)
     async approve(
         @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
         @CurrentUser() admin: User,
@@ -196,7 +196,7 @@ export class FormSubmissionsController {
      */
     @Post(':id/reject')
     @HttpCode(HttpStatus.OK)
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ASSISTANT)
     async reject(
         @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
         @CurrentUser() admin: User,

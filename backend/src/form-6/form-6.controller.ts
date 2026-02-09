@@ -18,7 +18,7 @@ import { Form6Service } from './form-6.service';
 @Controller('form-6')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class Form6Controller {
-    constructor(private readonly form6Service: Form6Service) {}
+    constructor(private readonly form6Service: Form6Service) { }
 
     // ===========================
     // ADMIN ENDPOINTS
@@ -29,7 +29,7 @@ export class Form6Controller {
      * Get Form 6A details for a school (Admin only).
      */
     @Get('admin/6a/:schoolId')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ASSISTANT)
     async getForm6ABySchool(
         @Param('schoolId', new ParseUUIDPipe({ version: '4' })) schoolId: string,
     ) {
@@ -41,7 +41,7 @@ export class Form6Controller {
      * Get Form 6B details for a school (Admin only).
      */
     @Get('admin/6b/:schoolId')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ASSISTANT)
     async getForm6BBySchool(
         @Param('schoolId', new ParseUUIDPipe({ version: '4' })) schoolId: string,
     ) {
@@ -53,7 +53,7 @@ export class Form6Controller {
      * Get Form 6C Lower details for a school (Admin only).
      */
     @Get('admin/6c-lower/:schoolId')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ASSISTANT)
     async getForm6CLowerBySchool(
         @Param('schoolId', new ParseUUIDPipe({ version: '4' })) schoolId: string,
     ) {
@@ -65,7 +65,7 @@ export class Form6Controller {
      * Get Form 6C Higher details for a school (Admin only).
      */
     @Get('admin/6c-higher/:schoolId')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ASSISTANT)
     async getForm6CHigherBySchool(
         @Param('schoolId', new ParseUUIDPipe({ version: '4' })) schoolId: string,
     ) {
@@ -77,7 +77,7 @@ export class Form6Controller {
      * Get Form 6D details for a school (Admin only).
      */
     @Get('admin/6d/:schoolId')
-    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ASSISTANT)
     async getForm6DBySchool(
         @Param('schoolId', new ParseUUIDPipe({ version: '4' })) schoolId: string,
     ) {

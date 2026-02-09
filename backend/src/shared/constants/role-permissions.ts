@@ -40,7 +40,7 @@ export const CMS_TAB_PERMISSIONS: Record<UserRole, string[]> = {
   // Full admin access
   [UserRole.SUPER_ADMIN]: ['*'],
   [UserRole.ADMIN]: ['*'],
-  
+
   // Subject Coordinator: Dashboard, Users, Paper Setters, Helpdesk, Notifications, Circulars
   [UserRole.SUBJECT_COORDINATOR]: [
     'dashboard',
@@ -50,16 +50,17 @@ export const CMS_TAB_PERMISSIONS: Record<UserRole, string[]> = {
     'notifications',
     'circulars',
   ],
-  
-  // Assistant: Dashboard, Users, Form 6, Helpdesk, Circulars
+
+  // Assistant: Dashboard, Users, Form 6, Form Submissions, Helpdesk, Circulars
   [UserRole.ASSISTANT]: [
     'dashboard',
     'users',
     'form-6',
+    'form-submissions',
     'helpdesk',
     'circulars',
   ],
-  
+
   // Mobile app roles - no CMS access
   [UserRole.SEBA_OFFICER]: [],
   [UserRole.HEADMASTER]: [],
@@ -90,12 +91,12 @@ export function canAccessCms(role: UserRole): boolean {
  */
 export function canAccessCmsTab(role: UserRole, tab: string): boolean {
   const allowedTabs = CMS_TAB_PERMISSIONS[role] || [];
-  
+
   // Wildcard means all tabs allowed
   if (allowedTabs.includes('*')) {
     return true;
   }
-  
+
   return allowedTabs.includes(tab);
 }
 

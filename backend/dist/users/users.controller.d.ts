@@ -33,6 +33,7 @@ export declare class UsersController {
         status: 'APPROVED' | 'REJECTED';
         rejection_reason?: string;
     }, currentUser: User, request: Request): Promise<{
+        email: string | null;
         name: string;
         phone: string;
         password: string;
@@ -40,7 +41,6 @@ export declare class UsersController {
         is_active: boolean;
         id: string;
         created_at: Date;
-        email: string | null;
         gender: import("@prisma/client").$Enums.Gender | null;
         profile_image_url: string | null;
         device_id: string | null;
