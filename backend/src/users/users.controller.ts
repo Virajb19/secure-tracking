@@ -86,6 +86,7 @@ export class UsersController {
         @Query('district_id') district_id?: string,
         @Query('school_id') school_id?: string,
         @Query('class_level') class_level?: string,
+        @Query('class_levels') class_levels?: string, // Comma-separated list of class levels
         @Query('subject') subject?: string,
         @Query('search') search?: string,
         @Query('is_active') is_active?: string,
@@ -99,6 +100,7 @@ export class UsersController {
             district_id,
             school_id,
             class_level: class_level ? parseInt(class_level, 10) : undefined,
+            class_levels: class_levels ? class_levels.split(',').map(l => parseInt(l, 10)) : undefined,
             subject,
             search,
             is_active: is_active === 'true' ? true : is_active === 'false' ? false : undefined,

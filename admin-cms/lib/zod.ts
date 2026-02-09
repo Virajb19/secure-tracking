@@ -1,9 +1,39 @@
 import { z } from "zod";
 
+// Valid class groups for SUBJECT_COORDINATOR
+export const CLASS_GROUPS = ['8-10', '11-12'] as const;
+export type ClassGroup = typeof CLASS_GROUPS[number];
+
+// Predefined subjects list
+export const SUBJECTS = [
+  'Assamese',
+  'English',
+  'Hindi',
+  'Mathematics',
+  'General Science',
+  'Social Science',
+  'Physics',
+  'Chemistry',
+  'Biology',
+  'Computer Science',
+  'Economics',
+  'Political Science',
+  'History',
+  'Geography',
+  'Sanskrit',
+  'Bengali',
+  'Bodo',
+  'Nepali',
+  'Manipuri',
+] as const;
+
 export const loginSchema = z.object({
-  email: z.email({ message: 'Please enter a valid email' }).trim(),
+  email: z.string().email({ message: 'Please enter a valid email' }).trim(),
   password: z.string().min(8, { message: 'Password must be atleast 8 letters long' }).max(15, { message: 'Password cannot exceed 15 characters' }),
   phone: z.string().min(1, { message: "Phone number is required" }).regex(/^[+]?[\d\s-]{10,15}$/, { message: 'Invalid phone number format' }),
+  // SUBJECT_COORDINATOR specific fields (optional)
+  subject: z.string().optional(),
+  classGroup: z.enum(CLASS_GROUPS).optional(),
 });
 
 export type LoginSchema = z.infer<typeof loginSchema>;

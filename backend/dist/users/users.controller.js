@@ -33,7 +33,7 @@ let UsersController = class UsersController {
         const ipAddress = this.extractIpAddress(request);
         return this.usersService.create(createUserDto, currentUser.id, ipAddress);
     }
-    async findAll(page, limit, role, district_id, school_id, class_level, subject, search, is_active, approval_status, exclude_roles) {
+    async findAll(page, limit, role, district_id, school_id, class_level, class_levels, subject, search, is_active, approval_status, exclude_roles) {
         return this.usersService.findAllPaginated({
             page: page ? parseInt(page, 10) : 1,
             limit: limit ? parseInt(limit, 10) : 25,
@@ -41,6 +41,7 @@ let UsersController = class UsersController {
             district_id,
             school_id,
             class_level: class_level ? parseInt(class_level, 10) : undefined,
+            class_levels: class_levels ? class_levels.split(',').map(l => parseInt(l, 10)) : undefined,
             subject,
             search,
             is_active: is_active === 'true' ? true : is_active === 'false' ? false : undefined,
@@ -121,13 +122,14 @@ __decorate([
     __param(3, (0, common_1.Query)('district_id')),
     __param(4, (0, common_1.Query)('school_id')),
     __param(5, (0, common_1.Query)('class_level')),
-    __param(6, (0, common_1.Query)('subject')),
-    __param(7, (0, common_1.Query)('search')),
-    __param(8, (0, common_1.Query)('is_active')),
-    __param(9, (0, common_1.Query)('approval_status')),
-    __param(10, (0, common_1.Query)('exclude_roles')),
+    __param(6, (0, common_1.Query)('class_levels')),
+    __param(7, (0, common_1.Query)('subject')),
+    __param(8, (0, common_1.Query)('search')),
+    __param(9, (0, common_1.Query)('is_active')),
+    __param(10, (0, common_1.Query)('approval_status')),
+    __param(11, (0, common_1.Query)('exclude_roles')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String, String, String, String, String, String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "findAll", null);
 __decorate([

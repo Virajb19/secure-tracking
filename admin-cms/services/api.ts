@@ -115,7 +115,7 @@ api.interceptors.response.use(
 // ============================
 export const authApi = {
   // Admin-only login for CMS (only ADMIN/SUPER_ADMIN can login)
-  login: async (email: string, password: string, phone?: string): Promise<LoginResponse> => {
+  login: async (email: string, password: string, phone?: string, subject?: string, classGroup?: string): Promise<LoginResponse> => {
     const payload: Record<string, string> = {
       email,
       password,
@@ -124,6 +124,13 @@ export const authApi = {
     // Only include phone if provided
     if (phone && phone.trim() !== '') {
       payload.phone = phone;
+    }
+    // SUBJECT_COORDINATOR specific fields
+    if (subject) {
+      payload.subject = subject;
+    }
+    if (classGroup) {
+      payload.classGroup = classGroup;
     }
     // Use admin-specific login endpoint
     const response = await api.post<LoginResponse>('/auth/admin/login', payload);
@@ -161,6 +168,7 @@ export interface UserFilterParams {
   district_id?: string;
   school_id?: string;
   class_level?: number;
+  class_levels?: number[]; // Array of class levels (for SUBJECT_COORDINATOR filtering)
   subject?: string;
   search?: string;
   is_active?: boolean;
@@ -185,6 +193,9 @@ export const usersApi = {
     if (filters?.district_id) params.district_id = filters.district_id;
     if (filters?.school_id) params.school_id = filters.school_id;
     if (filters?.class_level) params.class_level = String(filters.class_level);
+    if (filters?.class_levels && filters.class_levels.length > 0) {
+      params.class_levels = filters.class_levels.join(',');
+    }
     if (filters?.subject) params.subject = filters.subject;
     if (filters?.search) params.search = filters.search;
     if (filters?.is_active !== undefined) params.is_active = String(filters.is_active);

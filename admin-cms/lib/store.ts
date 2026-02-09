@@ -106,13 +106,16 @@ interface AuthState {
   userName: string | null;
   userEmail: string | null;
   userProfilePic: string | null;
+  // SUBJECT_COORDINATOR specific fields
+  coordinatorSubject: string | null;
+  coordinatorClassGroup: string | null;
   loading: boolean;
   isHydrated: boolean;
   isAuthenticated: boolean
 
   hydrate: () => void;
   checkSession: () => Promise<void>;
-  login: (email: string, password: string, phone?: string) => Promise<void>;
+  login: (email: string, password: string, phone?: string, subject?: string, classGroup?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfilePhoto: (photoUrl: string) => void;
 }
@@ -122,6 +125,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   userName: null,
   userEmail: null,
   userProfilePic: null,
+  coordinatorSubject: null,
+  coordinatorClassGroup: null,
   loading: true,
   isHydrated: false,
   isAuthenticated: false,
@@ -138,11 +143,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const userProfilePic = (rawPic && rawPic.startsWith('http')) ? rawPic : null;
     if (!userProfilePic && rawPic) localStorage.removeItem('userProfilePic');
 
+    // SUBJECT_COORDINATOR specific fields
+    const coordinatorSubject = localStorage.getItem('coordinatorSubject');
+    const coordinatorClassGroup = localStorage.getItem('coordinatorClassGroup');
+
     set({
       role,
       userName,
       userEmail,
       userProfilePic,
+      coordinatorSubject,
+      coordinatorClassGroup,
       isHydrated: true,
     });
 
@@ -177,8 +188,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // Login — backend sets HttpOnly cookies, we store user info in localStorage
-  login: async (email, password, phone) => {
-    const res = await authApi.login(email, password, phone);
+  login: async (email, password, phone, subject, classGroup) => {
+    const res = await authApi.login(email, password, phone, subject, classGroup);
 
     const userRole = res.user.role;
     const name = res.user.name || 'Administrator';
@@ -193,6 +204,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (profilePic) localStorage.setItem('userProfilePic', profilePic);
     else localStorage.removeItem('userProfilePic');
 
+    // Store SUBJECT_COORDINATOR specific fields
+    // @ts-expect-error - subject and classGroup are returned for SUBJECT_COORDINATOR
+    const coordSubject = res.user.subject;
+    // @ts-expect-error - subject and classGroup are returned for SUBJECT_COORDINATOR
+    const coordClassGroup = res.user.classGroup;
+    if (coordSubject) localStorage.setItem('coordinatorSubject', coordSubject);
+    else localStorage.removeItem('coordinatorSubject');
+    if (coordClassGroup) localStorage.setItem('coordinatorClassGroup', coordClassGroup);
+    else localStorage.removeItem('coordinatorClassGroup');
+
     setRoleCookie(userRole);
 
     set({
@@ -200,6 +221,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       userName: name,
       userEmail,
       userProfilePic: profilePic,
+      coordinatorSubject: coordSubject || null,
+      coordinatorClassGroup: coordClassGroup || null,
       loading: false,
       isHydrated: true,
       isAuthenticated: true,
@@ -221,6 +244,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.removeItem('userName');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userProfilePic');
+    localStorage.removeItem('coordinatorSubject');
+    localStorage.removeItem('coordinatorClassGroup');
     deleteRoleCookie();
 
     // Stop proactive refresh on logout
@@ -238,6 +263,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       userName: null,
       userEmail: null,
       userProfilePic: null,
+      coordinatorSubject: null,
+      coordinatorClassGroup: null,
       loading: false,
     });
   },

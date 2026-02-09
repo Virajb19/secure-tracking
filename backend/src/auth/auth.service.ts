@@ -33,6 +33,9 @@ export interface LoginResponse {
         profile_image_url?: string | null;
         is_active: boolean;
         has_completed_profile: boolean;
+        // SUBJECT_COORDINATOR specific fields (from DB)
+        coordinator_subject?: string;
+        coordinator_class_group?: string;
     };
 }
 
@@ -463,6 +466,43 @@ export class AuthService {
             throw new ForbiddenException('Access denied. Only administrators can access this portal.');
         }
 
+        // SUBJECT_COORDINATOR must provide subject and classGroup
+        if (user.role === UserRole.SUBJECT_COORDINATOR) {
+            if (!loginDto.subject) {
+                throw new BadRequestException('Subject is required for Subject Coordinator login');
+            }
+            if (!loginDto.classGroup) {
+                throw new BadRequestException('Class Group is required for Subject Coordinator login');
+            }
+            if (!user.coordinator_subject || !user.coordinator_class_group) {
+                throw new ForbiddenException('Subject Coordinator account is not properly configured. Please contact the administrator to assign your subject and class group.');
+            }
+
+            // Validate that provided subject matches the assigned subject in DB
+            if (loginDto.subject !== user.coordinator_subject) {
+                await this.auditLogsService.log(
+                    AuditAction.USER_LOGIN_FAILED,
+                    'User',
+                    user.id,
+                    user.id,
+                    ipAddress,
+                );
+                throw new UnauthorizedException(`Invalid subject. You are assigned to "${user.coordinator_subject}", not "${loginDto.subject}".`);
+            }
+
+            // Validate that provided classGroup matches the assigned classGroup in DB
+            if (loginDto.classGroup !== user.coordinator_class_group) {
+                await this.auditLogsService.log(
+                    AuditAction.USER_LOGIN_FAILED,
+                    'User',
+                    user.id,
+                    user.id,
+                    ipAddress,
+                );
+                throw new UnauthorizedException(`Invalid class group. You are assigned to "${user.coordinator_class_group}", not "${loginDto.classGroup}".`);
+            }
+        }
+
         // Verify password
         const isPasswordValid = env.NODE_ENV === 'development'
             ? (loginDto.password === user.password) // TEMPORARY: Plaintext check in development
@@ -540,6 +580,9 @@ export class AuthService {
                 profile_image_url: user.profile_image_url,
                 is_active: user.is_active,
                 has_completed_profile: true, // Admins always have completed profile
+                // SUBJECT_COORDINATOR specific fields (from DB, not login request)
+                coordinator_subject: user.coordinator_subject || undefined,
+                coordinator_class_group: user.coordinator_class_group || undefined,
             },
         };
     }

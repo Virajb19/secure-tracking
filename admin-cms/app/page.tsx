@@ -3,8 +3,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import Image from 'next/image';
-import { toast } from 'sonner';
 
 export default function HomePage() {
   const router = useRouter();
@@ -27,20 +25,25 @@ export default function HomePage() {
     }
   }, [isAuthenticated, loading, router]);
 
-  toast.success(document.cookie);
-
-  // Show loading while checking auth
+  // Show loading while checking auth (same as loading.tsx)
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <Image
-          src="/Spinner@1x-1.0s-200px-200px.svg"
-          alt="Loading..."
-          width={100}
-          height={100}
-          className="animate-spin"
-          priority
-        />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-6">
+        {/* Infinity Spinner */}
+        <div className="relative">
+          <img
+            src="/Spinner@1x-1.0s-200px-200px.svg"
+            alt="Loading..."
+            width={140}
+            height={140}
+            className="drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+          />
+        </div>
+
+        {/* Pulsing Loading Text */}
+        <p className="text-blue-500 dark:text-blue-400 text-lg font-medium animate-pulse">
+          Loading...
+        </p>
       </div>
     </div>
   );

@@ -27,6 +27,7 @@ export declare class UsersService {
         district_id?: string;
         school_id?: string;
         class_level?: number;
+        class_levels?: number[];
         subject?: string;
         search?: string;
         is_active?: boolean;

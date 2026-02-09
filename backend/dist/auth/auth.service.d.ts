@@ -18,6 +18,8 @@ export interface LoginResponse {
         profile_image_url?: string | null;
         is_active: boolean;
         has_completed_profile: boolean;
+        coordinator_subject?: string;
+        coordinator_class_group?: string;
     };
 }
 export interface RefreshResponse {

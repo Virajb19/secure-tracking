@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useAuthStore } from '@/lib/store';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -147,21 +148,53 @@ export default function UsersPage() {
   }, 500);
 
   // Build API filters (excluding SUBJECT_COORDINATOR and ASSISTANT roles)
+  // For SUBJECT_COORDINATOR: apply implicit class and subject filtering
+  const role = useAuthStore((s) => s.role);
+  const coordinatorSubject = useAuthStore((s) => s.coordinatorSubject);
+  const coordinatorClassGroup = useAuthStore((s) => s.coordinatorClassGroup);
+
+  // Check if current user is a SUBJECT_COORDINATOR
+  const isSubjectCoordinator = role === UserRole.SUBJECT_COORDINATOR;
+
+  // Get class levels from class group (e.g., '8-10' -> [8, 9, 10])
+  const getClassLevelsFromGroup = (group: string | null): number[] => {
+    if (!group) return [];
+    if (group === '8-10') return [8, 9, 10];
+    if (group === '11-12') return [11, 12];
+    return [];
+  };
+
   const apiFilters = useMemo(() => {
     const filters: any = {
       page: currentPage,
       limit: itemsPerPage,
       exclude_roles: ['SUBJECT_COORDINATOR', 'ASSISTANT'],
     };
+
+    // For SUBJECT_COORDINATOR: apply implicit filters from login
+    if (isSubjectCoordinator) {
+      // Always filter by coordinator's subject
+      if (coordinatorSubject) {
+        filters.subject = coordinatorSubject;
+      }
+      // Filter by class levels from class group
+      const classLevels = getClassLevelsFromGroup(coordinatorClassGroup);
+      if (classLevels.length > 0) {
+        filters.class_levels = classLevels; // Backend should accept array of class levels
+      }
+    } else {
+      // For other roles: use manual filter selections
+      if (classFilter !== 'all') filters.class_level = parseInt(classFilter);
+      if (subjectFilter !== 'all') filters.subject = subjectFilter;
+    }
+
     if (roleFilter !== 'all') filters.role = roleFilter;
     if (districtFilter !== 'all') filters.district_id = districtFilter;
     if (schoolFilter !== 'all') filters.school_id = schoolFilter;
-    if (classFilter !== 'all') filters.class_level = parseInt(classFilter);
-    if (subjectFilter !== 'all') filters.subject = subjectFilter;
     if (debouncedSearch) filters.search = debouncedSearch;
     if (showOnlyInactive) filters.is_active = false;
     return filters;
-  }, [currentPage, roleFilter, districtFilter, schoolFilter, classFilter, subjectFilter, debouncedSearch, showOnlyInactive]);
+  }, [currentPage, roleFilter, districtFilter, schoolFilter, classFilter, subjectFilter, debouncedSearch, showOnlyInactive, isSubjectCoordinator, coordinatorSubject, coordinatorClassGroup]);
 
 
   // ❌ Never use useInfiniteQuery for textbook-style paginated tables
@@ -571,36 +604,46 @@ export default function UsersPage() {
             </SelectContent>
           </Select>
 
-          <Select value={classFilter} onValueChange={(v) => { setClassFilter(v); resetPage(); }}>
-            <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
-              <SelectValue placeholder="Class" />
-            </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-              <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Classes</SelectItem>
-              {classes.map((cls) => (
-                <SelectItem key={cls} value={cls.toString()} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
-                  Class {cls}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={subjectFilter} onValueChange={(v) => { setSubjectFilter(v); resetPage(); }}>
-            <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
-              <SelectValue placeholder="Subject" />
-            </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-              <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Subjects</SelectItem>
-              {subjects.map((subject) => {
-                // Handle both string and object formats
-                return (
-                  <SelectItem key={subject} value={subject} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
-                    {subject}
+          {/* Class Filter - hidden for SUBJECT_COORDINATOR (implicit from login) */}
+          {!isSubjectCoordinator && (
+            <Select value={classFilter} onValueChange={(v) => { setClassFilter(v); resetPage(); }}>
+              <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
+                <SelectValue placeholder="Class" />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Classes</SelectItem>
+                {classes.map((cls) => (
+                  <SelectItem key={cls} value={cls.toString()} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
+                    Class {cls}
                   </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Subject Filter - for SUBJECT_COORDINATOR, show locked to their subject */}
+          {isSubjectCoordinator ? (
+            <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg px-3 py-2 text-sm text-blue-400">
+              <span className="font-medium">Subject:</span> {coordinatorSubject || 'Not set'}
+            </div>
+          ) : (
+            <Select value={subjectFilter} onValueChange={(v) => { setSubjectFilter(v); resetPage(); }}>
+              <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
+                <SelectValue placeholder="Subject" />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Subjects</SelectItem>
+                {subjects.map((subject) => {
+                  // Handle both string and object formats
+                  return (
+                    <SelectItem key={subject} value={subject} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
+                      {subject}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          )}
 
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <button

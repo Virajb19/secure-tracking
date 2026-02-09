@@ -118,6 +118,7 @@ export class UsersService {
         district_id?: string;
         school_id?: string;
         class_level?: number;
+        class_levels?: number[]; // Array of class levels (for SUBJECT_COORDINATOR filtering)
         subject?: string;
         search?: string;
         is_active?: boolean;
@@ -130,7 +131,7 @@ export class UsersService {
         limit: number;
         totalPages: number;
     }> {
-        const { page, limit, role, district_id, school_id, class_level, subject, search, is_active, approval_status, exclude_roles } = params;
+        const { page, limit, role, district_id, school_id, class_level, class_levels, subject, search, is_active, approval_status, exclude_roles } = params;
 
         // Build the list of roles to exclude (always exclude ADMIN and SUPER_ADMIN)
         const rolesToExclude: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
@@ -202,6 +203,18 @@ export class UsersService {
                 teaching_assignments: {
                     some: {
                         class_level,
+                    },
+                },
+            };
+        }
+
+        // Class levels array filter (for SUBJECT_COORDINATOR - filters by multiple class levels)
+        if (class_levels && class_levels.length > 0) {
+            where.faculty = {
+                ...where.faculty,
+                teaching_assignments: {
+                    some: {
+                        class_level: { in: class_levels },
                     },
                 },
             };

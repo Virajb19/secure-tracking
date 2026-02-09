@@ -250,6 +250,25 @@ let AuthService = AuthService_1 = class AuthService {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
             throw new common_1.ForbiddenException('Access denied. Only administrators can access this portal.');
         }
+        if (user.role === client_1.UserRole.SUBJECT_COORDINATOR) {
+            if (!loginDto.subject) {
+                throw new common_1.BadRequestException('Subject is required for Subject Coordinator login');
+            }
+            if (!loginDto.classGroup) {
+                throw new common_1.BadRequestException('Class Group is required for Subject Coordinator login');
+            }
+            if (!user.coordinator_subject || !user.coordinator_class_group) {
+                throw new common_1.ForbiddenException('Subject Coordinator account is not properly configured. Please contact the administrator to assign your subject and class group.');
+            }
+            if (loginDto.subject !== user.coordinator_subject) {
+                await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
+                throw new common_1.UnauthorizedException(`Invalid subject. You are assigned to "${user.coordinator_subject}", not "${loginDto.subject}".`);
+            }
+            if (loginDto.classGroup !== user.coordinator_class_group) {
+                await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
+                throw new common_1.UnauthorizedException(`Invalid class group. You are assigned to "${user.coordinator_class_group}", not "${loginDto.classGroup}".`);
+            }
+        }
         const isPasswordValid = env_validation_1.env.NODE_ENV === 'development'
             ? (loginDto.password === user.password)
             : await bcrypt.compare(loginDto.password, user.password);
@@ -287,6 +306,8 @@ let AuthService = AuthService_1 = class AuthService {
                 profile_image_url: user.profile_image_url,
                 is_active: user.is_active,
                 has_completed_profile: true,
+                coordinator_subject: user.coordinator_subject || undefined,
+                coordinator_class_group: user.coordinator_class_group || undefined,
             },
         };
     }

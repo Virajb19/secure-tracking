@@ -259,7 +259,22 @@ async function main() {
     // ==================== ADMIN, SUBJECT COORDINATOR, ASSISTANT (KEEP INTACT) ====================
     console.log('Creating Admin, Subject Coordinator, Assistant...');
     await prisma.user.create({ data: { name: 'Ritik Raj', email: 'admin@gmail.com', password: plainPassword, role: 'ADMIN', is_active: true, phone: '1234567890', gender: 'MALE', profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin', created_at: new Date() } });
-    await prisma.user.create({ data: { name: 'Viraj Bhardwaj', email: 'viraj@gmail.com', password: plainPassword, role: 'SUBJECT_COORDINATOR', is_active: true, phone: '9896008137', gender: 'MALE', profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin', created_at: new Date() } });
+    // Subject Coordinator with assigned subject and class group
+    await prisma.user.create({
+        data: {
+            name: 'Viraj Bhardwaj',
+            email: 'viraj@gmail.com',
+            password: plainPassword,
+            role: 'SUBJECT_COORDINATOR',
+            is_active: true,
+            phone: '9896008137',
+            gender: 'MALE',
+            profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin',
+            coordinator_subject: 'Mathematics',
+            coordinator_class_group: '8-10',
+            created_at: new Date()
+        }
+    });
     await prisma.user.create({ data: { name: 'Bittu Raja', email: 'bittu@gmail.com', password: plainPassword, role: 'ASSISTANT', is_active: true, phone: '9876543210', gender: 'MALE', profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin', created_at: new Date() } });
     console.log('✅ Admin, Subject Coordinator, Assistant created\n');
 

@@ -144,10 +144,11 @@ model User {
   // Exam Tracker Events submitted by Center Superintendents
   tracker_submissions ExamTrackerEvent[] @relation("TrackerSubmitter")
 
-  // Subject Coordinator: which subject/class they coordinate
-  coordinator_subject  String?               @db.VarChar(100)
-  coordinator_class    Int?
-  agentCurrentLocation AgentCurrentLocation?
+  // Subject Coordinator: which subject/class group they coordinate
+  // These are optionally set for SUBJECT_COORDINATOR role users
+  coordinator_subject     String?               @db.VarChar(100) // e.g., "Mathematics", "English"
+  coordinator_class_group String?               @db.VarChar(10) // e.g., "8-10" or "11-12"
+  agentCurrentLocation    AgentCurrentLocation?
 
   // Refresh tokens for token rotation
   refresh_tokens RefreshToken[]
