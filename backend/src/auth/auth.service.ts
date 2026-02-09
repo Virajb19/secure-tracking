@@ -273,7 +273,7 @@ export class AuthService {
         const refreshToken = await this.generateRefreshToken(user.id);
 
         // Clean up expired tokens in the background
-        this.cleanupExpiredTokens(user.id).catch(() => {});
+        this.cleanupExpiredTokens(user.id).catch(() => { });
 
         // Log successful login
         await this.auditLogsService.log(
@@ -445,8 +445,14 @@ export class AuthService {
             throw new UnauthorizedException('Login failed. Please check your credentials.');
         }
 
-        // ONLY allow ADMIN and SUPER_ADMIN to login via CMS
-        if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+        // ONLY allow CMS roles to login via CMS
+        const allowedCmsRoles: UserRole[] = [
+            UserRole.ADMIN,
+            UserRole.SUPER_ADMIN,
+            UserRole.SUBJECT_COORDINATOR,
+            UserRole.ASSISTANT,
+        ];
+        if (!allowedCmsRoles.includes(user.role)) {
             await this.auditLogsService.log(
                 AuditAction.USER_LOGIN_FAILED,
                 'User',
@@ -475,7 +481,7 @@ export class AuthService {
 
         // check if phone matches
         const userWithPhone = await this.usersService.findByPhone(loginDto.phone);
-        if(!userWithPhone || userWithPhone.id !== user.id) {
+        if (!userWithPhone || userWithPhone.id !== user.id) {
             await this.auditLogsService.log(
                 AuditAction.USER_LOGIN_FAILED,
                 'User',
@@ -511,7 +517,7 @@ export class AuthService {
         const refreshToken = await this.generateRefreshToken(user.id);
 
         // Clean up expired tokens in the background
-        this.cleanupExpiredTokens(user.id).catch(() => {});
+        this.cleanupExpiredTokens(user.id).catch(() => { });
 
         // Log successful login
         await this.auditLogsService.log(

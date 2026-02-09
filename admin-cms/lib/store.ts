@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { UserRole } from '@/types'
 import { authApi } from '@/services/api'
+import { isCmsRole } from './permissions'
 
 // ========================================
 // COOKIE HELPER (userRole only — for SSR route guards)
@@ -82,12 +83,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isHydrated: false,
   isAuthenticated: false,
 
-  // UI gate — checks both local hydration and server-validated session
-  // isAuthenticated: () => {
-  //   const { role, isHydrated, sessionValid } = get();
-  //   return isHydrated && sessionValid && (role === 'ADMIN' || role === 'SUPER_ADMIN');
-  // },
-
   // Read user info from localStorage on mount, then validate session with server
   hydrate: () => {
     if (typeof window === 'undefined') return;
@@ -123,8 +118,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ loading: true });
     try {
         await authApi.getMe();
-        const { isHydrated, role} = get();
-        set({ isAuthenticated: isHydrated && (role === 'ADMIN' || role === 'SUPER_ADMIN'), loading: false });
+        const { isHydrated, role } = get();
+        // Now supports SUBJECT_COORDINATOR and ASSISTANT roles
+        set({ isAuthenticated: isHydrated && isCmsRole(role), loading: false });
     } catch {
        set({ role: null, userName: null, userEmail: null, userProfilePic: null, isAuthenticated: false, loading: false });
     } finally {

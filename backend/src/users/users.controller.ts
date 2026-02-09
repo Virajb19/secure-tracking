@@ -38,7 +38,7 @@ const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
  */
 @Controller('admin/users')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
 export class UsersController {
     constructor(
         private readonly usersService: UsersService,
@@ -90,6 +90,7 @@ export class UsersController {
         @Query('search') search?: string,
         @Query('is_active') is_active?: string,
         @Query('approval_status') approval_status?: string,
+        @Query('exclude_roles') exclude_roles?: string,
     ) {
         return this.usersService.findAllPaginated({
             page: page ? parseInt(page, 10) : 1,
@@ -102,6 +103,7 @@ export class UsersController {
             search,
             is_active: is_active === 'true' ? true : is_active === 'false' ? false : undefined,
             approval_status,
+            exclude_roles: exclude_roles ? exclude_roles.split(',') : undefined,
         });
     }
 

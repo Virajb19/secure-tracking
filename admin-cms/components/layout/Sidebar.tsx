@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useNavigationStore, useSidebarStore } from '@/lib/store';
+import { useNavigationStore, useSidebarStore, useAuthStore } from '@/lib/store';
+import { canAccessTab } from '@/lib/permissions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { twMerge } from 'tailwind-merge';
 import { Home, Users, ClipboardList, PenLine, Calendar, Bell, Target, FileText, HelpCircle, ScrollText, CheckSquare, ChevronLeft, ChevronRight, Menu } from "lucide-react";
 
-// Navigation items for admin sidebar
-const navItems = [
+// All navigation items for admin sidebar (before role filtering)
+const allNavItems = [
   { name: "Home", href: "/dashboard", icon: Home },
   { name: "Users", href: "/users", icon: Users },
   { name: "Form 6", href: "/form-6", icon: ClipboardList },
@@ -54,8 +55,18 @@ export default function Sidebar() {
     const pathname = usePathname();
     const startNavigation = useNavigationStore((state) => state.startNavigation);
     const { isCollapsed, toggleSidebar } = useSidebarStore();
+    const role = useAuthStore((state) => state.role);
     const [paperSettersOpen, setPaperSettersOpen] = useState(pathname.startsWith('/paper-setters'));
     const [questionPaperOpen, setQuestionPaperOpen] = useState(pathname.startsWith('/question-paper-tracking'));
+
+    // Filter navigation items based on user role
+    const navItems = useMemo(() => {
+        return allNavItems.filter(item => canAccessTab(role, item.href));
+    }, [role]);
+
+    // Check if role can access Paper Setters and Question Paper Tracking
+    const showPaperSetters = canAccessTab(role, '/paper-setters');
+    const showQuestionPaperTracking = canAccessTab(role, '/question-paper-tracking');
 
     const isPaperSettersActive = pathname.startsWith('/paper-setters');
     const isQuestionPaperActive = pathname.startsWith('/question-paper-tracking');
@@ -159,7 +170,8 @@ export default function Sidebar() {
                         );
                     })}
 
-                    {/* Paper Setters with submenu */}
+                    {/* Paper Setters with submenu - only shown if role has access */}
+                    {showPaperSetters && (
                     <li>
                         <button
                             onClick={() => !isCollapsed && setPaperSettersOpen(!paperSettersOpen)}
@@ -234,8 +246,10 @@ export default function Sidebar() {
                             )}
                         </AnimatePresence>
                     </li>
+                    )}
 
-                    {/* Question Paper Tracking with submenu */}
+                    {/* Question Paper Tracking with submenu - only shown if role has access */}
+                    {showQuestionPaperTracking && (
                     <li>
                         <button
                             onClick={() => !isCollapsed && setQuestionPaperOpen(!questionPaperOpen)}
@@ -310,6 +324,7 @@ export default function Sidebar() {
                             )}
                         </AnimatePresence>
                     </li>
+                    )}
 
                     {navItems.slice(6).map((item) => {
                         const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)

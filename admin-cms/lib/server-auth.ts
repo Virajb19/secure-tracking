@@ -2,6 +2,7 @@ import 'server-only';
 
 import { cookies } from 'next/headers';
 import { UserRole } from '@/types';
+import { isCmsRole } from './permissions';
 
 export interface ServerAuthData {
   isAuthenticated: boolean;
@@ -21,6 +22,8 @@ export interface ServerAuthData {
  *
  * This prevents users from manually setting userRole without a valid session.
  * The real security is still enforced by backend JWT validation on every API request.
+ * 
+ * Supported CMS roles: SUPER_ADMIN, ADMIN, SUBJECT_COORDINATOR, ASSISTANT
  */
 export async function getServerAuth(): Promise<ServerAuthData> {
   const cookieStore = await cookies();
@@ -33,14 +36,14 @@ export async function getServerAuth(): Promise<ServerAuthData> {
   console.log('Server Auth Check:', {
     hasAccessToken: !!accessToken,
     hasRefreshToken: !!refreshToken,
-  role,
+    role,
   });
 
   // Must have a valid role AND either an accessToken OR refreshToken cookie
   // If only refreshToken exists (accessToken expired), allow through - 
   // the client-side interceptor will refresh on first API call
   const hasValidSession = Boolean(accessToken || refreshToken);
-  const hasValidRole = role === 'ADMIN' || role === 'SUPER_ADMIN';
+  const hasValidRole = isCmsRole(role);  // Now supports SUBJECT_COORDINATOR and ASSISTANT
   const isAuthenticated = hasValidSession && hasValidRole;
 
   return { isAuthenticated, role };

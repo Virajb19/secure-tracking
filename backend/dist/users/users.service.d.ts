@@ -31,6 +31,7 @@ export declare class UsersService {
         search?: string;
         is_active?: boolean;
         approval_status?: string;
+        exclude_roles?: string[];
     }): Promise<{
         data: User[];
         total: number;

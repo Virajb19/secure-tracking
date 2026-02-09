@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -139,11 +139,12 @@ export default function UsersPage() {
     setCurrentPage(1); // Reset to page 1 on search
   }, 500);
 
-  // Build API filters
+  // Build API filters (excluding SUBJECT_COORDINATOR and ASSISTANT roles)
   const apiFilters = useMemo(() => {
     const filters: any = {
       page: currentPage,
       limit: itemsPerPage,
+      exclude_roles: ['SUBJECT_COORDINATOR', 'ASSISTANT'],
     };
     if (roleFilter !== 'all') filters.role = roleFilter;
     if (districtFilter !== 'all') filters.district_id = districtFilter;
@@ -203,10 +204,23 @@ export default function UsersPage() {
   const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
   const [currentUserForNotification, setCurrentUserForNotification] = useState<string | null>(null);
 
-  // Reset school filter when district changes
+  // Track if this is the initial mount to prevent resetting school filter on page load
+  const isInitialMount = useRef(true);
+  const prevDistrictFilter = useRef(districtFilter);
+
+  // Reset school filter when district changes (but not on initial mount)
   useEffect(() => {
-    setSchoolFilter('all');
-  }, [districtFilter]);
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      prevDistrictFilter.current = districtFilter;
+      return;
+    }
+    // Only reset if district actually changed
+    if (prevDistrictFilter.current !== districtFilter) {
+      setSchoolFilter('all');
+      prevDistrictFilter.current = districtFilter;
+    }
+  }, [districtFilter, setSchoolFilter]);
 
   // Prefetch next page
   useEffect(() => {
@@ -523,7 +537,7 @@ export default function UsersPage() {
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               {isFetchingSchools ? (
                 <span className="flex items-center gap-2 text-black dark:text-white">
-                   All Schools
+                  All Schools
                 </span>
               ) : (
                 <SelectValue placeholder="School" />
@@ -540,7 +554,7 @@ export default function UsersPage() {
                   <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Schools</SelectItem>
                   {schools.map((school) => (
                     <SelectItem key={school.id} value={school.id} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
-                      {school.name}
+                      {school.name?.trim()}
                     </SelectItem>
                   ))}
                 </>

@@ -164,6 +164,7 @@ export interface UserFilterParams {
   search?: string;
   is_active?: boolean;
   approval_status?: string;
+  exclude_roles?: string[];
 }
 
 export interface PaginatedUsersResponse {
@@ -187,6 +188,9 @@ export const usersApi = {
     if (filters?.search) params.search = filters.search;
     if (filters?.is_active !== undefined) params.is_active = String(filters.is_active);
     if (filters?.approval_status) params.approval_status = filters.approval_status;
+    if (filters?.exclude_roles && filters.exclude_roles.length > 0) {
+      params.exclude_roles = filters.exclude_roles.join(',');
+    }
 
     const response = await api.get<PaginatedUsersResponse>('/admin/users', { params });
     return response.data;

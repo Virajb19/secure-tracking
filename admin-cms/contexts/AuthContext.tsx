@@ -10,6 +10,7 @@ import React, {
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/services/api';
 import { UserRole } from '@/types';
+import { isCmsRole } from '@/lib/permissions';
 
 // ========================================
 // TYPES
@@ -41,7 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const storedRole = localStorage.getItem('userRole') as UserRole | null;
 
-        if (storedRole === 'ADMIN' || storedRole === 'SUPER_ADMIN') {
+        // Support all CMS roles: ADMIN, SUPER_ADMIN, SUBJECT_COORDINATOR, ASSISTANT
+        if (isCmsRole(storedRole)) {
             setRole(storedRole);
         }
 
@@ -89,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         <AuthContext.Provider
             value={{
                 role,
-                isAuthenticated: Boolean(role === 'ADMIN' || role === 'SUPER_ADMIN'),
+                isAuthenticated: isCmsRole(role),
                 loading,
                 login,
                 logout,

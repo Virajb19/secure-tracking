@@ -10,6 +10,8 @@ export declare const CreateUserSchema: z.ZodObject<{
         HEADMASTER: "HEADMASTER";
         TEACHER: "TEACHER";
         CENTER_SUPERINTENDENT: "CENTER_SUPERINTENDENT";
+        SUBJECT_COORDINATOR: "SUBJECT_COORDINATOR";
+        ASSISTANT: "ASSISTANT";
     }>;
     is_active: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
 }, z.core.$strip>;
@@ -25,6 +27,8 @@ declare const CreateUserDto_base: import("nestjs-zod").ZodDto<z.ZodObject<{
         HEADMASTER: "HEADMASTER";
         TEACHER: "TEACHER";
         CENTER_SUPERINTENDENT: "CENTER_SUPERINTENDENT";
+        SUBJECT_COORDINATOR: "SUBJECT_COORDINATOR";
+        ASSISTANT: "ASSISTANT";
     }>;
     is_active: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
 }, z.core.$strip>, false>;

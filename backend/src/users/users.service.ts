@@ -122,6 +122,7 @@ export class UsersService {
         search?: string;
         is_active?: boolean;
         approval_status?: string;
+        exclude_roles?: string[];
     }): Promise<{
         data: User[];
         total: number;
@@ -129,13 +130,23 @@ export class UsersService {
         limit: number;
         totalPages: number;
     }> {
-        const { page, limit, role, district_id, school_id, class_level, subject, search, is_active, approval_status } = params;
-        
+        const { page, limit, role, district_id, school_id, class_level, subject, search, is_active, approval_status, exclude_roles } = params;
+
+        // Build the list of roles to exclude (always exclude ADMIN and SUPER_ADMIN)
+        const rolesToExclude: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
+        if (exclude_roles && exclude_roles.length > 0) {
+            exclude_roles.forEach(r => {
+                if (Object.values(UserRole).includes(r as UserRole)) {
+                    rolesToExclude.push(r as UserRole);
+                }
+            });
+        }
+
         // Build where clause
         const where: any = {
-            // Exclude admin roles
+            // Exclude specified roles
             role: {
-                notIn: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+                notIn: rolesToExclude,
             },
         };
 
@@ -446,7 +457,7 @@ export class UsersService {
         ipAddress: string | null,
     ): Promise<User> {
         const user = await this.findById(userId);
-        
+
         const updatedUser = await this.db.user.update({
             where: { id: userId },
             data: { is_active: isActive },
@@ -584,8 +595,8 @@ export class UsersService {
 
         // Log the action
         await this.auditLogsService.log(
-            status === 'APPROVED' 
-                ? AuditAction.USER_APPROVED 
+            status === 'APPROVED'
+                ? AuditAction.USER_APPROVED
                 : AuditAction.USER_REJECTED,
             'Faculty',
             user.faculty.id,
@@ -594,8 +605,8 @@ export class UsersService {
         );
 
         // Send notification to user
-        const notificationTitle = status === 'APPROVED' 
-            ? 'Profile Approved' 
+        const notificationTitle = status === 'APPROVED'
+            ? 'Profile Approved'
             : 'Profile Rejected';
         const notificationBody = status === 'APPROVED'
             ? 'Your profile has been approved. You now have full access to the app.'

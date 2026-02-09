@@ -160,12 +160,14 @@ export default function Dashboard({
     pendingActions,
     auditLogs
 }: DashboardProps) {
-    // Transform role stats for pie chart
-    const rolePieChartData = roleStats?.map(r => ({
-        name: ROLE_LABELS[r.role] || r.role,
-        value: r.count,
-        color: ROLE_COLORS[r.role] || '#64748b',
-    })) || [];
+    // Transform role stats for pie chart (excluding ASSISTANT and SUBJECT_COORDINATOR)
+    const rolePieChartData = roleStats
+        ?.filter(r => !['ASSISTANT', 'SUBJECT_COORDINATOR'].includes(r.role))
+        .map(r => ({
+            name: ROLE_LABELS[r.role] || r.role,
+            value: r.count,
+            color: ROLE_COLORS[r.role] || '#64748b',
+        })) || [];
 
     // Transform gender stats for pie chart  
     const genderPieChartData = genderStats ? [

@@ -17,9 +17,9 @@ import { UserStarsService } from './user-stars.service';
  */
 @Controller('admin/user-stars')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
 export class UserStarsController {
-    constructor(private readonly userStarsService: UserStarsService) {}
+    constructor(private readonly userStarsService: UserStarsService) { }
 
     /**
      * Toggle star for a user

@@ -240,7 +240,13 @@ let AuthService = AuthService_1 = class AuthService {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', null, null, ipAddress);
             throw new common_1.UnauthorizedException('Login failed. Please check your credentials.');
         }
-        if (user.role !== client_1.UserRole.ADMIN && user.role !== client_1.UserRole.SUPER_ADMIN) {
+        const allowedCmsRoles = [
+            client_1.UserRole.ADMIN,
+            client_1.UserRole.SUPER_ADMIN,
+            client_1.UserRole.SUBJECT_COORDINATOR,
+            client_1.UserRole.ASSISTANT,
+        ];
+        if (!allowedCmsRoles.includes(user.role)) {
             await this.auditLogsService.log(audit_logs_service_1.AuditAction.USER_LOGIN_FAILED, 'User', user.id, user.id, ipAddress);
             throw new common_1.ForbiddenException('Access denied. Only administrators can access this portal.');
         }

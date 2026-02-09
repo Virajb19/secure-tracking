@@ -19,7 +19,7 @@ interface AuditLogsResponse {
  */
 @Controller('admin/audit-logs')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
 export class AuditLogsController {
     constructor(private readonly auditLogsService: AuditLogsService) { }
 

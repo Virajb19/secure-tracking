@@ -19,6 +19,8 @@ enum UserRole {
   HEADMASTER
   TEACHER
   CENTER_SUPERINTENDENT
+  SUBJECT_COORDINATOR    // CMS-only: limited access to specific tabs
+  ASSISTANT              // CMS-only: limited access to specific tabs
 }
 
 enum TaskStatus {

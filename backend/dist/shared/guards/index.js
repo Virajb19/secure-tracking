@@ -16,4 +16,6 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./jwt-auth.guard"), exports);
 __exportStar(require("./roles.guard"), exports);
+__exportStar(require("./cms-access.guard"), exports);
+__exportStar(require("./mobile-app.guard"), exports);
 //# sourceMappingURL=index.js.map

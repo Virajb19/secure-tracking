@@ -94,10 +94,18 @@ let UsersService = class UsersService {
         });
     }
     async findAllPaginated(params) {
-        const { page, limit, role, district_id, school_id, class_level, subject, search, is_active, approval_status } = params;
+        const { page, limit, role, district_id, school_id, class_level, subject, search, is_active, approval_status, exclude_roles } = params;
+        const rolesToExclude = [client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN];
+        if (exclude_roles && exclude_roles.length > 0) {
+            exclude_roles.forEach(r => {
+                if (Object.values(client_1.UserRole).includes(r)) {
+                    rolesToExclude.push(r);
+                }
+            });
+        }
         const where = {
             role: {
-                notIn: [client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN],
+                notIn: rolesToExclude,
             },
         };
         if (role) {

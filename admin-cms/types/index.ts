@@ -12,6 +12,8 @@ export enum UserRole {
     HEADMASTER = 'HEADMASTER',
     TEACHER = 'TEACHER',
     CENTER_SUPERINTENDENT = 'CENTER_SUPERINTENDENT',
+    SUBJECT_COORDINATOR = 'SUBJECT_COORDINATOR',  // CMS-only: limited access
+    ASSISTANT = 'ASSISTANT',                      // CMS-only: limited access
 }
 
 export enum FacultyType {

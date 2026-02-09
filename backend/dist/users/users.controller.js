@@ -33,7 +33,7 @@ let UsersController = class UsersController {
         const ipAddress = this.extractIpAddress(request);
         return this.usersService.create(createUserDto, currentUser.id, ipAddress);
     }
-    async findAll(page, limit, role, district_id, school_id, class_level, subject, search, is_active, approval_status) {
+    async findAll(page, limit, role, district_id, school_id, class_level, subject, search, is_active, approval_status, exclude_roles) {
         return this.usersService.findAllPaginated({
             page: page ? parseInt(page, 10) : 1,
             limit: limit ? parseInt(limit, 10) : 25,
@@ -45,6 +45,7 @@ let UsersController = class UsersController {
             search,
             is_active: is_active === 'true' ? true : is_active === 'false' ? false : undefined,
             approval_status,
+            exclude_roles: exclude_roles ? exclude_roles.split(',') : undefined,
         });
     }
     async toggleStatus(userId, toggleStatusDto, currentUser, request) {
@@ -124,8 +125,9 @@ __decorate([
     __param(7, (0, common_1.Query)('search')),
     __param(8, (0, common_1.Query)('is_active')),
     __param(9, (0, common_1.Query)('approval_status')),
+    __param(10, (0, common_1.Query)('exclude_roles')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String, String, String, String, String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "findAll", null);
 __decorate([
@@ -191,7 +193,7 @@ __decorate([
 exports.UsersController = UsersController = __decorate([
     (0, common_1.Controller)('admin/users'),
     (0, common_1.UseGuards)(guards_1.JwtAuthGuard, guards_1.RolesGuard),
-    (0, decorators_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN),
+    (0, decorators_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN, client_1.UserRole.SUBJECT_COORDINATOR, client_1.UserRole.ASSISTANT),
     __metadata("design:paramtypes", [users_service_1.UsersService,
         appwrite_service_1.AppwriteService])
 ], UsersController);
