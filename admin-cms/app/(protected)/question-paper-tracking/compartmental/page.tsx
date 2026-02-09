@@ -144,14 +144,14 @@ export default function CompartmentalExamsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/question-paper-tracking">
-            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white">
+            <Button variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold text-white">Compartmental Exam Tracking</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Compartmental Exam Tracking</h1>
         </div>
-        <Button 
+        <Button
           onClick={handleDownload}
           disabled={downloading || filteredTasks.length === 0}
           className="gap-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white shadow-lg shadow-orange-500/25 transition-all duration-300 disabled:opacity-50"
@@ -171,26 +171,26 @@ export default function CompartmentalExamsPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
         <div className="flex gap-4 items-end mb-6">
           {/* Date Filter */}
           <div className="flex-1 max-w-xs">
-            <label className="block text-sm text-slate-400 mb-2">Select Date</label>
-            <div className="flex items-center gap-2 h-10 px-3 bg-slate-800 border border-slate-700 rounded-md">
+            <label className="block text-sm text-slate-600 dark:text-slate-400 mb-2">Select Date</label>
+            <div className="flex items-center gap-2 h-10 px-3 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md">
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent text-white text-sm border-none outline-none flex-1"
+                className="bg-transparent text-slate-900 dark:text-white text-sm border-none outline-none flex-1"
               />
             </div>
           </div>
 
           {/* Shift Filter */}
           <div className="flex-1 max-w-xs">
-            <label className="block text-sm text-slate-400 mb-2">Shift</label>
+            <label className="block text-sm text-slate-600 dark:text-slate-400 mb-2">Shift</label>
             <Select value={shift} onValueChange={(v) => setShift(v as typeof shift)}>
-              <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+              <SelectTrigger className="bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
                 <SelectValue placeholder="All Shifts" />
               </SelectTrigger>
               <SelectContent>
@@ -204,46 +204,46 @@ export default function CompartmentalExamsPage() {
 
         {/* Paper Tracking Summary Table */}
         <div className="overflow-x-auto">
-          <div className="text-center py-3 bg-gradient-to-r from-orange-900/30 via-orange-800/20 to-orange-900/30 rounded-t-lg border-b border-orange-500/20">
-            <h2 className="text-lg font-semibold text-white">
+          <div className="text-center py-3 bg-gradient-to-r from-orange-100 via-orange-50 to-orange-100 dark:from-orange-900/30 dark:via-orange-800/20 dark:to-orange-900/30 rounded-t-lg border-b border-orange-200 dark:border-orange-500/20">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
               COMPARTMENTAL EXAM TRACKING - {formatDate(selectedDate)}
             </h2>
-            <p className="text-sm text-orange-400 mt-1">
+            <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
               {shift === 'all' ? 'All Shifts' : `${shift.charAt(0).toUpperCase() + shift.slice(1)} Shift`} • {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}
             </p>
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-12 bg-slate-800/30">
+            <div className="flex items-center justify-center py-12 bg-slate-50 dark:bg-slate-800/30">
               <Loader2 className="h-8 w-8 animate-spin text-orange-500 mr-3" />
-              <span className="text-slate-400">Loading tracking data...</span>
+              <span className="text-slate-600 dark:text-slate-400">Loading tracking data...</span>
             </div>
           ) : error ? (
-            <div className="py-8 text-center bg-slate-800/30">
-              <p className="text-red-400">{error}</p>
+            <div className="py-8 text-center bg-slate-50 dark:bg-slate-800/30">
+              <p className="text-red-500 dark:text-red-400">{error}</p>
             </div>
           ) : filteredTasks.length === 0 ? (
-            <div className="py-8 text-center bg-slate-800/30">
-              <p className="text-slate-500">No compartmental exam data found for this date</p>
-              <p className="text-sm text-slate-600 mt-2">
+            <div className="py-8 text-center bg-slate-50 dark:bg-slate-800/30">
+              <p className="text-slate-600 dark:text-slate-500">No compartmental exam data found for this date</p>
+              <p className="text-sm text-slate-500 dark:text-slate-600 mt-2">
                 Create tasks with &quot;Compartmental&quot; exam type to see them here
               </p>
             </div>
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-700 bg-slate-800/50">
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium whitespace-nowrap">Sl.</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium whitespace-nowrap">Pack Code</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium whitespace-nowrap">Assigned To</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium whitespace-nowrap">Shift</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium whitespace-nowrap">Progress</th>
+                <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50">
+                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Sl.</th>
+                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Pack Code</th>
+                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Assigned To</th>
+                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Shift</th>
+                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Progress</th>
                   {trackingSteps.map((step) => (
-                    <th key={step.key} className="text-center py-3 px-2 text-slate-400 font-medium whitespace-nowrap">
+                    <th key={step.key} className="text-center py-3 px-2 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">
                       <span className="text-lg">{step.icon}</span>
                     </th>
                   ))}
-                  <th className="text-center py-3 px-4 text-slate-400 font-medium whitespace-nowrap">Actions</th>
+                  <th className="text-center py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -254,21 +254,21 @@ export default function CompartmentalExamsPage() {
                   return (
                     <tr
                       key={task.id}
-                      className={`border-b border-slate-800 hover:bg-slate-800/50 ${task.status === TaskStatus.SUSPICIOUS ? 'bg-red-500/5' : ''
+                      className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${task.status === TaskStatus.SUSPICIOUS ? 'bg-red-50 dark:bg-red-500/5' : ''
                         }`}
                     >
-                      <td className="py-4 px-4 text-slate-300">{index + 1}</td>
+                      <td className="py-4 px-4 text-slate-700 dark:text-slate-300">{index + 1}</td>
                       <td className="py-4 px-4">
-                        <span className="font-mono text-sm text-orange-400">{task.sealed_pack_code}</span>
+                        <span className="font-mono text-sm text-orange-600 dark:text-orange-400">{task.sealed_pack_code}</span>
                       </td>
                       <td className="py-4 px-4">
-                        <span className="text-slate-300">{task.assigned_user?.name || 'N/A'}</span>
+                        <span className="text-slate-700 dark:text-slate-300">{task.assigned_user?.name || 'N/A'}</span>
                         <span className="block text-xs text-slate-500">{task.assigned_user?.phone}</span>
                       </td>
                       <td className="py-4 px-4">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${taskShift === 'Morning'
-                            ? 'bg-yellow-500/20 text-yellow-400'
-                            : 'bg-purple-500/20 text-purple-400'
+                          ? 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
+                          : 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
                           }`}>
                           {taskShift}
                         </span>
@@ -276,15 +276,15 @@ export default function CompartmentalExamsPage() {
                       <td className="py-4 px-4">
                         <div className="w-24">
                           <div className="flex items-center gap-2">
-                            <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                               <div
                                 className={`h-full transition-all ${task.status === TaskStatus.COMPLETED ? 'bg-green-500' :
-                                    task.status === TaskStatus.SUSPICIOUS ? 'bg-red-500' : 'bg-orange-500'
+                                  task.status === TaskStatus.SUSPICIOUS ? 'bg-red-500' : 'bg-orange-500'
                                   }`}
                                 style={{ width: `${getProgress(task)}%` }}
                               />
                             </div>
-                            <span className="text-xs text-slate-400 w-8">{getProgress(task)}%</span>
+                            <span className="text-xs text-slate-600 dark:text-slate-400 w-8">{getProgress(task)}%</span>
                           </div>
                         </div>
                       </td>
@@ -295,10 +295,10 @@ export default function CompartmentalExamsPage() {
                             {event ? (
                               <button
                                 onClick={() => setSelectedEvent(event)}
-                                className="group relative inline-flex items-center justify-center w-10 h-10 rounded-lg bg-green-500/20 border border-green-500/30 hover:bg-green-500/30 transition-colors"
+                                className="group relative inline-flex items-center justify-center w-10 h-10 rounded-lg bg-green-100 dark:bg-green-500/20 border border-green-300 dark:border-green-500/30 hover:bg-green-200 dark:hover:bg-green-500/30 transition-colors"
                                 title={`${step.label} - Click for details`}
                               >
-                                <CheckCircle className="h-5 w-5 text-green-400" />
+                                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                                 {event.image_url && (
                                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full flex items-center justify-center">
                                     <ImageIcon className="h-2 w-2 text-white" />
@@ -306,8 +306,8 @@ export default function CompartmentalExamsPage() {
                                 )}
                               </button>
                             ) : (
-                              <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-slate-700/50 border border-slate-600">
-                                <XCircle className="h-5 w-5 text-slate-500" />
+                              <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600">
+                                <XCircle className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                               </div>
                             )}
                           </td>
@@ -316,7 +316,7 @@ export default function CompartmentalExamsPage() {
                       <td className="text-center py-4 px-4">
                         <Link
                           href={`/tasks/${task.id}`}
-                          className="text-orange-400 hover:text-orange-300 text-sm font-medium"
+                          className="text-orange-600 dark:text-orange-400 hover:text-orange-500 dark:hover:text-orange-300 text-sm font-medium"
                         >
                           View →
                         </Link>
@@ -378,23 +378,28 @@ export default function CompartmentalExamsPage() {
             {/* Image */}
             {selectedEvent.image_url && (
               <div className="mb-4">
-                <p className="text-xs text-slate-400 mb-2">📸 Evidence Photo:</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">📸 Evidence Photo:</p>
                 <a
-                  href={`${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${selectedEvent.image_url}`}
+                  href={selectedEvent.image_url.startsWith('http') ? selectedEvent.image_url : `${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${selectedEvent.image_url}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <img
-                    src={`${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${selectedEvent.image_url}`}
+                    src={selectedEvent.image_url.startsWith('http') ? selectedEvent.image_url : `${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${selectedEvent.image_url}`}
                     alt="Evidence"
-                    className="w-full rounded-lg border border-slate-700 hover:border-orange-500 transition-colors cursor-pointer"
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 hover:border-orange-500 transition-colors cursor-pointer"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.parentElement!.innerHTML = '<div class="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-center"><p class="text-slate-500">Image unavailable</p></div>';
+                    }}
                   />
                 </a>
               </div>
             )}
 
             {/* Hash */}
-            <div className="text-xs text-slate-500 font-mono break-all bg-slate-900/50 p-2 rounded border border-slate-800">
+            <div className="text-xs text-slate-600 dark:text-slate-500 font-mono break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded border border-slate-200 dark:border-slate-800">
               🔐 SHA-256: {selectedEvent.image_hash}
             </div>
           </div>

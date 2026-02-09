@@ -137,9 +137,9 @@ export default function QuestionPaperTrackingPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Question Paper Tracking - Regular Exams</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Question Paper Tracking - Regular Exams</h1>
         <div className="flex items-center gap-3">
-          <Button 
+          <Button
             onClick={handleDownload}
             disabled={downloading || filteredTasks.length === 0}
             className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/25 transition-all duration-300 disabled:opacity-50"
@@ -157,7 +157,7 @@ export default function QuestionPaperTrackingPage() {
             )}
           </Button>
           <Link href="/question-paper-tracking/compartmental">
-            <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
+            <Button variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
               View Compartmental Exams →
             </Button>
           </Link>
@@ -165,26 +165,26 @@ export default function QuestionPaperTrackingPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
         <div className="flex gap-4 items-end mb-6">
           {/* Date Filter */}
           <div className="flex-1 max-w-xs">
-            <label className="block text-sm text-slate-400 mb-2">Select Date</label>
-            <div className="flex items-center gap-2 h-10 px-3 bg-slate-800 border border-slate-700 rounded-md">
+            <label className="block text-sm text-slate-600 dark:text-slate-400 mb-2">Select Date</label>
+            <div className="flex items-center gap-2 h-10 px-3 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md">
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent text-white text-sm border-none outline-none flex-1"
+                className="bg-transparent text-slate-900 dark:text-white text-sm border-none outline-none flex-1"
               />
             </div>
           </div>
 
           {/* Status Filter */}
           <div className="flex-1 max-w-xs">
-            <label className="block text-sm text-slate-400 mb-2">Status</label>
+            <label className="block text-sm text-slate-600 dark:text-slate-400 mb-2">Status</label>
             <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
-              <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+              <SelectTrigger className="bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
                 <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
@@ -198,75 +198,75 @@ export default function QuestionPaperTrackingPage() {
 
         {/* Paper Tracking Summary Table */}
         <div className="overflow-x-auto">
-          <div className="text-center py-3 bg-slate-800 rounded-t-lg">
-            <h2 className="text-lg font-semibold text-white">
+          <div className="text-center py-3 bg-gradient-to-r from-blue-100 via-blue-50 to-blue-100 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 rounded-t-lg border-b border-blue-200 dark:border-slate-700">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
               PAPER TRACKING SUMMARY - {formatDate(selectedDate)}
             </h2>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-sm text-blue-600 dark:text-slate-400 mt-1">
               Regular Exams • {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}
             </p>
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-12 bg-slate-800/30">
+            <div className="flex items-center justify-center py-12 bg-slate-50 dark:bg-slate-800/30">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500 mr-3" />
-              <span className="text-slate-400">Loading tracking data...</span>
+              <span className="text-slate-600 dark:text-slate-400">Loading tracking data...</span>
             </div>
           ) : error ? (
-            <div className="py-8 text-center bg-slate-800/30">
-              <p className="text-red-400">{error}</p>
+            <div className="py-8 text-center bg-slate-50 dark:bg-slate-800/30">
+              <p className="text-red-500 dark:text-red-400">{error}</p>
             </div>
           ) : filteredTasks.length === 0 ? (
-            <div className="py-8 text-center bg-slate-800/30">
-              <p className="text-slate-500">No tracking data found for this date</p>
-              <p className="text-sm text-slate-600 mt-2">
+            <div className="py-8 text-center bg-slate-50 dark:bg-slate-800/30">
+              <p className="text-slate-600 dark:text-slate-500">No tracking data found for this date</p>
+              <p className="text-sm text-slate-500 dark:text-slate-600 mt-2">
                 Try selecting a different date or create new tasks
               </p>
             </div>
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-700 bg-slate-800/50">
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium whitespace-nowrap">Sl.</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium whitespace-nowrap">Pack Code</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium whitespace-nowrap">Assigned To</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium whitespace-nowrap">Progress</th>
+                <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50">
+                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Sl.</th>
+                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Pack Code</th>
+                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Assigned To</th>
+                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Progress</th>
                   {trackingSteps.map((step) => (
-                    <th key={step.key} className="text-center py-3 px-2 text-slate-400 font-medium whitespace-nowrap">
+                    <th key={step.key} className="text-center py-3 px-2 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">
                       <span className="text-lg">{step.icon}</span>
                       <span className="sr-only">{step.label}</span>
                     </th>
                   ))}
-                  <th className="text-center py-3 px-4 text-slate-400 font-medium whitespace-nowrap">Actions</th>
+                  <th className="text-center py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredTasks.map((task, index) => (
                   <tr
                     key={task.id}
-                    className={`border-b border-slate-800 hover:bg-slate-800/50 ${task.status === TaskStatus.SUSPICIOUS ? 'bg-red-500/5' : ''
+                    className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${task.status === TaskStatus.SUSPICIOUS ? 'bg-red-50 dark:bg-red-500/5' : ''
                       }`}
                   >
-                    <td className="py-4 px-4 text-slate-300">{index + 1}</td>
+                    <td className="py-4 px-4 text-slate-700 dark:text-slate-300">{index + 1}</td>
                     <td className="py-4 px-4">
-                      <span className="font-mono text-sm text-blue-400">{task.sealed_pack_code}</span>
+                      <span className="font-mono text-sm text-blue-600 dark:text-blue-400">{task.sealed_pack_code}</span>
                     </td>
                     <td className="py-4 px-4">
-                      <span className="text-slate-300">{task.assigned_user?.name || 'N/A'}</span>
+                      <span className="text-slate-700 dark:text-slate-300">{task.assigned_user?.name || 'N/A'}</span>
                       <span className="block text-xs text-slate-500">{task.assigned_user?.phone}</span>
                     </td>
                     <td className="py-4 px-4">
                       <div className="w-24">
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                             <div
                               className={`h-full transition-all ${task.status === TaskStatus.COMPLETED ? 'bg-green-500' :
-                                  task.status === TaskStatus.SUSPICIOUS ? 'bg-red-500' : 'bg-blue-500'
+                                task.status === TaskStatus.SUSPICIOUS ? 'bg-red-500' : 'bg-blue-500'
                                 }`}
                               style={{ width: `${getProgress(task)}%` }}
                             />
                           </div>
-                          <span className="text-xs text-slate-400 w-8">{getProgress(task)}%</span>
+                          <span className="text-xs text-slate-600 dark:text-slate-400 w-8">{getProgress(task)}%</span>
                         </div>
                       </div>
                     </td>
@@ -277,10 +277,10 @@ export default function QuestionPaperTrackingPage() {
                           {event ? (
                             <button
                               onClick={() => setSelectedEvent(event)}
-                              className="group relative inline-flex items-center justify-center w-10 h-10 rounded-lg bg-green-500/20 border border-green-500/30 hover:bg-green-500/30 transition-colors"
+                              className="group relative inline-flex items-center justify-center w-10 h-10 rounded-lg bg-green-100 dark:bg-green-500/20 border border-green-300 dark:border-green-500/30 hover:bg-green-200 dark:hover:bg-green-500/30 transition-colors"
                               title={`${step.label} - Click for details`}
                             >
-                              <CheckCircle className="h-5 w-5 text-green-400" />
+                              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                               {event.image_url && (
                                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
                                   <ImageIcon className="h-2 w-2 text-white" />
@@ -288,8 +288,8 @@ export default function QuestionPaperTrackingPage() {
                               )}
                             </button>
                           ) : (
-                            <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-slate-700/50 border border-slate-600">
-                              <XCircle className="h-5 w-5 text-slate-500" />
+                            <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600">
+                              <XCircle className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                             </div>
                           )}
                         </td>
@@ -298,7 +298,7 @@ export default function QuestionPaperTrackingPage() {
                     <td className="text-center py-4 px-4">
                       <Link
                         href={`/tasks/${task.id}`}
-                        className="text-blue-400 hover:text-blue-300 text-sm font-medium"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 text-sm font-medium"
                       >
                         View →
                       </Link>
@@ -359,23 +359,28 @@ export default function QuestionPaperTrackingPage() {
             {/* Image */}
             {selectedEvent.image_url && (
               <div className="mb-4">
-                <p className="text-xs text-slate-400 mb-2">📸 Evidence Photo:</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">📸 Evidence Photo:</p>
                 <a
-                  href={`${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${selectedEvent.image_url}`}
+                  href={selectedEvent.image_url.startsWith('http') ? selectedEvent.image_url : `${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${selectedEvent.image_url}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <img
-                    src={`${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${selectedEvent.image_url}`}
+                    src={selectedEvent.image_url.startsWith('http') ? selectedEvent.image_url : `${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${selectedEvent.image_url}`}
                     alt="Evidence"
-                    className="w-full rounded-lg border border-slate-700 hover:border-blue-500 transition-colors cursor-pointer"
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-colors cursor-pointer"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.parentElement!.innerHTML = '<div class="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-center"><p class="text-slate-500">Image unavailable</p></div>';
+                    }}
                   />
                 </a>
               </div>
             )}
 
             {/* Hash */}
-            <div className="text-xs text-slate-500 font-mono break-all bg-slate-900/50 p-2 rounded border border-slate-800">
+            <div className="text-xs text-slate-600 dark:text-slate-500 font-mono break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded border border-slate-200 dark:border-slate-800">
               🔐 SHA-256: {selectedEvent.image_hash}
             </div>
           </div>

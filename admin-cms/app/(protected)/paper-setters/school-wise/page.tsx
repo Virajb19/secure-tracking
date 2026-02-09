@@ -214,8 +214,8 @@ export default function SchoolWiseRecordsPage() {
         </div>
 
         {/* Loading State with Skeleton */}
-        {isLoading ? (
-          <TableSkeleton rows={5} columns={7} />
+        {(isLoading || (isFetching && !isFetchingNextPage)) ? (
+          <TableSkeleton rows={15} columns={7} />
         ) : (
           <>
             {/* Table */}
@@ -235,8 +235,12 @@ export default function SchoolWiseRecordsPage() {
                 <tbody>
                   {allRecords.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-8 text-slate-500">
-                        {searchQuery ? 'No schools match your search' : 'No records found'}
+                      <td colSpan={7} className="text-center py-12">
+                        <School className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                        <div className="text-slate-500 dark:text-slate-400">
+                          {searchQuery ? 'No schools match your search' : 'No records found'}
+                        </div>
+                        <p className="text-slate-400 dark:text-slate-500 text-sm mt-1">Try adjusting your filters</p>
                       </td>
                     </tr>
                   ) : (

@@ -1,7 +1,6 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
 import { useToggleUserStatus } from '@/services/user.service';
 import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
 import { twMerge } from 'tailwind-merge';
@@ -25,8 +24,8 @@ export function UserStatusToggle({
         isActive: newStatus,
       });
       showSuccessToast(
-        newStatus 
-          ? 'User activated successfully!' 
+        newStatus
+          ? 'User activated successfully!'
           : 'User deactivated successfully!',
         3000
       );
@@ -44,10 +43,10 @@ export function UserStatusToggle({
     >
       <Badge
         variant={isActive ? 'success' : 'destructive'}
-        className={twMerge("cursor-pointer hover:opacity-80 transition-opacity min-w-18 flex justify-center", !isActive && "bg-red-600 dark:bg-red-500/80")}
+        className={twMerge("cursor-pointer hover:opacity-80 transition-opacity min-w-18 flex justify-center", !isActive && "bg-red-600 dark:bg-red-500/80 text-white")}
       >
         {toggleStatusMutation.isPending ? (
-           <div className={twMerge("size-4 border-2 border-t-[3px] border-white/20 rounded-full animate-spin mr-2", isActive ? "border-t-emerald-400" : "border-t-red-400")}/>
+          <div className={twMerge("size-4 border-2 border-t-[3px] border-white/20 rounded-full animate-spin mr-2", isActive ? "border-t-emerald-400" : "border-t-red-400")} />
         ) : isActive ? (
           'Active'
         ) : (

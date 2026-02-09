@@ -40,7 +40,7 @@ export function LogoutButton() {
     <>
       <motion.button
         onClick={() => setShowConfirm(true)}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg text-slate-300 bg-red-800 hover:bg-red-600/20 hover:text-red-400 transition-all duration-200"
+        className="flex items-center gap-2 px-4 py-2 rounded-lg text-slate-200 bg-red-600 hover:bg-red-600/20 hover:text-red-400 transition-all duration-200"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >

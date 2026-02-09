@@ -56,8 +56,9 @@ const tableRowVariants = {
     opacity: 1,
     x: 0,
     transition: {
-      delay: i * 0.05,
-      duration: 0.3,
+      // Cap delay at 0.3s max for better UX when loading more records
+      delay: Math.min(i * 0.02, 0.3),
+      duration: 0.2,
       ease: 'easeOut' as const
     }
   }),

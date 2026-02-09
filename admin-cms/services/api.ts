@@ -85,6 +85,14 @@ api.interceptors.response.use(
         // The backend sets the new accessToken cookie in the response automatically.
         await api.post('/auth/refresh');
 
+        // Renew userRole cookie expiry to match refresh token expiry (7 days from now)
+        // This ensures the SSR auth check continues to pass as long as tokens are being refreshed
+        const role = localStorage.getItem('userRole');
+        if (role) {
+          const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+          document.cookie = `userRole=${encodeURIComponent(role)}; expires=${expires}; path=/; SameSite=Lax`;
+        }
+
         // Retry the original request — cookies are now updated
         processQueue(null);
         return api(originalRequest);

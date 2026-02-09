@@ -55,42 +55,41 @@ export function ViewNoticeButton({ notice }: ViewNoticeButtonProps) {
 
   return (
     <>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <motion.button
-              onClick={hasFile ? handleViewFile : undefined}
-              className={`p-2 rounded-lg transition-all ${
-                hasFile 
-                  ? 'text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-400/10 cursor-pointer' 
-                  : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.button
+            onClick={hasFile ? handleViewFile : undefined}
+            className={`p-2 rounded-lg transition-all ${hasFile
+                ? 'text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-400/10 cursor-pointer'
+                : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
               }`}
-              whileHover={hasFile ? { scale: 1.1 } : {}}
-              whileTap={hasFile ? { scale: 0.9 } : {}}
-              disabled={!hasFile}
-            >
-              <Eye className="h-5 w-5" />
-            </motion.button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{hasFile ? 'View File' : 'No file available'}</p>
-          </TooltipContent>
-        </Tooltip>
+            whileHover={hasFile ? { scale: 1.1 } : {}}
+            whileTap={hasFile ? { scale: 0.9 } : {}}
+            disabled={!hasFile}
+          >
+            <Eye className="h-5 w-5" />
+          </motion.button>
+        </TooltipTrigger>
+        <TooltipContent className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700">
+          <p>{hasFile ? 'View File' : 'No file available'}</p>
+        </TooltipContent>
+      </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <motion.button
-              onClick={() => setShowDialog(true)}
-              className="p-2 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-400/10 rounded-lg transition-all"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <FileText className="h-5 w-5" />
-            </motion.button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>View Details</p>
-          </TooltipContent>
-        </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.button
+            onClick={() => setShowDialog(true)}
+            className="p-2 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-400/10 rounded-lg transition-all"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <FileText className="h-5 w-5" />
+          </motion.button>
+        </TooltipTrigger>
+        <TooltipContent className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700">
+          <p>View Details</p>
+        </TooltipContent>
+      </Tooltip>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700/50 rounded-2xl max-w-2xl">
@@ -131,7 +130,7 @@ export function ViewNoticeButton({ notice }: ViewNoticeButtonProps) {
                   <span className="text-sm">{notice.school.name}</span>
                 </div>
               )}
-              
+
               <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                 <Calendar className="h-4 w-4" />
                 <span className="text-sm">Created: {formatDate(notice.created_at)}</span>

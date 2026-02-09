@@ -12,20 +12,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Search, Trash2, FileText, Loader2, AlertTriangle, Users, ChevronLeft, ChevronRight, MessageSquare, Eye, Landmark } from 'lucide-react';
+import { Search, FileText, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { paperSetterApi, PaperSetterSelection, BankDetailsInfo } from '@/services/paper-setter.service';
 import { masterDataApi } from '@/services/api';
 import { toast } from 'sonner';
 import { RetryButton } from '@/components/RetryButton';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
 import { TableSkeleton } from '@/components/TableSkeleton';
-import { ExpandableText } from '@/components/ExpandableText';
 import { DeleteSchoolRecordButton } from '@/components/DeleteSchoolRecordButton';
 
 const classLevels = ['10', '12'];
@@ -40,11 +33,6 @@ export default function PaperSettersPage() {
   const [page, setPage] = useState(1);
   const prevPageRef = useRef(1);
   const limit = 10;
-
-  // Bank details dialog state
-  const [bankDetailsDialogOpen, setBankDetailsDialogOpen] = useState(false);
-  const [selectedBankDetails, setSelectedBankDetails] = useState<BankDetailsInfo | null>(null);
-  const [selectedTeacherName, setSelectedTeacherName] = useState<string>('');
 
   // Debounce search input
   useEffect(() => {
@@ -124,9 +112,9 @@ export default function PaperSettersPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <RetryButton 
-          queryKey={['paper-setter-selections']} 
-          message="Failed to load data" 
+        <RetryButton
+          queryKey={['paper-setter-selections']}
+          message="Failed to load data"
         />
       </div>
     );
@@ -217,7 +205,7 @@ export default function PaperSettersPage() {
 
         {/* Loading State with Skeleton - show when initial load OR when jumping pages (non-sequential) */}
         {isLoading || (isFetching && !isSequentialNavigation) ? (
-          <TableSkeleton rows={10} columns={7} />
+          <TableSkeleton rows={15} columns={7} />
         ) : (
           <>
             {/* Table */}
@@ -251,26 +239,31 @@ export default function PaperSettersPage() {
                           </div>
                         </td>
                         <td className="py-4 px-4 text-slate-700 dark:text-slate-300">{selection.subject}</td>
-                        <td className="py-4 px-4 text-slate-600 dark:text-slate-400 max-w-xs">
+                        <td className="py-4 px-4 text-slate-600 dark:text-slate-400 min-w-[250px]">
                           {selection.invitation_message ? (
-                            <ExpandableText text={selection.invitation_message} maxLength={50} />
+                            <span className="text-sm whitespace-pre-wrap">{selection.invitation_message}</span>
                           ) : (
                             <span className="text-slate-400 dark:text-slate-500 italic">No message</span>
                           )}
                         </td>
-                        <td className="py-4 px-4 text-slate-700 dark:text-slate-300 max-w-xs truncate">
+                        <td className="py-4 px-4 text-slate-700 dark:text-slate-300 min-w-[180px]">
                           {selection.teacher?.school?.name || 'N/A'}
                           {selection.teacher?.school?.district && (
                             <div className="text-xs text-slate-500">{selection.teacher.school.district.name}</div>
                           )}
                         </td>
-                        <td className="py-4 px-4 text-slate-600 dark:text-slate-400 text-sm">
-                          {selection.status === 'ACCEPTED' ? (
-                            <span className="text-green-600 dark:text-green-400 font-medium">Accepted</span>
-                          ) : selection.teacher?.bank_details ? (
-                            <span className="text-blue-600 dark:text-blue-400">Bank details submitted</span>
+                        <td className="py-4 px-4 min-w-[220px] align-top">
+                          {selection.teacher?.bank_details ? (
+                            <div className="text-sm space-y-0.5">
+                              <div className="text-slate-800 dark:text-slate-200 font-medium">{selection.teacher.bank_details.bank_name}</div>
+                              {selection.teacher.bank_details.branch_name && (
+                                <div className="text-slate-600 dark:text-slate-400">{selection.teacher.bank_details.branch_name}</div>
+                              )}
+                              <div className="text-slate-600 dark:text-slate-400">A/C: {selection.teacher.bank_details.account_number}</div>
+                              <div className="text-slate-500 dark:text-slate-500">IFSC: {selection.teacher.bank_details.ifsc_code}</div>
+                            </div>
                           ) : (
-                            <span className="text-slate-400 dark:text-slate-500">Awaiting acceptance</span>
+                            <span className="text-slate-400 dark:text-slate-500 text-sm">Awaiting bank details</span>
                           )}
                         </td>
                         <td className="py-4 px-4">
@@ -278,24 +271,10 @@ export default function PaperSettersPage() {
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-2">
-                            {/* View Bank Details Button */}
-                            {selection.teacher?.bank_details && (
-                              <button
-                                onClick={() => {
-                                  setSelectedBankDetails(selection.teacher?.bank_details || null);
-                                  setSelectedTeacherName(selection.teacher?.name || 'Unknown');
-                                  setBankDetailsDialogOpen(true);
-                                }}
-                                className="p-1.5 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-                                title="View Bank Details"
-                              >
-                                <Landmark className="h-5 w-5" />
-                              </button>
-                            )}
                             {selection.official_order_url && (
-                              <a 
-                                href={selection.official_order_url} 
-                                target="_blank" 
+                              <a
+                                href={selection.official_order_url}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-1.5 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
                                 title="View Official Order"
@@ -304,7 +283,7 @@ export default function PaperSettersPage() {
                               </a>
                             )}
                             {selection.status === 'INVITED' && (
-                             <DeleteSchoolRecordButton schoolId={selection.teacher?.school?.id || ''} schoolName={selection.teacher?.school?.name || ''} />
+                              <DeleteSchoolRecordButton schoolId={selection.teacher?.school?.id || ''} schoolName={selection.teacher?.school?.name || ''} />
                             )}
                           </div>
                         </td>
@@ -340,11 +319,10 @@ export default function PaperSettersPage() {
                         size="sm"
                         onClick={() => handlePageChange(pageNum)}
                         disabled={isFetching}
-                        className={`w-8 h-8 p-0 flex-shrink-0 ${
-                          page === pageNum
-                            ? 'bg-blue-600 border-blue-600 text-white'
-                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
-                        }`}
+                        className={`w-8 h-8 p-0 flex-shrink-0 ${page === pageNum
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+                          }`}
                       >
                         {pageNum}
                       </Button>
@@ -366,54 +344,6 @@ export default function PaperSettersPage() {
           </>
         )}
       </div>
-
-      {/* Bank Details Dialog */}
-      <Dialog open={bankDetailsDialogOpen} onOpenChange={setBankDetailsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Landmark className="h-5 w-5 text-blue-500" />
-              Bank Details - {selectedTeacherName}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedBankDetails ? (
-            <div className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Account Holder</label>
-                  <p className="text-slate-900 dark:text-white font-medium">{selectedBankDetails.account_name}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Account Number</label>
-                  <p className="text-slate-900 dark:text-white font-medium">{selectedBankDetails.account_number}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">IFSC Code</label>
-                  <p className="text-slate-900 dark:text-white font-medium">{selectedBankDetails.ifsc_code}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Bank Name</label>
-                  <p className="text-slate-900 dark:text-white font-medium">{selectedBankDetails.bank_name}</p>
-                </div>
-                {selectedBankDetails.branch_name && (
-                  <div>
-                    <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Branch Name</label>
-                    <p className="text-slate-900 dark:text-white font-medium">{selectedBankDetails.branch_name}</p>
-                  </div>
-                )}
-                {selectedBankDetails.upi_id && (
-                  <div>
-                    <label className="text-sm font-medium text-slate-500 dark:text-slate-400">UPI ID</label>
-                    <p className="text-slate-900 dark:text-white font-medium">{selectedBankDetails.upi_id}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <p className="text-slate-500 dark:text-slate-400">No bank details available.</p>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

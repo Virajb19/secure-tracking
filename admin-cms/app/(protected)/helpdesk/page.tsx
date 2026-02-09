@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Trash2, CheckCircle, Loader2, Headphones, Hash, User, MessageSquare, Phone, Calendar, RotateCcw, HelpCircle, Search, Filter, X } from 'lucide-react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,7 +34,7 @@ const tableRowVariants = {
   visible: (i: number) => ({
     opacity: 1,
     x: 0,
-    transition: { delay: i * 0.05, duration: 0.3, ease: 'easeOut' as const }
+    transition: { delay: Math.min(i * 0.02, 0.3), duration: 0.3, ease: 'easeOut' as const }
   }),
   exit: {
     opacity: 0,
@@ -104,6 +104,14 @@ export default function HelpdeskPage() {
   // Get total from first page (it's the same across all pages)
   const total = data?.pages[0]?.total ?? 0;
 
+  // Track if initial data has ever been loaded (for showing loader in table vs skeleton)
+  const hasLoadedOnce = useRef(false);
+  useEffect(() => {
+    if (allTickets.length > 0 || (!isLoading && data)) {
+      hasLoadedOnce.current = true;
+    }
+  }, [allTickets.length, isLoading, data]);
+
   // Filter tickets by search (client-side filtering for loaded tickets)
   const filteredTickets = useMemo(() => {
     if (!searchQuery) return allTickets;
@@ -121,59 +129,6 @@ export default function HelpdeskPage() {
     }
   };
 
-  if (isLoading && !data) {
-    return (
-      <motion.div
-        className="space-y-8 p-2"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <motion.div variants={itemVariants}>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-linear-to-br from-purple-500 to-pink-600 rounded-lg">
-              <HelpCircle className="h-6 w-6 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Helpdesk</h1>
-          </div>
-        </motion.div>
-        <div className="flex flex-col items-center justify-center h-96 gap-4">
-          <Loader2 className='size-10 text-blue-500 animate-spin' />
-          <span className="text-slate-400">Loading tickets...</span>
-        </div>
-      </motion.div>
-    );
-  }
-
-  if (error) {
-    return (
-      <motion.div
-        className="space-y-8 p-2"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <motion.div variants={itemVariants}>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-linear-to-br from-purple-500 to-pink-600 rounded-lg">
-              <HelpCircle className="h-6 w-6 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Helpdesk</h1>
-          </div>
-        </motion.div>
-        <motion.div
-          className="flex items-center justify-center h-96"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          <RetryButton
-            queryKey={['helpdesk-tickets', statusFilter]}
-            message="Failed to load tickets"
-          />
-        </motion.div>
-      </motion.div>
-    );
-  }
 
   return (
     <motion.div
@@ -243,8 +198,8 @@ export default function HelpdeskPage() {
           <motion.button
             onClick={() => setStatusFilter(undefined)}
             className={`px-4 py-2.5 rounded-xl font-medium transition-all ${statusFilter === undefined
-                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+              ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
               }`}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -254,8 +209,8 @@ export default function HelpdeskPage() {
           <motion.button
             onClick={() => setStatusFilter('pending')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${statusFilter === 'pending'
-                ? 'bg-yellow-500 text-white shadow-lg shadow-yellow-500/25'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+              ? 'bg-yellow-500 text-white shadow-lg shadow-yellow-500/25'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
               }`}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -266,8 +221,8 @@ export default function HelpdeskPage() {
           <motion.button
             onClick={() => setStatusFilter('resolved')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${statusFilter === 'resolved'
-                ? 'bg-green-500 text-white shadow-lg shadow-green-500/25'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+              ? 'bg-green-500 text-white shadow-lg shadow-green-500/25'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
               }`}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -312,96 +267,121 @@ export default function HelpdeskPage() {
               </tr>
             </thead>
             <tbody>
-              {/* Show skeleton rows when loading or refetching */}
-              {(isLoading || (isFetching && !isFetchingNextPage)) ? (
-                <TableRowsSkeleton rows={15} columns={7} />
-              ) : filteredTickets.length > 0 ? (
-                <AnimatePresence mode="popLayout">
-                  {filteredTickets.map((ticket, index) => (
-                    <motion.tr
-                      key={ticket.id}
-                      custom={index}
-                      variants={tableRowVariants}
-                      initial="hidden"
-                      animate="visible"
-                      exit="exit"
-                      whileHover="hover"
-                      layout
-                      className="border-b border-slate-100 dark:border-slate-800/50 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                    >
-                      <td className="py-4 px-5">
-                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-full text-sm font-mono">
-                          {index + 1}
-                        </span>
-                      </td>
-                      <td className="py-4 px-5">
-                        <span className="text-blue-600 dark:text-blue-400 font-medium">{ticket.full_name}</span>
-                      </td>
-                      <td className="py-4 px-5 max-w-xs">
-                        <ExpandableText
-                          text={ticket.message}
-                          maxLength={60}
-                          className="text-slate-700 dark:text-slate-300 text-sm"
-                        />
-                      </td>
-                      <td className="py-4 px-5">
-                        <span className="text-slate-700 dark:text-slate-300 font-mono text-sm bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded">
-                          {ticket.phone}
-                        </span>
-                      </td>
-                      <td className="py-4 px-5 text-slate-600 dark:text-slate-400 text-sm">
-                        {formatDate(ticket.created_at)}
-                      </td>
-                      <td className="py-4 px-5">
-                        {ticket.is_resolved ? (
-                          <Badge variant="success" className="bg-emerald-500/20 text-emerald-400 border-0">
-                            Resolved
-                          </Badge>
-                        ) : (
-                          <Badge variant="warning" className="bg-yellow-500/20 text-yellow-400 border-0">
-                            Pending
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="py-4 px-5">
-                        <div className="flex items-center gap-2">
-                          {!ticket.is_resolved ? (
-                            <ResolveTicketButton ticketId={ticket.id} />
-                          ) : (
-                            <SetBackToPendingButton ticketId={ticket.id} />
-                          )}
-                          <DeleteTicketButton ticketId={ticket.id} />
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-              ) : (
+              {/* Show error state */}
+              {error ? (
                 <tr>
                   <td colSpan={7} className="py-16 text-center bg-white dark:bg-transparent">
-                    <Headphones className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
-                    <div className="text-slate-600 dark:text-slate-400 text-lg">
-                      {searchInput ? 'No matching tickets found' : 'No helpdesk tickets found'}
-                    </div>
-                    <p className="text-slate-500 text-sm mt-2">
-                      {searchInput
-                        ? 'Try adjusting your search criteria'
-                        : 'Tickets submitted by users will appear here'}
-                    </p>
-                    {searchInput && (
-                      <button
-                        onClick={() => {
-                          setSearchInput('');
-                          setSearchQuery('');
-                        }}
-                        className="mt-4 text-blue-500 hover:text-blue-600 text-sm font-medium"
-                      >
-                        Clear search
-                      </button>
-                    )}
+                    <RetryButton
+                      queryKey={['helpdesk-tickets', statusFilter]}
+                      message="Failed to load tickets"
+                    />
                   </td>
                 </tr>
-              )}
+              ) : /* Show loader in table for first-ever load */
+                isLoading && !hasLoadedOnce.current ? (
+                  <tr>
+                    <td colSpan={7} className="py-16 text-center">
+                      <div className="flex flex-col items-center justify-center gap-4">
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        >
+                          <Loader2 className="h-10 w-10 text-blue-500" />
+                        </motion.div>
+                        <span className="text-slate-400">Loading tickets...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : /* Show skeleton rows when refetching (filter, refresh) but not load more */
+                  ((isLoading && hasLoadedOnce.current) || (isFetching && !isFetchingNextPage)) ? (
+                    <TableRowsSkeleton rows={15} columns={7} />
+                  ) : filteredTickets.length > 0 ? (
+                    <AnimatePresence mode="popLayout">
+                      {filteredTickets.map((ticket, index) => (
+                        <motion.tr
+                          key={ticket.id}
+                          custom={index}
+                          variants={tableRowVariants}
+                          initial="hidden"
+                          animate="visible"
+                          exit="exit"
+                          whileHover="hover"
+                          layout
+                          className="border-b border-slate-100 dark:border-slate-800/50 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                        >
+                          <td className="py-4 px-5">
+                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-full text-sm font-mono">
+                              {index + 1}
+                            </span>
+                          </td>
+                          <td className="py-4 px-5">
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">{ticket.full_name}</span>
+                          </td>
+                          <td className="py-4 px-5 max-w-xs">
+                            <ExpandableText
+                              text={ticket.message}
+                              maxLength={60}
+                              className="text-slate-700 dark:text-slate-300 text-sm"
+                            />
+                          </td>
+                          <td className="py-4 px-5">
+                            <span className="text-slate-700 dark:text-slate-300 font-mono text-sm bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded">
+                              {ticket.phone}
+                            </span>
+                          </td>
+                          <td className="py-4 px-5 text-slate-600 dark:text-slate-400 text-sm">
+                            {formatDate(ticket.created_at)}
+                          </td>
+                          <td className="py-4 px-5">
+                            {ticket.is_resolved ? (
+                              <Badge variant="success" className="bg-emerald-500/20 text-emerald-400 border-0">
+                                Resolved
+                              </Badge>
+                            ) : (
+                              <Badge variant="warning" className="bg-yellow-500/20 text-yellow-400 border-0">
+                                Pending
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="py-4 px-5">
+                            <div className="flex items-center gap-2">
+                              {!ticket.is_resolved ? (
+                                <ResolveTicketButton ticketId={ticket.id} />
+                              ) : (
+                                <SetBackToPendingButton ticketId={ticket.id} />
+                              )}
+                              <DeleteTicketButton ticketId={ticket.id} />
+                            </div>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </AnimatePresence>
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="py-16 text-center bg-white dark:bg-transparent">
+                        <Headphones className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
+                        <div className="text-slate-600 dark:text-slate-400 text-lg">
+                          {searchInput ? 'No matching tickets found' : 'No helpdesk tickets found'}
+                        </div>
+                        <p className="text-slate-500 text-sm mt-2">
+                          {searchInput
+                            ? 'Try adjusting your search criteria'
+                            : 'Tickets submitted by users will appear here'}
+                        </p>
+                        {searchInput && (
+                          <button
+                            onClick={() => {
+                              setSearchInput('');
+                              setSearchQuery('');
+                            }}
+                            className="mt-4 text-blue-500 hover:text-blue-600 text-sm font-medium"
+                          >
+                            Clear search
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )}
             </tbody>
           </table>
         </div>

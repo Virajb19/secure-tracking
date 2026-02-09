@@ -58,7 +58,7 @@ export function DeleteCircularButton({
         className='p-2 rounded-lg text-red-500 hover:bg-red-500/30 transition disabled:opacity-50 disabled:pointer-events-none cursor-pointer'
       >
         {deleteMutation.isPending ? (
-          <div className='size-4 border-2 border-t-[3px] border-white/20 border-t-red-600 rounded-full animate-spin'/>
+          <div className='size-4 border-2 border-t-[3px] border-slate-200 dark:border-white/20 border-t-red-600 rounded-full animate-spin'/>
         ) : (
           <Trash className="h-5 w-5" />
         )}

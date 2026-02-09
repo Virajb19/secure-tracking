@@ -42,8 +42,9 @@ const tableRowVariants = {
     opacity: 1,
     x: 0,
     transition: {
-      delay: i * 0.05,
-      duration: 0.3,
+      // Cap delay at 0.3s max for better UX when loading more records
+      delay: Math.min(i * 0.02, 0.3),
+      duration: 0.2,
       ease: 'easeOut' as const
     }
   }),
@@ -120,6 +121,14 @@ export default function NotificationsPage() {
   // Get total from first page
   const total = data?.pages[0]?.total ?? 0;
 
+  // Track if initial data has ever been loaded (for showing loader in table vs skeleton)
+  const hasLoadedOnce = useRef(false);
+  useEffect(() => {
+    if (allNotices.length > 0 || (!isLoading && data)) {
+      hasLoadedOnce.current = true;
+    }
+  }, [allNotices.length, isLoading, data]);
+
   const loadMore = () => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
@@ -137,8 +146,8 @@ export default function NotificationsPage() {
     const { scrollTop, scrollHeight, clientHeight } = container;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-    // Prefetch when within 700px of bottom
-    if (distanceFromBottom < 700) {
+    // Prefetch when within 400px of bottom
+    if (distanceFromBottom < 400) {
       fetchNextPage();
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
@@ -197,32 +206,6 @@ export default function NotificationsPage() {
     });
   };
 
-  const isInitialLoading = isLoading && !data;
-
-  if (isInitialLoading && allNotices.length === 0) {
-    return (
-      <motion.div
-        className="space-y-8 p-2"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <motion.div variants={itemVariants}>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg">
-              <Bell className="h-6 w-6 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Notices</h1>
-          </div>
-        </motion.div>
-        <div className="flex flex-col items-center justify-center h-96 gap-4">
-          <Loader2 className='size-10 text-blue-500 animate-spin' />
-          <span className="text-slate-500 dark:text-slate-400">Loading notices...</span>
-        </div>
-      </motion.div>
-    );
-  }
-
   if (isError && allNotices.length === 0) {
     return (
       <motion.div
@@ -258,7 +241,6 @@ export default function NotificationsPage() {
     );
   }
 
-  const showSkeletons = isFetching && !isFetchingNextPage && allNotices.length > 0;
 
   return (
     <motion.div
@@ -381,69 +363,84 @@ export default function NotificationsPage() {
               </tr>
             </thead>
             <tbody>
-              {/* Show skeleton rows when loading or refetching */}
-              {(isFetching && !isFetchingNextPage) ? (
-                <TableRowsSkeleton rows={8} columns={8} />
-              ) : filteredNotices.length === 0 ? (
+              {/* Show loader in table for first-ever load */}
+              {isLoading && !hasLoadedOnce.current ? (
                 <tr>
                   <td colSpan={8} className="py-16 text-center">
-                    <Bell className="h-16 w-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-                    <div className="text-slate-500 dark:text-slate-400 text-lg">No notices found</div>
-                    <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Try adjusting your filters</p>
+                    <div className="flex flex-col items-center justify-center gap-4">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      >
+                        <Loader2 className="h-10 w-10 text-blue-500" />
+                      </motion.div>
+                      <span className="text-slate-400">Loading notices...</span>
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                <AnimatePresence mode="popLayout">
-                  {filteredNotices.map((notice: Notice, index: number) => (
-                    <motion.tr
-                      key={notice.id}
-                      custom={index}
-                      variants={tableRowVariants}
-                      initial="hidden"
-                      animate="visible"
-                      exit="exit"
-                      whileHover="hover"
-                      layout
-                      className="border-b border-slate-100 dark:border-slate-800/50"
-                    >
-                      <td className="py-4 px-5 text-slate-500 dark:text-slate-400 font-mono text-sm">{index + 1}</td>
-                      <td className="py-4 px-5">
-                        <span className="text-blue-600 dark:text-blue-400 font-medium max-w-[200px] truncate block" title={notice.title}>
-                          {notice.title}
-                        </span>
-                      </td>
-                      <td className="py-4 px-5 min-w-[120px]">
-                        <Badge className={typeStyles[notice.type] || typeStyles['GENERAL']}>
-                          {noticeTypeLabels[notice.type as NoticeType] || 'General'}
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-5 max-w-[400px]">
-                        <span className="text-slate-600 dark:text-slate-400 text-sm whitespace-pre-wrap">
-                          {notice.content}
-                        </span>
-                      </td>
-                      <td className="py-4 px-5 text-slate-700 dark:text-slate-300 min-w-[150px]">
-                        {notice.school?.name || 'All Schools'}
-                      </td>
-                      <td className="py-4 px-5 text-slate-600 dark:text-slate-400 min-w-[100px] whitespace-nowrap">{formatDate(notice.created_at)}</td>
-                      <td className="py-4 px-5">
-                        <Badge className={notice.file_url
-                          ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-                          : 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
-                        }>
-                          {notice.file_url ? 'Yes' : 'No'}
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-5">
-                        <div className="flex items-center gap-1">
-                          <ViewNoticeButton notice={notice} />
-                          <DeleteNoticeButton noticeId={notice.id} noticeTitle={notice.title} />
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-              )}
+              ) : /* Show skeleton rows when refetching (search, filter, refresh) but not load more */
+                ((isLoading && hasLoadedOnce.current) || (isFetching && !isFetchingNextPage)) ? (
+                  <TableRowsSkeleton rows={8} columns={8} />
+                ) : filteredNotices.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-16 text-center">
+                      <Bell className="h-16 w-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                      <div className="text-slate-500 dark:text-slate-400 text-lg">No notices found</div>
+                      <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Try adjusting your filters</p>
+                    </td>
+                  </tr>
+                ) : (
+                  <AnimatePresence mode="popLayout">
+                    {filteredNotices.map((notice: Notice, index: number) => (
+                      <motion.tr
+                        key={notice.id}
+                        custom={index}
+                        variants={tableRowVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        whileHover="hover"
+                        layout
+                        className="border-b border-slate-100 dark:border-slate-800/50"
+                      >
+                        <td className="py-4 px-5 text-slate-500 dark:text-slate-400 font-mono text-sm">{index + 1}</td>
+                        <td className="py-4 px-5">
+                          <span className="text-blue-600 dark:text-blue-400 font-medium max-w-[200px] truncate block" title={notice.title}>
+                            {notice.title}
+                          </span>
+                        </td>
+                        <td className="py-4 px-5 min-w-[120px]">
+                          <Badge className={typeStyles[notice.type] || typeStyles['GENERAL']}>
+                            {noticeTypeLabels[notice.type as NoticeType] || 'General'}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-5 max-w-[400px]">
+                          <span className="text-slate-600 dark:text-slate-400 text-sm whitespace-pre-wrap">
+                            {notice.content}
+                          </span>
+                        </td>
+                        <td className="py-4 px-5 text-slate-700 dark:text-slate-300 min-w-[150px]">
+                          {notice.school?.name || 'All Schools'}
+                        </td>
+                        <td className="py-4 px-5 text-slate-600 dark:text-slate-400 min-w-[100px] whitespace-nowrap">{formatDate(notice.created_at)}</td>
+                        <td className="py-4 px-5">
+                          <Badge className={notice.file_url
+                            ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
+                          }>
+                            {notice.file_url ? 'Yes' : 'No'}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-5">
+                          <div className="flex items-center gap-1">
+                            <ViewNoticeButton notice={notice} />
+                            <DeleteNoticeButton noticeId={notice.id} noticeTitle={notice.title} />
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </AnimatePresence>
+                )}
             </tbody>
           </table>
         </div>

@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import Image from 'next/image';
-import { toast } from 'sonner';
 
 export default function HomePage() {
   const router = useRouter();
@@ -27,8 +26,6 @@ export default function HomePage() {
     }
   }, [isAuthenticated, loading, router]);
 
-  // check if accessToken and refreshToken are httpOnly
-  toast.success(document.cookie);
 
   // Show loading while checking auth
   return (

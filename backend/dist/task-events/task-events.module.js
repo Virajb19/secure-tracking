@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const task_events_service_1 = require("./task-events.service");
 const task_events_controller_1 = require("./task-events.controller");
 const tasks_module_1 = require("../tasks/tasks.module");
+const appwrite_module_1 = require("../appwrite/appwrite.module");
 let TaskEventsModule = class TaskEventsModule {
 };
 exports.TaskEventsModule = TaskEventsModule;
@@ -18,6 +19,7 @@ exports.TaskEventsModule = TaskEventsModule = __decorate([
     (0, common_1.Module)({
         imports: [
             (0, common_1.forwardRef)(() => tasks_module_1.TasksModule),
+            appwrite_module_1.AppwriteModule,
         ],
         controllers: [task_events_controller_1.TaskEventsController],
         providers: [task_events_service_1.TaskEventsService],

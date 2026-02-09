@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RetryButton } from '@/components/RetryButton';
+import { TableRowsSkeleton } from '@/components/TableSkeleton';
 import {
   Select,
   SelectContent,
@@ -72,8 +73,9 @@ const tableRowVariants = {
     opacity: 1,
     x: 0,
     transition: {
-      delay: i * 0.05,
-      duration: 0.3
+      // Cap delay at 0.3s max for better UX when loading more records
+      delay: Math.min(i * 0.02, 0.3),
+      duration: 0.2
     }
   }),
   hover: {
@@ -146,6 +148,14 @@ export default function CircularsPage() {
 
   // Get total from first page
   const total = data?.pages[0]?.total ?? 0;
+
+  // Track if initial data has ever been loaded (for showing spinner vs skeleton)
+  const hasLoadedOnce = useRef(false);
+  useEffect(() => {
+    if (allCirculars.length > 0 || (!circularsLoading && data)) {
+      hasLoadedOnce.current = true;
+    }
+  }, [allCirculars.length, circularsLoading, data]);
 
   const loadMore = () => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -690,17 +700,8 @@ export default function CircularsPage() {
           className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl relative"
           variants={cardVariants}
         >
-          {/* Loading overlay when refetching */}
-          {circularsFetching && allCirculars.length > 0 && !isFetchingNextPage && (
-            <div className="absolute inset-0 bg-slate-900/50 z-10 flex items-center justify-center">
-              <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
-                <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                <span className="text-slate-300 text-sm">Refreshing...</span>
-              </div>
-            </div>
-          )}
-
-          {circularsLoading && allCirculars.length === 0 ? (
+          {/* Show spinner only on first ever load */}
+          {circularsLoading && !hasLoadedOnce.current ? (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <motion.div
                 animate={{ rotate: 360 }}
@@ -718,7 +719,7 @@ export default function CircularsPage() {
             >
               <RetryButton queryKey={['circulars', searchQuery]} message="Failed to load circulars" />
             </motion.div>
-          ) : allCirculars.length === 0 ? (
+          ) : allCirculars.length === 0 && !circularsFetching ? (
             <motion.div
               className="text-center py-16"
               initial={{ opacity: 0, scale: 0.9 }}
@@ -726,7 +727,7 @@ export default function CircularsPage() {
             >
               <FileText className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
               <div className="text-slate-500 dark:text-slate-400 text-lg">No circulars found</div>
-              <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Create your first circular above</p>
+              <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">{searchQuery ? 'Try adjusting your search' : 'Create your first circular above'}</p>
             </motion.div>
           ) : (
             <div className="overflow-x-auto">
@@ -752,64 +753,69 @@ export default function CircularsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <AnimatePresence>
-                    {allCirculars.map((circular, index) => (
-                      <motion.tr
-                        key={circular.id}
-                        custom={index}
-                        variants={tableRowVariants}
-                        initial="hidden"
-                        animate="visible"
-                        whileHover="hover"
-                        className="border-b border-slate-100 dark:border-slate-800/50 cursor-pointer"
-                      >
-                        <td className="py-4 px-5">
-                          <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-full text-sm font-mono">
-                            {index + 1}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5">
-                          <span className="text-slate-700 dark:text-slate-300 font-mono text-sm bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded">
-                            {circular.circular_no}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5 max-w-xs">
-                          <span className="text-blue-600 dark:text-blue-400 font-medium line-clamp-2">
-                            {circular.title}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5 text-slate-700 dark:text-slate-300">{circular.issued_by}</td>
-                        <td className="py-4 px-5 text-slate-500 dark:text-slate-400 text-sm">
-                          {formatDate(circular.issued_date)}
-                        </td>
-                        <td className="py-4 px-5">
-                          {circular.file_url ? (
-                            <motion.button
-                              onClick={() => handleViewFile(circular.file_url!)}
-                              className="inline-flex items-center gap-2 bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-emerald-500/20 transition-all"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              <Eye className="h-4 w-4" />
-                              View File
-                            </motion.button>
-                          ) : (
-                            <span className="text-slate-400 dark:text-slate-600 text-sm italic">No file attached</span>
-                          )}
-                        </td>
-                        <td className="py-4 px-5">
-                          <DeleteCircularButton circularId={circular.id} />
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
+                  {/* Show skeleton rows during any refetch (search, refresh) but not load more */}
+                  {((circularsLoading && hasLoadedOnce.current) || (circularsFetching && !isFetchingNextPage)) ? (
+                    <TableRowsSkeleton rows={15} columns={7} />
+                  ) : (
+                    <AnimatePresence>
+                      {allCirculars.map((circular, index) => (
+                        <motion.tr
+                          key={circular.id}
+                          custom={index}
+                          variants={tableRowVariants}
+                          initial="hidden"
+                          animate="visible"
+                          whileHover="hover"
+                          className="border-b border-slate-100 dark:border-slate-800/50 cursor-pointer"
+                        >
+                          <td className="py-4 px-5">
+                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-full text-sm font-mono">
+                              {index + 1}
+                            </span>
+                          </td>
+                          <td className="py-4 px-5">
+                            <span className="text-slate-700 dark:text-slate-300 font-mono text-sm bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded">
+                              {circular.circular_no}
+                            </span>
+                          </td>
+                          <td className="py-4 px-5 max-w-xs">
+                            <span className="text-blue-600 dark:text-blue-400 font-medium line-clamp-2">
+                              {circular.title}
+                            </span>
+                          </td>
+                          <td className="py-4 px-5 text-slate-700 dark:text-slate-300">{circular.issued_by}</td>
+                          <td className="py-4 px-5 text-slate-500 dark:text-slate-400 text-sm">
+                            {formatDate(circular.issued_date)}
+                          </td>
+                          <td className="py-4 px-5">
+                            {circular.file_url ? (
+                              <motion.button
+                                onClick={() => handleViewFile(circular.file_url!)}
+                                className="inline-flex items-center gap-2 bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-emerald-500/20 transition-all"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                <Eye className="h-4 w-4" />
+                                View File
+                              </motion.button>
+                            ) : (
+                              <span className="text-slate-400 dark:text-slate-600 text-sm italic">No file attached</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-5">
+                            <DeleteCircularButton circularId={circular.id} />
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </AnimatePresence>
+                  )}
                 </tbody>
               </table>
             </div>
           )}
 
           {/* Load More / Status */}
-          {allCirculars.length > 0 && (
+          {allCirculars.length > 0 && (!circularsFetching || isFetchingNextPage) && (
             <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50">
               {isFetchingNextPage ? (
                 <div className="flex items-center justify-center gap-2">
@@ -838,3 +844,4 @@ export default function CircularsPage() {
     </motion.div>
   );
 }
+

@@ -488,8 +488,8 @@ export function SendNotificationDialog({
                           <span className="font-medium">{warning.schoolName}</span>
                           <span>- {warning.teacherName}</span>
                           <span className={`px-1.5 py-0.5 rounded text-[10px] ${warning.status === 'ACCEPTED'
-                              ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-                              : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
+                            ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+                            : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
                             }`}>
                             {warning.status}
                           </span>
@@ -635,7 +635,7 @@ export function SendNotificationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-white max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-white max-w-lg max-h-[90vh] overflow-y-auto duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <motion.div

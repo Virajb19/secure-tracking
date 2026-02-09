@@ -519,24 +519,32 @@ export default function UsersPage() {
             </SelectContent>
           </Select>
 
-          <Select value={schoolFilter} onValueChange={(v) => { setSchoolFilter(v); resetPage(); }} disabled={isFetchingSchools}>
+          <Select value={schoolFilter} onValueChange={(v) => { setSchoolFilter(v); resetPage(); }}>
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               {isFetchingSchools ? (
-                <span className="flex-center gap-2 text-slate-400">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading schools...
+                <span className="flex items-center gap-2 text-black dark:text-white">
+                   All Schools
                 </span>
               ) : (
                 <SelectValue placeholder="School" />
               )}
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-              <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Schools</SelectItem>
-              {schools.map((school) => (
-                <SelectItem key={school.id} value={school.id} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
-                  {school.name}
-                </SelectItem>
-              ))}
+              {isFetchingSchools ? (
+                <div className="flex items-center justify-center gap-2 py-6 text-slate-400">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Loading schools...</span>
+                </div>
+              ) : (
+                <>
+                  <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Schools</SelectItem>
+                  {schools.map((school) => (
+                    <SelectItem key={school.id} value={school.id} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
+                      {school.name}
+                    </SelectItem>
+                  ))}
+                </>
+              )}
             </SelectContent>
           </Select>
 

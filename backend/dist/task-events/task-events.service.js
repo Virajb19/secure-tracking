@@ -50,18 +50,18 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const library_1 = require("@prisma/client/runtime/library");
 const crypto = __importStar(require("crypto"));
-const fs = __importStar(require("fs"));
-const path = __importStar(require("path"));
 const prisma_1 = require("../prisma");
 const tasks_service_1 = require("../tasks/tasks.service");
 const audit_logs_service_1 = require("../audit-logs/audit-logs.service");
+const appwrite_service_1 = require("../appwrite/appwrite.service");
 var client_2 = require("@prisma/client");
 Object.defineProperty(exports, "EventType", { enumerable: true, get: function () { return client_2.EventType; } });
 let TaskEventsService = class TaskEventsService {
-    constructor(db, tasksService, auditLogsService) {
+    constructor(db, tasksService, auditLogsService, appwriteService) {
         this.db = db;
         this.tasksService = tasksService;
         this.auditLogsService = auditLogsService;
+        this.appwriteService = appwriteService;
     }
     async create(taskId, createDto, imageFile, userId, ipAddress) {
         const task = await this.tasksService.findById(taskId);
@@ -114,16 +114,14 @@ let TaskEventsService = class TaskEventsService {
         return timestamp >= startTime && timestamp <= endTime;
     }
     async saveImage(file, taskId, eventType) {
-        const uploadsDir = path.join(process.cwd(), 'uploads', taskId);
-        if (!fs.existsSync(uploadsDir)) {
-            fs.mkdirSync(uploadsDir, { recursive: true });
-        }
         const timestamp = Date.now();
-        const extension = path.extname(file.originalname) || '.jpg';
-        const filename = `${eventType}_${timestamp}${extension}`;
-        const filepath = path.join(uploadsDir, filename);
-        fs.writeFileSync(filepath, file.buffer);
-        return `/uploads/${taskId}/${filename}`;
+        const extension = file.originalname?.split('.').pop() || 'jpg';
+        const filename = `task-events/${taskId}/${eventType}_${timestamp}.${extension}`;
+        const appwriteUrl = await this.appwriteService.uploadFile(file.buffer, filename, file.mimetype || 'image/jpeg');
+        if (!appwriteUrl) {
+            throw new common_1.BadRequestException('Failed to upload image. Please try again.');
+        }
+        return appwriteUrl;
     }
     async updateTaskStatus(task, eventType, isWithinWindow, userId, ipAddress) {
         if (!isWithinWindow) {
@@ -204,6 +202,7 @@ exports.TaskEventsService = TaskEventsService = __decorate([
     __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => tasks_service_1.TasksService))),
     __metadata("design:paramtypes", [prisma_1.PrismaService,
         tasks_service_1.TasksService,
-        audit_logs_service_1.AuditLogsService])
+        audit_logs_service_1.AuditLogsService,
+        appwrite_service_1.AppwriteService])
 ], TaskEventsService);
 //# sourceMappingURL=task-events.service.js.map

@@ -9,12 +9,11 @@ import {
 import { TaskEvent, TaskStatus, EventType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import * as crypto from 'crypto';
-import * as fs from 'fs';
-import * as path from 'path';
 import { PrismaService } from '../prisma';
 import { CreateTaskEventDto } from './dto/create-task-event.dto';
 import { TasksService } from '../tasks/tasks.service';
 import { AuditLogsService, AuditAction } from '../audit-logs/audit-logs.service';
+import { AppwriteService } from '../appwrite/appwrite.service';
 
 // Re-export EventType for use in other modules
 export { EventType } from '@prisma/client';
@@ -42,6 +41,7 @@ export class TaskEventsService {
         @Inject(forwardRef(() => TasksService))
         private readonly tasksService: TasksService,
         private readonly auditLogsService: AuditLogsService,
+        private readonly appwriteService: AppwriteService,
     ) { }
 
     /**
@@ -213,33 +213,31 @@ export class TaskEventsService {
     }
 
     /**
-     * Save image to storage and return URL/path.
-     * In production, this would upload to S3/Azure/GCS.
-     * For now, saves to local uploads directory.
+     * Save image to Appwrite storage and return URL.
+     * Uses Appwrite for cloud storage to ensure reliable access.
      */
     private async saveImage(
         file: Express.Multer.File,
         taskId: string,
         eventType: EventType,
     ): Promise<string> {
-        const uploadsDir = path.join(process.cwd(), 'uploads', taskId);
-
-        // Ensure directory exists
-        if (!fs.existsSync(uploadsDir)) {
-            fs.mkdirSync(uploadsDir, { recursive: true });
-        }
-
         // Generate unique filename with timestamp
         const timestamp = Date.now();
-        const extension = path.extname(file.originalname) || '.jpg';
-        const filename = `${eventType}_${timestamp}${extension}`;
-        const filepath = path.join(uploadsDir, filename);
+        const extension = file.originalname?.split('.').pop() || 'jpg';
+        const filename = `task-events/${taskId}/${eventType}_${timestamp}.${extension}`;
 
-        // Write file to disk
-        fs.writeFileSync(filepath, file.buffer);
+        // Upload to Appwrite
+        const appwriteUrl = await this.appwriteService.uploadFile(
+            file.buffer,
+            filename,
+            file.mimetype || 'image/jpeg',
+        );
 
-        // Return relative URL (in production, this would be a CDN URL)
-        return `/uploads/${taskId}/${filename}`;
+        if (!appwriteUrl) {
+            throw new BadRequestException('Failed to upload image. Please try again.');
+        }
+
+        return appwriteUrl;
     }
 
     /**
