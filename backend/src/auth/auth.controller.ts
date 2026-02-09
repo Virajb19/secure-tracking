@@ -79,7 +79,7 @@ export class AuthController {
             httpOnly: true,                          // JS cannot access this cookie
             secure: isProduction,                    // HTTPS only in production
             sameSite: isProduction ? 'strict' : 'lax', // Strict in prod, Lax in dev for cross-port
-            path: '/api/auth',                       // Only sent to auth endpoints
+            path: '/',                               // Sent with ALL requests (needed for SSR auth checks)
             maxAge: this.parseMaxAge(),               // Match refresh token expiry
         });
     }
@@ -94,7 +94,7 @@ export class AuthController {
             httpOnly: true,
             secure: isProduction,
             sameSite: isProduction ? 'strict' : 'lax',
-            path: '/api/auth',
+            path: '/',
             maxAge: 0,
         });
     }

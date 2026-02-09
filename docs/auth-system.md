@@ -264,7 +264,7 @@ If path were `/api`, the browser wouldn't send it to the Next.js server, and all
 | Cookie | HttpOnly | SameSite | Path | Max-Age | Purpose |
 |--------|----------|----------|------|---------|---------|
 | `accessToken` | ✅ Yes | Strict/Lax | `/` | ~15m (JWT_EXPIRES_IN) | Auth for all API requests + SSR forwarding |
-| `refreshToken` | ✅ Yes | Strict/Lax | `/api/auth` | ~7d (REFRESH_TOKEN_EXPIRES_IN) | Token refresh only |
+| `refreshToken` | ✅ Yes | Strict/Lax | `/` | ~7d (REFRESH_TOKEN_EXPIRES_IN) | Token refresh + SSR auth checks |
 | `userRole` | ❌ No | Lax | `/` | 7d | SSR route guard |
 
 ---

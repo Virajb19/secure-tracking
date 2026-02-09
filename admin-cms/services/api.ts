@@ -47,7 +47,7 @@ function forceLogout() {
   localStorage.removeItem('userProfilePic');
   document.cookie = 'userRole=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-  document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/api/auth';
+  document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   // Don't redirect if already on login page (prevents infinite reload loop)
   if (!window.location.pathname.includes('/login')) {
     window.location.href = '/login';

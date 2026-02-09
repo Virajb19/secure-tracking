@@ -87,7 +87,7 @@ let AuthController = class AuthController {
             httpOnly: true,
             secure: isProduction,
             sameSite: isProduction ? 'strict' : 'lax',
-            path: '/api/auth',
+            path: '/',
             maxAge: this.parseMaxAge(),
         });
     }
@@ -97,7 +97,7 @@ let AuthController = class AuthController {
             httpOnly: true,
             secure: isProduction,
             sameSite: isProduction ? 'strict' : 'lax',
-            path: '/api/auth',
+            path: '/',
             maxAge: 0,
         });
     }
