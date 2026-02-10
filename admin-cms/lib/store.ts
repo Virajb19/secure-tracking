@@ -205,10 +205,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     else localStorage.removeItem('userProfilePic');
 
     // Store SUBJECT_COORDINATOR specific fields
-    // @ts-expect-error - subject and classGroup are returned for SUBJECT_COORDINATOR
-    const coordSubject = res.user.subject;
-    // @ts-expect-error - subject and classGroup are returned for SUBJECT_COORDINATOR
-    const coordClassGroup = res.user.classGroup;
+    // Backend returns coordinator_subject and coordinator_class_group for SUBJECT_COORDINATOR
+    // @ts-expect-error - coordinator_subject and coordinator_class_group are returned for SUBJECT_COORDINATOR
+    const coordSubject = res.user.coordinator_subject;
+    // @ts-expect-error - coordinator_subject and coordinator_class_group are returned for SUBJECT_COORDINATOR
+    const coordClassGroup = res.user.coordinator_class_group;
     if (coordSubject) localStorage.setItem('coordinatorSubject', coordSubject);
     else localStorage.removeItem('coordinatorSubject');
     if (coordClassGroup) localStorage.setItem('coordinatorClassGroup', coordClassGroup);

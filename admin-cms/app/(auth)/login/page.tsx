@@ -181,17 +181,17 @@ export default function LoginPage() {
               />
 
               {/* Subject Coordinator Toggle */}
-              <button
+              {/* <button
                 type="button"
                 onClick={() => setShowCoordinatorFields(!showCoordinatorFields)}
                 className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 transition-colors"
               >
                 {showCoordinatorFields ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 Subject Coordinator Options
-              </button>
+              </button> */}
 
               {/* Subject Coordinator Fields */}
-              <AnimatePresence>
+              {/* <AnimatePresence>
                 {showCoordinatorFields && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
@@ -257,7 +257,7 @@ export default function LoginPage() {
                     </div>
                   </motion.div>
                 )}
-              </AnimatePresence>
+              </AnimatePresence> */}
 
               {/* Server Error */}
               {serverError && (

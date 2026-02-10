@@ -48,11 +48,12 @@ import { DevDelayMiddleware } from './shared/middlewares';
             envFilePath: '.env',
         }),
 
-        // Rate limiting - 100 requests per minute per IP
+        // Rate limiting - only enforced in production
+        // In development, limit is effectively unlimited for testing
         ThrottlerModule.forRoot([{
             name: 'default',
             ttl: 60000, // 1 minute in milliseconds
-            limit: 100, // 100 requests per minute
+            limit: process.env.NODE_ENV === 'production' ? 100 : 10_000,
         }]),
 
         // Prisma ORM Module (global)

@@ -8,7 +8,7 @@ const envSchema = z.object({
   REFRESH_TOKEN_EXPIRES_IN: z.string().regex(/^(\d+)(s|m|h|d)$/, "REFRESH_TOKEN_EXPIRES_IN must be like 7d, 30d").default("7d"),
   CORS_ORIGIN: z.url('CORS_ORIGIN must be a valid URL').min(1, 'CORS_ORIGIN cannot be empty').default('http://localhost:3000'),
   PORT: z.coerce.number().int().positive().default(3001),
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV: z.enum(["development", "production", "testing"]).default("development"),
   UPLOAD_DEST: z.string().min(1, "UPLOAD_DEST is required"),
   MAX_FILE_SIZE: z.coerce.number().int().positive().max(50 * 1024 * 1024, "MAX_FILE_SIZE too large (max 50MB)"),
   

@@ -61,7 +61,7 @@ export function StarButton({ userId, isStarred }: StarButtonProps) {
     <motion.button
       onClick={handleClick}
       disabled={toggleStarMutation.isPending}
-      className={`p-2 rounded-lg transition-all ${
+      className={`p-2 rounded-lg cursor-pointer transition-all ${
         isStarred
           ? 'text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20'
           : 'text-slate-400 hover:text-yellow-400 hover:bg-slate-200 dark:hover:bg-slate-700/50'

@@ -271,7 +271,7 @@ async function main() {
             gender: 'MALE',
             profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin',
             coordinator_subject: 'Mathematics',
-            coordinator_class_group: '8-10',
+            coordinator_class_group: '11-12',
             created_at: new Date()
         }
     });

@@ -209,7 +209,21 @@ export class UsersService {
         }
 
         // Class levels array filter (for SUBJECT_COORDINATOR - filters by multiple class levels)
-        if (class_levels && class_levels.length > 0) {
+        // Combined with subject filter below when both are present
+        if (class_levels && class_levels.length > 0 && subject) {
+            // When BOTH class_levels and subject are provided, find teachers who teach:
+            // this subject AND at least one of the class levels
+            where.faculty = {
+                ...where.faculty,
+                teaching_assignments: {
+                    some: {
+                        class_level: { in: class_levels },
+                        subject: { equals: subject, mode: 'insensitive' },
+                    },
+                },
+            };
+        } else if (class_levels && class_levels.length > 0) {
+            // Only class_levels filter
             where.faculty = {
                 ...where.faculty,
                 teaching_assignments: {
@@ -218,10 +232,8 @@ export class UsersService {
                     },
                 },
             };
-        }
-
-        // Subject filter (through teaching_assignments)
-        if (subject) {
+        } else if (subject) {
+            // Only subject filter (through teaching_assignments)
             where.faculty = {
                 ...where.faculty,
                 teaching_assignments: {

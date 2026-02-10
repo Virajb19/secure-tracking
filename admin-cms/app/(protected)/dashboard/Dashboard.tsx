@@ -207,9 +207,8 @@ export default function Dashboard({
             >
                 {/* Total Users */}
                 <motion.div
-                    className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-5 shadow-sm"
+                    className="bg-white hover:scale-102 hover:-translate-y-1 duration-300 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-5 shadow-sm"
                     variants={cardVariants}
-                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                 >
                     <div className="flex items-center justify-between">
                         <div>
@@ -226,9 +225,8 @@ export default function Dashboard({
 
                 {/* Active Users */}
                 <motion.div
-                    className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-500/30 rounded-xl p-5 shadow-sm"
+                    className="bg-green-50  hover:scale-102 hover:-translate-y-1 duration-300 dark:bg-green-900/20 border border-green-200 dark:border-green-500/30 rounded-xl p-5 shadow-sm"
                     variants={cardVariants}
-                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                 >
                     <div className="flex items-center justify-between">
                         <div>
@@ -245,9 +243,8 @@ export default function Dashboard({
 
                 {/* Helpdesk Tickets */}
                 <motion.div
-                    className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30 rounded-xl p-5 shadow-sm"
+                    className="bg-blue-50  hover:scale-102 hover:-translate-y-1 duration-300 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30 rounded-xl p-5 shadow-sm"
                     variants={cardVariants}
-                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                 >
                     <div className="flex items-center justify-between">
                         <div>
