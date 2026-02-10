@@ -28,6 +28,7 @@ export function StarButton({ userId, isStarred }: StarButtonProps) {
 
   // Optimistic update mutation
   const toggleStarMutation = useMutation({
+    mutationKey: ['toggle-star'],
     mutationFn: async () => {
       const response = await userStarsApi.toggleStar(userId);
       return response;
@@ -68,7 +69,13 @@ export function StarButton({ userId, isStarred }: StarButtonProps) {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['starred-users'] });
+      // Only refetch when no other star mutations are still in flight.
+      // This prevents a race condition where starring two users simultaneously
+      // causes the first refetch to return stale data and overwrite the
+      // second mutation's optimistic update (making the star flicker).
+      if (queryClient.isMutating({ mutationKey: ['toggle-star'] }) === 0) {
+        queryClient.invalidateQueries({ queryKey: ['starred-users'] });
+      }
     },
   });
 
@@ -82,8 +89,8 @@ export function StarButton({ userId, isStarred }: StarButtonProps) {
       onClick={handleClick}
       disabled={toggleStarMutation.isPending}
       className={`relative p-2 rounded-lg cursor-pointer transition-colors duration-200 ${isStarred
-          ? 'text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20'
-          : 'text-slate-400 hover:text-yellow-400 hover:bg-slate-200 dark:hover:bg-slate-700/50'
+        ? 'text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20'
+        : 'text-slate-400 hover:text-yellow-400 hover:bg-slate-200 dark:hover:bg-slate-700/50'
         }`}
       title={isStarred ? 'Remove from Favorites' : 'Add to Favorites'}
       whileHover={{ scale: 1.1, rotate: 15 }}

@@ -80,25 +80,16 @@ const itemVariants = {
 };
 
 const tableRowVariants = {
-  hidden: { opacity: 0, x: -20 },
+  hidden: { opacity: 0, y: -10 },
   visible: (i: number) => ({
     opacity: 1,
-    x: 0,
+    y: 0,
     transition: {
-      delay: Math.min(0.3, i * 0.05), // Cap delay at 0.3s for many records
-      duration: 0.3,
-      ease: [0.25, 0.1, 0.25, 1] as const // easeOut cubic bezier
+      delay: i * 0.02,
+      duration: 0.15,
+      ease: "easeOut" as const
     }
   }),
-  exit: {
-    opacity: 0,
-    x: 20,
-    transition: { duration: 0.2 }
-  },
-  hover: {
-    backgroundColor: 'rgba(59, 130, 246, 0.05)',
-    transition: { duration: 0.2 }
-  }
 };
 
 const cardVariants = {
@@ -253,6 +244,10 @@ export default function UsersPage() {
   // Track if data has ever been loaded — skeletons only show before this becomes true
   const hasLoadedOnce = useRef(false);
 
+  // Refs for auto-scrolling pagination without scrolling the whole page
+  const activePageBtnRef = useRef<HTMLButtonElement>(null);
+  const paginationScrollRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!isLoading && users.length > 0) {
       hasLoadedOnce.current = true;
@@ -272,6 +267,18 @@ export default function UsersPage() {
       prevDistrictFilter.current = districtFilter;
     }
   }, [districtFilter, setSchoolFilter]);
+
+  // Auto-scroll only the horizontal pagination container (not the whole page)
+  useEffect(() => {
+    const container = paginationScrollRef.current;
+    const activeBtn = activePageBtnRef.current;
+    if (container && activeBtn) {
+      const btnRect = activeBtn.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const scrollLeft = container.scrollLeft + (btnRect.left - containerRect.left) - container.clientWidth / 2 + btnRect.width / 2;
+      container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+    }
+  }, [currentPage, totalPages]);
 
   // Prefetch next page
   useEffect(() => {
@@ -379,7 +386,7 @@ export default function UsersPage() {
     if (isLoading && !hasLoadedOnce.current) {
       return (
         <tbody>
-          <TableRowsSkeleton rows={10} columns={8} />
+          <TableRowsSkeleton rows={15} columns={8} />
         </tbody>
       );
     }
@@ -421,10 +428,14 @@ export default function UsersPage() {
     }
 
     return (
-      <tbody>
+      <AnimatePresence mode="popLayout">
         {users.map((user, index) => (
-          <tr
+          <motion.tr
             key={user.id}
+            custom={index}
+            variants={tableRowVariants}
+            initial="hidden"
+            animate="visible"
             className="border-b border-slate-100 dark:border-slate-800/50 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-500/5 transition-colors duration-150"
           >
             <td className="py-4 px-5">
@@ -488,9 +499,9 @@ export default function UsersPage() {
                 />
               </div>
             </td>
-          </tr>
+          </motion.tr>
         ))}
-      </tbody>
+      </AnimatePresence>
     );
   };
 
@@ -658,9 +669,9 @@ export default function UsersPage() {
 
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <button
-              className={`w-full p-2 rounded-lg duration-300 ${showOnlyInactive
+              className={`w-full p-2 text-white rounded-lg duration-300 ${showOnlyInactive
                 ? "bg-linear-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white border border-transparent"
-                : "bg-blue-500 border-slate-300 dark:border-transparent hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700/50  dark:hover:text-white"
+                : "bg-blue-500 border-slate-300 dark:border-transparent hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700/50 hover:text-black dark:hover:text-white"
                 }`}
               onClick={() => {
                 setShowOnlyInactive(!showOnlyInactive);
@@ -710,7 +721,7 @@ export default function UsersPage() {
           {/* Centered loader — shown during page changes / refetch / filtering */}
           {isFetching && hasLoadedOnce.current && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-slate-900/50 z-10">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              <Loader2 className="h-16 w-16 animate-spin text-blue-500" />
             </div>
           )}
 
@@ -767,20 +778,21 @@ export default function UsersPage() {
               <ChevronLeft className="h-4 w-4" />
               Previous
             </Button>
-            <div className="flex items-center gap-1 overflow-x-auto max-w-[250px] md:max-w-[400px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent py-1">
+            <div ref={paginationScrollRef} className="flex items-center gap-1 overflow-x-auto max-w-[250px] md:max-w-[400px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent py-1">
               {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((pageNum) => (
                 <button
                   key={pageNum}
+                  ref={currentPage === pageNum ? activePageBtnRef : undefined}
                   onClick={() => setCurrentPage(pageNum)}
                   disabled={isFetching}
                   className={`relative flex-shrink-0 h-9 min-w-[36px] px-2.5 rounded-lg text-sm font-medium transition-colors duration-150 cursor-pointer disabled:cursor-not-allowed ${currentPage === pageNum
-                      ? 'text-white'
-                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/50'
+                    ? 'text-white dark:text-slate-900'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/50'
                     }`}
                 >
                   {currentPage === pageNum && (
                     <motion.div
-                      className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 shadow-md shadow-blue-500/20"
+                      className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 dark:from-white dark:to-white shadow-md shadow-blue-500/20 dark:shadow-white/10"
                       layoutId="activeUserPage"
                       transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                     />
