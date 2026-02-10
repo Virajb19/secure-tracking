@@ -163,11 +163,7 @@ export class AuthService {
         await this.db.refreshToken.deleteMany({
             where: {
                 user_id: userId,
-                OR: [
-                    { expires_at: { lt: new Date() } },
-                    // Clean up revoked tokens older than 7 days (kept for reuse detection)
-                    { is_revoked: true, created_at: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
-                ],
+                expires_at: { lt: new Date() },
             },
         });
     }
@@ -608,25 +604,10 @@ export class AuthService {
         });
 
         if (!storedToken) {
-            // REUSE DETECTION: Token not found means it was already consumed.
-            // An attacker may be replaying a stolen token.
-            // We can't know the family here since the token is gone,
-            // but we log the suspicious activity.
-            this.logger.warn(`Refresh token reuse detected (token not found). Possible token theft.`);
+            // Token not found — either it was already consumed by a concurrent request,
+            // or it never existed. This is NOT necessarily token theft; it commonly happens
+            // when multiple API calls trigger refresh simultaneously.
             throw new UnauthorizedException('Invalid refresh token. Please login again.');
-        }
-
-        // If the token was already revoked (reuse detection)
-        if (storedToken.is_revoked) {
-            // REUSE DETECTED: This token was already consumed but not yet cleaned up.
-            // Revoke the ENTIRE token family to protect the user.
-            this.logger.warn(
-                `Refresh token reuse detected for user ${storedToken.user_id}, family ${storedToken.token_family}. Revoking all tokens in family.`,
-            );
-            await this.db.refreshToken.deleteMany({
-                where: { token_family: storedToken.token_family },
-            });
-            throw new UnauthorizedException('Suspicious activity detected. All sessions revoked. Please login again.');
         }
 
         // Check if token is expired
@@ -635,11 +616,9 @@ export class AuthService {
             throw new UnauthorizedException('Refresh token expired. Please login again.');
         }
 
-        // Token rotation: mark the used token as revoked (keep it for reuse detection)
-        await this.db.refreshToken.update({
-            where: { id: storedToken.id },
-            data: { is_revoked: true },
-        });
+        // Simple rotation: delete the old token immediately, then issue a new one.
+        // No revoke-and-keep — this avoids false-positive reuse detection from concurrent requests.
+        await this.db.refreshToken.delete({ where: { id: storedToken.id } });
 
         // Generate new access token
         const payload = {

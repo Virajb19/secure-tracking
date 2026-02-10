@@ -1,20 +1,21 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { usersApi, masterDataApi, UserFilterParams } from "./api";
 
 export const useGetUsers = (filters?: UserFilterParams) => {
   return useQuery({
     queryKey: ["users", filters],
     queryFn: () => usersApi.getAll(filters),
+    placeholderData: keepPreviousData,
   })
 }
 
 export const useToggleUserStatus = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) => 
+    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
       usersApi.toggleStatus(userId, isActive),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"], exact: false });
@@ -24,10 +25,10 @@ export const useToggleUserStatus = () => {
 
 export const useApproveUser = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ userId, status, rejectionReason }: { 
-      userId: string; 
+    mutationFn: ({ userId, status, rejectionReason }: {
+      userId: string;
       status: 'APPROVED' | 'REJECTED';
       rejectionReason?: string;
     }) => usersApi.approveUser(userId, status, rejectionReason),
@@ -39,7 +40,7 @@ export const useApproveUser = () => {
 
 export const useResetDevice = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (userId: string) => usersApi.resetDevice(userId),
     onSuccess: () => {

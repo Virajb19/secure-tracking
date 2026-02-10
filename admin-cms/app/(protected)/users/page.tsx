@@ -5,7 +5,7 @@ import { useAuthStore } from '@/lib/store';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+import { AnimatedCheckbox } from '@/components/AnimatedCheckbox';
 import {
   Select,
   SelectContent,
@@ -28,6 +28,8 @@ import {
   Eye,
   Phone,
   User as UserIcon,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -248,6 +250,15 @@ export default function UsersPage() {
   const isInitialMount = useRef(true);
   const prevDistrictFilter = useRef(districtFilter);
 
+  // Track if data has ever been loaded — skeletons only show before this becomes true
+  const hasLoadedOnce = useRef(false);
+
+  useEffect(() => {
+    if (!isLoading && users.length > 0) {
+      hasLoadedOnce.current = true;
+    }
+  }, [isLoading, users.length]);
+
   // Reset school filter when district changes (but not on initial mount)
   useEffect(() => {
     if (isInitialMount.current) {
@@ -363,64 +374,64 @@ export default function UsersPage() {
 
   // Define table loading/error content
   const tableContent = () => {
-    if (isLoading || isFetching) {
+    // Only show skeletons on the very first load ever (before any data has been fetched)
+    // After that, the pulse overlay handles all subsequent loading states
+    if (isLoading && !hasLoadedOnce.current) {
       return (
-        <TableRowsSkeleton rows={10} columns={8} />
+        <tbody>
+          <TableRowsSkeleton rows={10} columns={8} />
+        </tbody>
       );
     }
 
     if (isError) {
       return (
-        <tr>
-          <td colSpan={8} className="py-16">
-            <RetryButton
-              queryKey={['users', apiFilters]}
-              message="Failed to load users"
-              subMessage={typeof error?.message === 'string' ? error.message : undefined}
-            />
-          </td>
-        </tr>
+        <tbody>
+          <tr>
+            <td colSpan={8} className="py-16">
+              <RetryButton
+                queryKey={['users', apiFilters]}
+                message="Failed to load users"
+                subMessage={typeof error?.message === 'string' ? error.message : undefined}
+              />
+            </td>
+          </tr>
+        </tbody>
       );
     }
 
-    if (users.length === 0) {
+    if (users.length === 0 && !isFetching) {
       return (
-        <tr>
-          <td colSpan={8} className="py-16 bg-white dark:bg-transparent">
-            <motion.div
-              className="text-center"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-            >
-              <Users className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
-              <div className="text-slate-600 dark:text-slate-400 text-lg">No users found</div>
-              <p className="text-slate-500 text-sm mt-2">Try adjusting your filters</p>
-            </motion.div>
-          </td>
-        </tr>
+        <tbody>
+          <tr>
+            <td colSpan={8} className="py-16 bg-white dark:bg-transparent">
+              <motion.div
+                className="text-center"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+              >
+                <Users className="h-16 w-16 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
+                <div className="text-slate-600 dark:text-slate-400 text-lg">No users found</div>
+                <p className="text-slate-500 text-sm mt-2">Try adjusting your filters</p>
+              </motion.div>
+            </td>
+          </tr>
+        </tbody>
       );
     }
 
     return (
-      <AnimatePresence mode="wait">
+      <tbody>
         {users.map((user, index) => (
-          <motion.tr
+          <tr
             key={user.id}
-            custom={index}
-            variants={tableRowVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            whileHover="hover"
-            layout
-            className="border-b border-slate-100 dark:border-slate-800/50 cursor-pointer"
+            className="border-b border-slate-100 dark:border-slate-800/50 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-500/5 transition-colors duration-150"
           >
             <td className="py-4 px-5">
               <div className="flex items-center gap-3">
-                <Checkbox
+                <AnimatedCheckbox
                   checked={selectedUsers.includes(user.id)}
                   onCheckedChange={(checked) => handleSelectUser(user.id, checked as boolean)}
-                  className="border-slate-400 dark:border-slate-500 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                 />
                 <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-full text-sm font-mono">
                   {(currentPage - 1) * itemsPerPage + index + 1}
@@ -477,9 +488,9 @@ export default function UsersPage() {
                 />
               </div>
             </td>
-          </motion.tr>
+          </tr>
         ))}
-      </AnimatePresence>
+      </tbody>
     );
   };
 
@@ -695,16 +706,22 @@ export default function UsersPage() {
         className="bg-linear-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-xl"
         variants={cardVariants}
       >
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="relative overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {/* Centered loader — shown during page changes / refetch / filtering */}
+          {isFetching && hasLoadedOnce.current && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-slate-900/50 z-10">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            </div>
+          )}
+
+          <table className={`w-full transition-opacity duration-200 ${isFetching && hasLoadedOnce.current ? 'opacity-60 pointer-events-none select-none' : ''}`}>
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                 <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
+                  <div className="flex items-center gap-3">
+                    <AnimatedCheckbox
                       checked={selectedUsers.length === users.length && users.length > 0}
                       onCheckedChange={handleSelectAll}
-                      className="border-slate-500 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                     />
                     <Hash className="h-4 w-4" />
                     Sl No.
@@ -730,15 +747,13 @@ export default function UsersPage() {
                 <th className="text-left py-4 px-5 text-slate-600 dark:text-slate-400 font-medium text-sm">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {tableContent()}
-            </tbody>
+            {tableContent()}
           </table>
         </div>
 
-        {/* Pagination Controls - Always show, centered */}
+        {/* Pagination Controls */}
         <motion.div
-          className="flex flex-col items-center gap-4 p-4 border-t border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30"
+          className="flex flex-col items-center gap-3 p-4 border-t border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30"
           variants={itemVariants}
         >
           <div className="flex items-center gap-2">
@@ -747,26 +762,31 @@ export default function UsersPage() {
               size="sm"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1 || isFetching}
-              className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white disabled:opacity-50"
+              className="gap-1 shrink-0 bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white disabled:opacity-50"
             >
-              ← Prev
+              <ChevronLeft className="h-4 w-4" />
+              Previous
             </Button>
-            <div className="flex items-center gap-1 max-w-[250px] overflow-x-auto overflow-hidden scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
+            <div className="flex items-center gap-1 overflow-x-auto max-w-[250px] md:max-w-[400px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent py-1">
               {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((pageNum) => (
-                <motion.div key={pageNum} whileTap={{ scale: 0.98 }}>
-                  <Button
-                    variant={currentPage === pageNum ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(pageNum)}
-                    disabled={isFetching}
-                    className={`flex-shrink-0 ${currentPage === pageNum
-                      ? "bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white border-0 min-w-[36px]"
-                      : "bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white min-w-[36px]"
-                      }`}
-                  >
-                    {pageNum}
-                  </Button>
-                </motion.div>
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  disabled={isFetching}
+                  className={`relative flex-shrink-0 h-9 min-w-[36px] px-2.5 rounded-lg text-sm font-medium transition-colors duration-150 cursor-pointer disabled:cursor-not-allowed ${currentPage === pageNum
+                      ? 'text-white'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/50'
+                    }`}
+                >
+                  {currentPage === pageNum && (
+                    <motion.div
+                      className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 shadow-md shadow-blue-500/20"
+                      layoutId="activeUserPage"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10">{pageNum}</span>
+                </button>
               ))}
             </div>
             <Button
@@ -774,9 +794,10 @@ export default function UsersPage() {
               size="sm"
               onClick={() => setCurrentPage(p => Math.min(totalPages || 1, p + 1))}
               disabled={currentPage === (totalPages || 1) || isFetching}
-              className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white disabled:opacity-50"
+              className="gap-1 shrink-0 bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white disabled:opacity-50"
             >
-              Next →
+              Next
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
           <div className="text-sm text-slate-500 dark:text-slate-400">
