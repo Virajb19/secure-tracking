@@ -123,23 +123,19 @@ export class AuthService {
     /**
      * Generate a cryptographically secure refresh token, hash it, and store in DB.
      * @param userId - The user ID to associate the token with
-     * @param tokenFamily - Optional token family for rotation chain. If not provided, a new family is created.
      * @returns The raw refresh token (to send to client)
      */
-    private async generateRefreshToken(userId: string, tokenFamily?: string): Promise<string> {
+    private async generateRefreshToken(userId: string): Promise<string> {
         const rawToken = crypto.randomBytes(64).toString('hex');
         const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
         const expiresIn = this.configService.get<string>('REFRESH_TOKEN_EXPIRES_IN', '7d');
         const expiresAt = new Date(Date.now() + this.parseDuration(expiresIn));
 
-        const family = tokenFamily || crypto.randomUUID();
-
         await this.db.refreshToken.create({
             data: {
                 token_hash: tokenHash,
                 user_id: userId,
-                token_family: family,
                 expires_at: expiresAt,
             },
         });
@@ -585,14 +581,11 @@ export class AuthService {
 
     /**
      * Refresh access token using a valid refresh token.
-     * Implements token rotation with reuse detection:
-     * - Old refresh token is deleted, new one is issued in the same token_family.
-     * - If a previously consumed (deleted) token is reused, the entire token family
-     *   is revoked to prevent stolen token abuse.
+     * Simple token rotation: old token is deleted, new one is issued.
      * 
      * @param refreshTokenRaw - The raw refresh token from the client
      * @returns New access token and refresh token
-     * @throws UnauthorizedException if refresh token is invalid, expired, or reused
+     * @throws UnauthorizedException if refresh token is invalid or expired
      */
     async refreshAccessToken(refreshTokenRaw: string): Promise<RefreshResponse> {
         const tokenHash = crypto.createHash('sha256').update(refreshTokenRaw).digest('hex');
@@ -605,8 +598,7 @@ export class AuthService {
 
         if (!storedToken) {
             // Token not found — either it was already consumed by a concurrent request,
-            // or it never existed. This is NOT necessarily token theft; it commonly happens
-            // when multiple API calls trigger refresh simultaneously.
+            // or it never existed.
             throw new UnauthorizedException('Invalid refresh token. Please login again.');
         }
 
@@ -616,8 +608,7 @@ export class AuthService {
             throw new UnauthorizedException('Refresh token expired. Please login again.');
         }
 
-        // Simple rotation: delete the old token immediately, then issue a new one.
-        // No revoke-and-keep — this avoids false-positive reuse detection from concurrent requests.
+        // Simple rotation: delete old token, issue new one
         await this.db.refreshToken.delete({ where: { id: storedToken.id } });
 
         // Generate new access token
@@ -629,11 +620,8 @@ export class AuthService {
 
         const newAccessToken = this.jwtService.sign(payload);
 
-        // Generate new refresh token in the SAME family (rotation chain)
-        const newRefreshToken = await this.generateRefreshToken(
-            storedToken.user.id,
-            storedToken.token_family,
-        );
+        // Generate new refresh token
+        const newRefreshToken = await this.generateRefreshToken(storedToken.user.id);
 
         return {
             access_token: newAccessToken,

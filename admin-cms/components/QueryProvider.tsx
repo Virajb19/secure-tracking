@@ -2,7 +2,17 @@
 
 import React, { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+
+const isDev = process.env.NODE_ENV === "development";
+
+// Lazy-load devtools only in development to avoid memory overhead in production
+const ReactQueryDevtools = isDev
+  ? React.lazy(() =>
+    import("@tanstack/react-query-devtools").then((mod) => ({
+      default: mod.ReactQueryDevtools,
+    }))
+  )
+  : () => null;
 
 export default function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() =>
@@ -10,6 +20,7 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
       defaultOptions: {
         queries: {
           staleTime: 1000 * 60 * 5, // 5 minutes
+          gcTime: 1000 * 60 * 10,   // 10 minutes — garbage-collect inactive cache entries
           retry: 1,
         },
         mutations: {
@@ -22,7 +33,11 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <ReactQueryDevtools initialIsOpen={false} />
+      {isDev && (
+        <React.Suspense fallback={null}>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </React.Suspense>
+      )}
     </QueryClientProvider>
   );
 }

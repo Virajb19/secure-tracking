@@ -196,21 +196,17 @@ model User {
 /// Stores hashed refresh tokens for JWT token rotation.
 /// Each user can have multiple active refresh tokens (multi-device support).
 /// Tokens are automatically cleaned up on logout or expiration.
-/// token_family enables refresh token reuse detection.
 model RefreshToken {
-  id           String   @id @default(uuid()) @db.Uuid
-  token_hash   String   @db.VarChar(255) // SHA-256 hash of the refresh token
-  user_id      String   @db.Uuid
-  token_family String   @db.Uuid // Groups tokens in a rotation chain; reuse of a consumed token revokes the entire family
-  is_revoked   Boolean  @default(false)
-  expires_at   DateTime @db.Timestamp()
-  created_at   DateTime @default(now()) @db.Timestamp()
+  id         String   @id @default(uuid()) @db.Uuid
+  token_hash String   @db.VarChar(255) // SHA-256 hash of the refresh token
+  user_id    String   @db.Uuid
+  expires_at DateTime @db.Timestamp()
+  created_at DateTime @default(now()) @db.Timestamp()
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([token_hash])
-  @@index([token_family])
   @@map("refresh_tokens")
 }
 
