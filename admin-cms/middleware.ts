@@ -2,22 +2,17 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * Role-Based Route Protection Middleware
+ * Route Protection Middleware
  * 
- * This middleware runs on every request and enforces:
- * 1. Authentication - user must have a valid role cookie
- * 2. Authorization - role must be allowed to access CMS
- * 3. Tab-level access - role must have permission for the specific route
- * 
- * Security Note: This is a client-side convenience check. Real security
- * is enforced by backend API guards that validate JWT tokens.
+ * Enforces:
+ * 1. Authentication — requires userRole + (accessToken OR refreshToken) cookies
+ * 2. Login page protection — redirects authenticated users to dashboard
+ * 3. Protected page protection — redirects unauthenticated users to login
+ * 4. Role-based tab access — restricted roles can only access certain pages
  */
 
-// CMS roles that can access the admin panel
 const CMS_ALLOWED_ROLES = ['SUPER_ADMIN', 'ADMIN', 'SUBJECT_COORDINATOR', 'ASSISTANT'];
 
-// Tab path permissions per role
-// '*' means all paths (full access)
 const ROLE_TAB_ACCESS: Record<string, string[]> = {
   SUPER_ADMIN: ['*'],
   ADMIN: ['*'],
@@ -38,23 +33,13 @@ const ROLE_TAB_ACCESS: Record<string, string[]> = {
   ],
 };
 
-/**
- * Check if a path matches any allowed paths for a role
- */
 function canAccessPath(role: string, pathname: string): boolean {
   const allowed = ROLE_TAB_ACCESS[role];
   if (!allowed) return false;
-  
-  // Wildcard means all paths allowed
   if (allowed.includes('*')) return true;
-  
-  // Check if pathname matches any allowed path (including sub-routes)
   return allowed.some(tab => pathname === tab || pathname.startsWith(`${tab}/`));
 }
 
-/**
- * Get the default redirect path for a role
- */
 function getDefaultPath(role: string): string {
   const allowed = ROLE_TAB_ACCESS[role];
   if (!allowed || allowed.length === 0) return '/login';
@@ -62,64 +47,66 @@ function getDefaultPath(role: string): string {
   return allowed[0];
 }
 
+function isAuthenticated(request: NextRequest): { authenticated: boolean; role: string | undefined } {
+  const role = request.cookies.get('userRole')?.value;
+  const accessToken = request.cookies.get('accessToken')?.value;
+  const refreshToken = request.cookies.get('refreshToken')?.value;
+
+  const hasSession = Boolean(accessToken || refreshToken);
+  const hasValidRole = Boolean(role && CMS_ALLOWED_ROLES.includes(role));
+
+  return {
+    authenticated: hasSession && hasValidRole,
+    role,
+  };
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip middleware for:
-  // - Auth routes (login page)
-  // - API routes (handled by backend)
-  // - Static files and Next.js internals
-  // - Public assets
+  // Skip static files, API routes, Next.js internals
   if (
-    pathname.startsWith('/login') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
-    pathname.includes('.') // Static files
+    pathname.includes('.')
   ) {
     return NextResponse.next();
   }
 
-  // Get role from cookie
-  const role = request.cookies.get('userRole')?.value;
+  const { authenticated, role } = isAuthenticated(request);
 
-  // No role = not authenticated → redirect to login
-  if (!role) {
+  // ─── LOGIN PAGE PROTECTION ───
+  if (pathname.startsWith('/login')) {
+    if (authenticated && role) {
+      console.log("Login page protected")
+      return NextResponse.redirect(new URL(getDefaultPath(role), request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // ─── PROTECTED PAGE PROTECTION ───
+  if (!authenticated) {
+    console.log("Protected page protected")
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('reason', 'auth');
     loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    response.cookies.set('userRole', '', { path: '/', maxAge: 0 });
+    return response;
   }
 
-  // Role not allowed to access CMS → redirect to login with error
-  if (!CMS_ALLOWED_ROLES.includes(role)) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('reason', 'forbidden');
-    loginUrl.searchParams.set('message', 'Your role cannot access the Admin CMS');
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // Check tab-level access for restricted roles
-  if (!canAccessPath(role, pathname)) {
-    // Redirect to the first allowed path for this role
-    const defaultPath = getDefaultPath(role);
-    console.log(`[Middleware] Role ${role} denied access to ${pathname}, redirecting to ${defaultPath}`);
-    return NextResponse.redirect(new URL(defaultPath, request.url));
+  // ─── ROLE-BASED TAB ACCESS ───
+  if (role && !canAccessPath(role, pathname)) {
+    return NextResponse.redirect(new URL(getDefaultPath(role), request.url));
   }
 
   return NextResponse.next();
 }
 
-// Configure which paths the middleware runs on
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)' ,
+    '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 };
+

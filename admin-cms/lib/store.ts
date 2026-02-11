@@ -17,48 +17,8 @@ function deleteRoleCookie() {
   document.cookie = `userRole=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
 }
 
-// ========================================
-// PROACTIVE TOKEN REFRESH
-// ========================================
-// Refresh tokens before they expire to keep the session alive.
-// Access token expires in 15 minutes, so we refresh every 10 minutes.
-let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
 
-async function proactiveRefresh() {
-  try {
-    // Import api dynamically to avoid circular dependency
-    const { api } = await import('@/services/api');
-    await api.post('/auth/refresh');
 
-    // Renew userRole cookie on successful refresh
-    const role = localStorage.getItem('userRole');
-    if (role) {
-      const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
-      document.cookie = `userRole=${encodeURIComponent(role)}; expires=${expires}; path=/; SameSite=Lax`;
-    }
-    console.log('[Auth] Proactive token refresh successful');
-  } catch (error) {
-    // Don't force logout here - let the 401 interceptor handle it on next API call
-    console.warn('[Auth] Proactive token refresh failed:', error);
-  }
-}
-
-function startProactiveRefresh() {
-  if (typeof window === 'undefined') return;
-  stopProactiveRefresh(); // Clear any existing interval
-
-  // Refresh every 10 minutes (access token expires at 15m, so this gives 5 min buffer)
-  refreshIntervalId = setInterval(proactiveRefresh, 10 * 60 * 1000);
-  console.log('[Auth] Proactive refresh started (every 10 minutes)');
-}
-
-function stopProactiveRefresh() {
-  if (refreshIntervalId) {
-    clearInterval(refreshIntervalId);
-    refreshIntervalId = null;
-    console.log('[Auth] Proactive refresh stopped');
-  }
-}
 
 // ========================================
 // NAVIGATION STORE
@@ -176,11 +136,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Now supports SUBJECT_COORDINATOR and ASSISTANT roles
       const isAuth = isHydrated && isCmsRole(role);
       set({ isAuthenticated: isAuth, loading: false });
-
-      // Start proactive refresh if authenticated
-      if (isAuth) startProactiveRefresh();
     } catch {
-      stopProactiveRefresh();
       set({ role: null, userName: null, userEmail: null, userProfilePic: null, isAuthenticated: false, loading: false });
     } finally {
       set({ loading: false });
@@ -228,9 +184,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isHydrated: true,
       isAuthenticated: true,
     });
-
-    // Start proactive refresh after login
-    startProactiveRefresh();
   },
 
   // Logout — backend clears HttpOnly cookies, we clear localStorage + cookies client-side
@@ -249,14 +202,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.removeItem('coordinatorClassGroup');
     deleteRoleCookie();
 
-    // Stop proactive refresh on logout
-    stopProactiveRefresh();
-
-    // Clear HttpOnly auth cookies client-side as fallback
-    // (backend already clears them, but if that call failed we still want them gone)
-    if (typeof document !== 'undefined') {
-      document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-      document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    // Clear HttpOnly auth cookies via backend clear-session endpoint
+    // (document.cookie cannot clear HttpOnly cookies!)
+    if (typeof window !== 'undefined') {
+      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/clear-session`, {
+        method: 'POST',
+        credentials: 'include',
+      }).catch(() => { });
     }
 
     set({

@@ -142,6 +142,7 @@ export default function CircularsPage() {
       return allPages.length * pageSize;
     },
     initialPageParam: 0,
+    maxPages: 5,
   });
 
   // Flatten all pages into single array

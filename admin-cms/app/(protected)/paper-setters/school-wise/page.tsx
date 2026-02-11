@@ -65,6 +65,7 @@ export default function SchoolWiseRecordsPage() {
     }),
     getNextPageParam: (lastPage) => lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     initialPageParam: 1,
+    maxPages: 5,
   });
 
   // Prefetch on hover handlers for select filters

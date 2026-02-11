@@ -93,6 +93,7 @@ export default function HelpdeskPage() {
       return allPages.length * PAGE_SIZE;
     },
     initialPageParam: 0,
+    maxPages: 5,
     placeholderData: prev => prev
   });
 

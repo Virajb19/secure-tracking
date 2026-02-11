@@ -130,7 +130,7 @@ export default function RecentActivityFeed() {
         queryKey: ['recentActivity'],
         queryFn: () => auditLogsApi.getAll(10, 0),
         refetchInterval: 30000, // Refresh every 30 seconds
-        staleTime: 10000,
+        refetchIntervalInBackground: false, // Stop polling when tab is hidden
     });
 
     const activities = data?.data ?? [];

@@ -13,30 +13,30 @@ import { env } from 'process';
  */
 @Injectable()
 export class DevDelayMiddleware implements NestMiddleware {
-    constructor(private configService: ConfigService) {}
+    constructor(private configService: ConfigService) { }
 
     async use(req: Request, res: Response, next: NextFunction) {
         const nodeEnv = env.NODE_ENV || this.configService.get<string>('NODE_ENV', 'development');
-        
 
-         if (nodeEnv === 'production') {
-                return next();
-            }
 
-            let delayMs = 0;
+        if (nodeEnv === 'production') {
+            return next();
+        }
 
-            if (req.method === 'GET') {
-                delayMs = 2000; // 2s for queries
-            } else if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
-                delayMs = 3000; // 3s for mutations
-            }
+        let delayMs = 0;
 
-              if (delayMs > 0) {
-                console.log( `[DevDelay] ${delayMs}ms delay for ${req.method} ${req.url}`, );    
-                await new Promise((resolve) => setTimeout(resolve, delayMs));
-            }
+        if (req.method === 'GET') {
+            delayMs = 2000; // 2s for queries
+        } else if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+            delayMs = 3000; // 3s for mutations
+        }
 
-        
+        if (delayMs > 0) {
+            console.log(`[DevDelay] ${delayMs}ms delay for ${req.method} ${req.url}`,);
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+
+
         next();
     }
 }

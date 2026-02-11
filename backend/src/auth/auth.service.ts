@@ -132,6 +132,12 @@ export class AuthService {
         const expiresIn = this.configService.get<string>('REFRESH_TOKEN_EXPIRES_IN', '7d');
         const expiresAt = new Date(Date.now() + this.parseDuration(expiresIn));
 
+        // Delete any existing refresh tokens for this user before creating a new one.
+        // This ensures only one active refresh token per user, preventing duplicates.
+        await this.db.refreshToken.deleteMany({
+            where: { user_id: userId },
+        });
+
         await this.db.refreshToken.create({
             data: {
                 token_hash: tokenHash,
@@ -581,10 +587,14 @@ export class AuthService {
 
     /**
      * Refresh access token using a valid refresh token.
-     * Simple token rotation: old token is deleted, new one is issued.
+     * No rotation: the same refresh token stays valid until it naturally expires.
+     * This prevents race conditions when concurrent requests try to refresh.
+     * 
+     * Security: Refresh tokens are in HttpOnly + SameSite cookies,
+     * so rotation is unnecessary — JS can't steal them and CSRF is blocked.
      * 
      * @param refreshTokenRaw - The raw refresh token from the client
-     * @returns New access token and refresh token
+     * @returns New access token (refresh token unchanged)
      * @throws UnauthorizedException if refresh token is invalid or expired
      */
     async refreshAccessToken(refreshTokenRaw: string): Promise<RefreshResponse> {
@@ -597,8 +607,6 @@ export class AuthService {
         });
 
         if (!storedToken) {
-            // Token not found — either it was already consumed by a concurrent request,
-            // or it never existed.
             throw new UnauthorizedException('Invalid refresh token. Please login again.');
         }
 
@@ -608,8 +616,7 @@ export class AuthService {
             throw new UnauthorizedException('Refresh token expired. Please login again.');
         }
 
-        // Simple rotation: delete old token, issue new one
-        await this.db.refreshToken.delete({ where: { id: storedToken.id } });
+        // Don't delete or rotate — keep the same refresh token alive
 
         // Generate new access token
         const payload = {
@@ -620,12 +627,9 @@ export class AuthService {
 
         const newAccessToken = this.jwtService.sign(payload);
 
-        // Generate new refresh token
-        const newRefreshToken = await this.generateRefreshToken(storedToken.user.id);
-
         return {
             access_token: newAccessToken,
-            refresh_token: newRefreshToken,
+            refresh_token: refreshTokenRaw, // Return the same token — no rotation
         };
     }
 

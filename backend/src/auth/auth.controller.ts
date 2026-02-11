@@ -85,18 +85,24 @@ export class AuthController {
     }
 
     /**
-     * Clear the refresh token cookie.
+     * Clear the refresh token cookie on ALL possible paths.
+     * Old sessions may have cookies at /api/auth/... path (Express default),
+     * newer sessions use path=/. We must clear all to prevent duplicates.
      */
     private clearRefreshTokenCookie(res: Response): void {
         const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
-
-        res.cookie('refreshToken', '', {
+        const cookieOptions = {
             httpOnly: true,
             secure: isProduction,
-            sameSite: isProduction ? 'strict' : 'lax',
-            path: '/',
+            sameSite: (isProduction ? 'strict' : 'lax') as 'strict' | 'lax',
             maxAge: 0,
-        });
+        };
+
+        // Clear on all possible paths where the cookie might exist
+        const paths = ['/', '/api', '/api/auth', '/api/auth/admin', '/api/auth/admin/login'];
+        for (const path of paths) {
+            res.cookie('refreshToken', '', { ...cookieOptions, path });
+        }
     }
 
     /**
@@ -116,18 +122,21 @@ export class AuthController {
     }
 
     /**
-     * Clear the access token cookie.
+     * Clear the access token cookie on ALL possible paths.
      */
     private clearAccessTokenCookie(res: Response): void {
         const isProduction = env.NODE_ENV === 'production';
-
-        res.cookie('accessToken', '', {
+        const cookieOptions = {
             httpOnly: true,
             secure: isProduction,
-            sameSite: isProduction ? 'strict' : 'lax',
-            path: '/',
+            sameSite: (isProduction ? 'strict' : 'lax') as 'strict' | 'lax',
             maxAge: 0,
-        });
+        };
+
+        const paths = ['/', '/api', '/api/auth', '/api/auth/admin', '/api/auth/admin/login'];
+        for (const path of paths) {
+            res.cookie('accessToken', '', { ...cookieOptions, path });
+        }
     }
 
     /**
@@ -187,7 +196,11 @@ export class AuthController {
         const ipAddress = this.extractIpAddress(request);
         const result = await this.authService.login(loginDto, ipAddress);
 
-        // Set tokens as HttpOnly cookies
+        // Clear any stale cookies from previous sessions (may exist at different paths)
+        this.clearRefreshTokenCookie(res);
+        this.clearAccessTokenCookie(res);
+
+        // Set fresh tokens as HttpOnly cookies at path=/
         this.setRefreshTokenCookie(res, result.refresh_token);
         this.setAccessTokenCookie(res, result.access_token);
 
@@ -241,7 +254,11 @@ export class AuthController {
 
         console.log(result);
 
-        // Set tokens as HttpOnly cookies
+        // Clear any stale cookies from previous sessions (may exist at different paths)
+        this.clearRefreshTokenCookie(res);
+        this.clearAccessTokenCookie(res);
+
+        // Set fresh tokens as HttpOnly cookies at path=/
         this.setRefreshTokenCookie(res, result.refresh_token);
         this.setAccessTokenCookie(res, result.access_token);
 
@@ -275,8 +292,7 @@ export class AuthController {
 
         const result = await this.authService.refreshAccessToken(refreshToken);
 
-        // Set the new tokens as HttpOnly cookies
-        this.setRefreshTokenCookie(res, result.refresh_token);
+        // Only update the access token cookie (refresh token hasn't changed)
         this.setAccessTokenCookie(res, result.access_token);
 
         return result;
@@ -323,6 +339,25 @@ export class AuthController {
             profile_image_url: user.profile_image_url,
             is_active: user.is_active,
         };
+    }
+
+    /**
+     * Clear session cookies endpoint (no JWT required).
+     * 
+     * Used by the frontend when the session has expired and the JWT-protected
+     * /logout endpoint cannot be reached. Clears all HttpOnly auth cookies
+     * to prevent stale cookies from lingering in the browser.
+     * 
+     * @returns Confirmation message
+     */
+    @Post('clear-session')
+    @HttpCode(HttpStatus.OK)
+    async clearSession(
+        @Res({ passthrough: true }) res: Response,
+    ): Promise<{ message: string }> {
+        this.clearRefreshTokenCookie(res);
+        this.clearAccessTokenCookie(res);
+        return { message: 'Session cookies cleared' };
     }
 
     /**

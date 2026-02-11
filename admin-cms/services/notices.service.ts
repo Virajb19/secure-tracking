@@ -91,10 +91,10 @@ const noticesApi = {
     if (filters?.school_id) params.append('school_id', filters.school_id);
     params.append('limit', limit.toString());
     params.append('offset', offset.toString());
-    
+
     const queryString = params.toString();
     const url = queryString ? `/admin/notices?${queryString}` : '/admin/notices';
-    
+
     const response = await api.get(url);
     // If backend returns array directly (old format), wrap it
     if (Array.isArray(response.data)) {
@@ -102,10 +102,10 @@ const noticesApi = {
     }
     // Add hasMore field based on data length and total
     const data = response.data;
-    return { 
-      data: data.data, 
-      total: data.total, 
-      hasMore: offset + data.data.length < data.total 
+    return {
+      data: data.data,
+      total: data.total,
+      hasMore: offset + data.data.length < data.total
     };
   },
 
@@ -193,6 +193,7 @@ export function useGetNoticesInfinite(filters?: NoticesFilters, pageSize = 50) {
       return allPages.length * pageSize;
     },
     initialPageParam: 0,
+    maxPages: 5,
     placeholderData: prev => prev
   });
 }

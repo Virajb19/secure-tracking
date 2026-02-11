@@ -85,21 +85,25 @@ Cookie-based auth designed to prevent XSS. Auth tokens live **exclusively** in H
 
 ## Refresh Token: How It Works
 
-### Token Rotation + Reuse Detection
+### No Rotation (Stationary Refresh Token)
 
-Every refresh **rotates** the token and tracks a `token_family`:
+The refresh token is issued once at login and **stays the same** until it naturally
+expires after 7 days. On each refresh, only a new access token is issued.
 
 ```
-Login     → RT-1 issued (family: F1, active)
-Refresh 1 → RT-1 revoked, RT-2 issued (family: F1)
-Refresh 2 → RT-2 revoked, RT-3 issued (family: F1)
-
-⚠️ Attacker replays stolen RT-1:
-   → RT-1 is already revoked
-   → REUSE DETECTED
-   → ALL tokens in family F1 revoked
-   → User must re-login
+Login     → AT-1 (15m) + RT-1 (7d) issued
+Refresh 1 → AT-2 (15m) issued, RT-1 unchanged
+Refresh 2 → AT-3 (15m) issued, RT-1 unchanged
+...
+Day 7     → RT-1 expires → user must re-login
 ```
+
+**Why no rotation?**
+- Refresh tokens live in HttpOnly cookies — JavaScript cannot access them (XSS-safe)
+- SameSite cookie policy blocks CSRF attacks
+- Token rotation caused race conditions: concurrent requests would delete the
+  token mid-flight, causing premature logouts
+- For cookie-based auth, rotation adds complexity for zero security benefit
 
 ### Refresh Flow (accessToken expired)
 
@@ -119,13 +123,12 @@ Refresh 2 → RT-2 revoked, RT-3 issued (family: F1)
     │                                          │
     │  Backend:                                │
     │    1. Hash RT-1, look up in DB           │
-    │    2. Verify not revoked + not expired   │
-    │    3. Revoke RT-1                        │
-    │    4. Generate new AT-2 + RT-2           │
-    │    5. Store RT-2 (same token_family)     │
+    │    2. Verify not expired                 │
+    │    3. Generate new AT-2                  │
+    │    (RT-1 stays unchanged in DB)          │
     │                                          │
     │  Set-Cookie: accessToken=AT-2 (HttpOnly) │
-    │  Set-Cookie: refreshToken=RT-2 (HttpOnly)│
+    │  (refreshToken cookie unchanged)         │
     │ ◄─────────────────────────────────────── │
     │                                          │
     │  Retry failed request + all queued ones  │
@@ -135,6 +138,7 @@ Refresh 2 → RT-2 revoked, RT-3 issued (family: F1)
     │ ◄─────────────────────────────────────── │
     ▼                                          ▼
 ```
+
 
 ### Force Logout (refreshToken expired/revoked)
 
@@ -276,8 +280,8 @@ If path were `/api`, the browser wouldn't send it to the Next.js server, and all
 | XSS steals tokens | HttpOnly cookies — JS cannot access |
 | Manual `localStorage.setItem('userRole', 'ADMIN')` | `/auth/me` validation fails without valid accessToken cookie |
 | CSRF | `SameSite=Strict` (prod) on all auth cookies |
-| Stolen refresh token replay | Token rotation + reuse detection → revoke entire family |
-| Session expires | Auto-refresh via interceptor; forceLogout if refresh fails |
+| Stolen refresh token replay | HttpOnly + SameSite cookies — JS cannot access, CSRF blocked |
+| Session expires | Auto-refresh via interceptor on 401; no rotation, no race conditions |
 | User away > 7 days | refreshToken expired → forceLogout on next page load |
 
 ---

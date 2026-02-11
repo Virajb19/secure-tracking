@@ -36,22 +36,37 @@ const processQueue = (error: unknown) => {
 
 /**
  * Clears all auth data and redirects to login.
- * HttpOnly auth cookies (accessToken, refreshToken) are cleared by the backend.
- * We clear localStorage user info and the SSR userRole cookie here.
+ * Calls the server-side API route to clear HttpOnly cookies
+ * (JavaScript cannot clear HttpOnly cookies via document.cookie).
+ * Also clears localStorage user info.
  */
 function forceLogout() {
   if (typeof window === 'undefined') return;
+
+  // Clear all auth-related localStorage (must match store.logout)
   localStorage.removeItem('userRole');
   localStorage.removeItem('userName');
   localStorage.removeItem('userEmail');
   localStorage.removeItem('userProfilePic');
+
+  // Clear the userRole cookie (non-HttpOnly, managed by frontend)
   document.cookie = 'userRole=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-  document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-  document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-  // Don't redirect if already on login page (prevents infinite reload loop)
-  if (!window.location.pathname.includes('/login')) {
-    window.location.href = '/login';
-  }
+
+  // Clear HttpOnly cookies via backend clear-session endpoint
+  // Uses plain fetch (NOT the api axios instance) to avoid the response interceptor,
+  // which could cause a cascade: 401 → refresh → forceLogout → clear-session → ...
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
+  fetch(`${baseUrl}/auth/clear-session`, {
+    method: 'POST',
+    credentials: 'include', // Send cookies for cross-origin
+  })
+    .catch(() => { /* ignore errors during logout */ })
+    .finally(() => {
+      // Don't redirect if already on login page (prevents infinite reload loop)
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    });
 }
 
 // No request interceptor needed — accessToken is sent automatically
@@ -62,8 +77,8 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const url = originalRequest?.url || '';
-    // Only skip refresh for login/refresh endpoints - NOT for /auth/me which should trigger refresh on 401
-    const skipRefresh = url.includes('/auth/admin/login') || url.includes('/auth/refresh');
+    // Skip refresh for login, refresh, and clear-session endpoints
+    const skipRefresh = url.includes('/auth/admin/login') || url.includes('/auth/refresh') || url.includes('/auth/clear-session');
 
     // Only attempt refresh on 401, not on auth routes that shouldn't refresh, and not already retried
     if (error.response?.status === 401 && !skipRefresh && !originalRequest._retry && typeof window !== 'undefined') {

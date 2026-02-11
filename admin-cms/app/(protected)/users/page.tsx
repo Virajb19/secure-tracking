@@ -124,6 +124,7 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter, removeRole] = useLocalStorage('users-roleFilter', 'all');
   const [districtFilter, setDistrictFilter, removeDistrict] = useLocalStorage('users-districtFilter', 'all');
   const [schoolFilter, setSchoolFilter] = useLocalStorage('users-schoolFilter', 'all');
+  const [schoolSearchQuery, setSchoolSearchQuery] = useState('');
   const [classFilter, setClassFilter] = useLocalStorage('users-classFilter', 'all');
   const [subjectFilter, setSubjectFilter] = useLocalStorage('users-subjectFilter', 'all');
   const [showOnlyInactive, setShowOnlyInactive] = useLocalStorage('users-showOnlyInactive', false);
@@ -597,7 +598,7 @@ export default function UsersPage() {
             </SelectContent>
           </Select>
 
-          <Select value={schoolFilter} onValueChange={(v) => { setSchoolFilter(v); resetPage(); }}>
+          <Select value={schoolFilter} onValueChange={(v) => { setSchoolFilter(v); setSchoolSearchQuery(''); resetPage(); }}>
             <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
               {isFetchingSchools ? (
                 <span className="flex items-center gap-2 text-black dark:text-white">
@@ -615,12 +616,37 @@ export default function UsersPage() {
                 </div>
               ) : (
                 <>
+                  <div className="sticky top-0 bg-white dark:bg-slate-800 p-2 border-b border-slate-200 dark:border-slate-700">
+                    <input
+                      type="text"
+                      placeholder="Search schools..."
+                      value={schoolSearchQuery}
+                      onChange={(e) => setSchoolSearchQuery(e.target.value)}
+                      className="w-full px-3 py-1.5 text-sm bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      onKeyDown={(e) => e.stopPropagation()}
+                    />
+                  </div>
                   <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Schools</SelectItem>
-                  {schools.map((school) => (
-                    <SelectItem key={school.id} value={school.id} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
-                      {school.name?.trim()}
-                    </SelectItem>
-                  ))}
+                  {(() => {
+                    const filtered = schoolSearchQuery
+                      ? schools.filter(s => s.name?.toLowerCase().includes(schoolSearchQuery.toLowerCase()))
+                      : schools;
+                    const capped = filtered.slice(0, 50);
+                    return (
+                      <>
+                        {capped.map((school) => (
+                          <SelectItem key={school.id} value={school.id} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
+                            {school.name?.trim()}
+                          </SelectItem>
+                        ))}
+                        {filtered.length > 50 && (
+                          <div className="px-3 py-2 text-xs text-slate-400 text-center">
+                            Showing 50 of {filtered.length} — type to search
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </SelectContent>
@@ -794,7 +820,7 @@ export default function UsersPage() {
                     <motion.div
                       className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 dark:from-white dark:to-white shadow-md shadow-blue-500/20 dark:shadow-white/10"
                       layoutId="activeUserPage"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      transition={{ type: 'spring', stiffness: 380, damping: 30, y: { duration: 0 } }}
                     />
                   )}
                   <span className="relative z-10">{pageNum}</span>

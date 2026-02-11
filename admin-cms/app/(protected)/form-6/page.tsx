@@ -118,6 +118,7 @@ export default function Form6Page() {
     queryKey: ['form-submission-stats'],
     queryFn: formSubmissionsApi.getStats,
     refetchInterval: 30000, // Refetch every 30 seconds to keep stats fresh
+    refetchIntervalInBackground: false, // Stop polling when tab is hidden
   });
 
   const ITEMS_PER_PAGE = 20;
