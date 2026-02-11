@@ -83,6 +83,7 @@ export default async function DashboardPage() {
     // Refresh token ONCE if needed, then use for all parallel fetches
     const authCookies = await getAuthCookies(cookieStore);
 
+    // fetch all the data parallelly with the (possibly refreshed) cookies for auth
     const [roleStats, activeUsersStats, helpdeskSummary, genderStats, districtUserStats, pendingActions, auditLogs] = await Promise.all([
         fetchWithAuth('/admin/analytics/role-stats', authCookies),
         fetchWithAuth('/admin/analytics/active-users', authCookies),
