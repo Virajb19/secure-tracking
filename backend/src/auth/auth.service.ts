@@ -33,6 +33,7 @@ export interface LoginResponse {
         profile_image_url?: string | null;
         is_active: boolean;
         has_completed_profile: boolean;
+        is_center_superintendent: boolean;
         // SUBJECT_COORDINATOR specific fields (from DB)
         coordinator_subject?: string;
         coordinator_class_group?: string;
@@ -299,6 +300,7 @@ export class AuthService {
                 role: user.role,
                 is_active: user.is_active,
                 has_completed_profile: hasProfile,
+                is_center_superintendent: user.is_center_superintendent ?? false,
             },
         };
     }
@@ -578,6 +580,7 @@ export class AuthService {
                 profile_image_url: user.profile_image_url,
                 is_active: user.is_active,
                 has_completed_profile: true, // Admins always have completed profile
+                is_center_superintendent: user.is_center_superintendent ?? false,
                 // SUBJECT_COORDINATOR specific fields (from DB, not login request)
                 coordinator_subject: user.coordinator_subject || undefined,
                 coordinator_class_group: user.coordinator_class_group || undefined,

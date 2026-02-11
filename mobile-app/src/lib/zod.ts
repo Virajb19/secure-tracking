@@ -13,13 +13,13 @@ export const GenderEnum = z.enum(['MALE', 'FEMALE']);
 export type Gender = z.infer<typeof GenderEnum>;
 
 /**
- * Registration roles available for mobile app users
+ * Registration roles available for mobile app users.
+ * CENTER_SUPERINTENDENT is an assignable role, not a registration type.
  */
 export const RegistrationRoleEnum = z.enum([
     'SEBA_OFFICER',
     'HEADMASTER',
     'TEACHER',
-    'CENTER_SUPERINTENDENT',
 ]);
 export type RegistrationRole = z.infer<typeof RegistrationRoleEnum>;
 

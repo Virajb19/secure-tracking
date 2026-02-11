@@ -7,7 +7,7 @@ import { useNavigationStore, useSidebarStore, useAuthStore } from '@/lib/store';
 import { canAccessTab } from '@/lib/permissions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { twMerge } from 'tailwind-merge';
-import { Home, Users, ClipboardList, PenLine, Calendar, Bell, Target, FileText, HelpCircle, ScrollText, CheckSquare, ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { Home, Users, ClipboardList, PenLine, Calendar, Bell, Target, FileText, HelpCircle, ScrollText, CheckSquare, ChevronLeft, ChevronRight, Menu, School } from "lucide-react";
 
 // All navigation items for admin sidebar (before role filtering)
 const allNavItems = [
@@ -17,6 +17,7 @@ const allNavItems = [
   { name: "Circulars", href: "/circulars", icon: PenLine },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
+  { name: "Exam Centers", href: "/exam-centers", icon: School },
   { name: "Notifications", href: "/notifications", icon: Bell },
   { name: "Audit Logs", href: "/audit-logs", icon: ScrollText }, 
   { name: "Helpdesk", href: "/helpdesk", icon: HelpCircle },

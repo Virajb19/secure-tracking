@@ -150,6 +150,15 @@ model User {
   coordinator_class_group String?               @db.VarChar(10) // e.g., "8-10" or "11-12"
   agentCurrentLocation    AgentCurrentLocation?
 
+  // Center Superintendent assignment (role layer, not a separate user type)
+  is_center_superintendent Boolean @default(false)
+
+  // Exam Center where this user is assigned as Center Superintendent
+  exam_center_assignment ExamCenter? @relation("CenterSuperintendent")
+
+  // Exam Centers assigned by this admin
+  assigned_exam_centers ExamCenter[] @relation("AssignedByAdmin")
+
   // Refresh tokens for token rotation
   refresh_tokens RefreshToken[]
 
@@ -341,6 +350,7 @@ model School {
   circularSchools   CircularSchool[] // Many-to-many: circulars targeting this school
   formSubmissions   FormSubmission[]
   trackerEvents     ExamTrackerEvent[]
+  examCenter        ExamCenter?
 
   @@index([district_id])
 }
@@ -699,6 +709,35 @@ model AgentLocationHistory {
   @@index([task_id])
   @@index([user_id])
   @@map("agent_location_history")
+}
+
+// ============================================================
+// EXAM CENTER MANAGEMENT
+// Tracks which schools are designated as exam centers
+// and who is assigned as Center Superintendent
+// ============================================================
+
+/// Exam Center designation.
+/// When a school is selected as an exam center, the headmaster
+/// auto-becomes the Center Superintendent. Admin can override
+/// by assigning a different Teacher/Headmaster via email.
+/// When overridden, the previous CS loses access.
+model ExamCenter {
+  id                String   @id @default(uuid()) @db.Uuid
+  school_id         String   @unique @db.Uuid // One exam center per school
+  superintendent_id String   @unique @db.Uuid // User assigned as CS
+  assigned_by       String   @db.Uuid // Admin who made the assignment
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now()) @db.Timestamp()
+  updated_at        DateTime @default(now()) @updatedAt
+
+  school         School @relation(fields: [school_id], references: [id])
+  superintendent User   @relation("CenterSuperintendent", fields: [superintendent_id], references: [id])
+  assigned_admin User   @relation("AssignedByAdmin", fields: [assigned_by], references: [id])
+
+  @@index([school_id])
+  @@index([superintendent_id])
+  @@map("exam_centers")
 }
 
 // ============================================================

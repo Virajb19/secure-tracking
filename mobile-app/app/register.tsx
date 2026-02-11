@@ -46,7 +46,6 @@ const ROLE_OPTIONS: { label: string; value: RegistrationRole }[] = [
     { label: 'SEBA Officer', value: 'SEBA_OFFICER' },
     { label: 'Headmaster', value: 'HEADMASTER' },
     { label: 'Teacher', value: 'TEACHER' },
-    { label: 'Center Superintendent', value: 'CENTER_SUPERINTENDENT' },
 ];
 
 /**

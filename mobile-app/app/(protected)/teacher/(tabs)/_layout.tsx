@@ -12,9 +12,12 @@ import { Tabs } from 'expo-router';
 import { View, StyleSheet, Platform, StatusBar, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../../../src/contexts/AuthContext';
 
 export default function TeacherTabsLayout() {
     const insets = useSafeAreaInsets();
+    const { user } = useAuth();
+    const isCenterSuperintendent = user?.is_center_superintendent ?? false;
     
     return (
         <Tabs
@@ -76,6 +79,17 @@ export default function TeacherTabsLayout() {
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="calendar-outline" size={24} color={color} />
                     ),
+                }}
+            />
+            <Tabs.Screen
+                name="qpt"
+                options={{
+                    title: 'QPT Events',
+                    tabBarLabel: 'QPT',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="clipboard-outline" size={24} color={color} />
+                    ),
+                    href: isCenterSuperintendent ? '/(protected)/teacher/(tabs)/qpt' : null,
                 }}
             />
             <Tabs.Screen

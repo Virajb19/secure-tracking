@@ -65,6 +65,7 @@ export const NAV_ITEM_PATHS: Record<string, string> = {
   'Circulars': '/circulars',
   'Events': '/events',
   'Tasks': '/tasks',
+  'Exam Centers': '/exam-centers',
   'Notifications': '/notifications',
   'Audit Logs': '/audit-logs',
   'Helpdesk': '/helpdesk',

@@ -31,7 +31,7 @@ export class ExamTrackerService {
    * Create a new exam tracker event.
    * 
    * SECURITY:
-   * - Only HEADMASTER (Center Superintendent) can submit events
+   * - Only users with is_center_superintendent flag can submit events
    * - User must have an associated school (exam center)
    * - Each event type can only be submitted once per exam date
    * - Image hash is calculated for integrity verification
@@ -41,21 +41,29 @@ export class ExamTrackerService {
     imageFile: Express.Multer.File,
     userId: string,
   ): Promise<ExamTrackerEvent> {
-    // Get user's school (they must be a headmaster with a school)
+    // Get user and verify they are a Center Superintendent
     const user = await this.db.user.findUnique({
       where: { id: userId },
       include: {
         faculty: {
           select: { school_id: true },
         },
+        exam_center_assignment: {
+          select: { school_id: true },
+        },
       },
     });
 
-    if (!user || !user.faculty || !user.faculty.school_id) {
-      throw new ForbiddenException('You must be associated with a school to submit tracker events');
+    if (!user || !user.is_center_superintendent) {
+      throw new ForbiddenException('You must be assigned as a Center Superintendent to submit tracker events');
     }
 
-    const schoolId = user.faculty.school_id;
+    // Use the exam center assignment school, falling back to faculty school
+    const schoolId = user.exam_center_assignment?.school_id || user.faculty?.school_id;
+
+    if (!schoolId) {
+      throw new ForbiddenException('You must be associated with an exam center to submit tracker events');
+    }
     const examDate = new Date(createDto.exam_date);
 
     // Check if this event type has already been submitted for this date

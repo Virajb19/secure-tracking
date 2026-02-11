@@ -90,6 +90,7 @@ export interface User {
     profile_image_url?: string;
     is_active: boolean;
     has_completed_profile?: boolean;
+    is_center_superintendent?: boolean;
     faculty?: Faculty;
 }
 

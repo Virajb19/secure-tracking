@@ -697,7 +697,7 @@ export default function UsersPage() {
             <button
               className={`w-full p-2 text-white rounded-lg duration-300 ${showOnlyInactive
                 ? "bg-linear-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white border border-transparent"
-                : "bg-blue-500 border-slate-300 dark:border-transparent hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700/50 hover:text-black dark:hover:text-white"
+                : "bg-blue-500 border-slate-300 dark:border-transparent hover:border-slate-400 dark:hover:border-slate-600 hover:bg-blue-600 dark:hover:text-white"
                 }`}
               onClick={() => {
                 setShowOnlyInactive(!showOnlyInactive);

@@ -59,10 +59,11 @@ export class ExamTrackerController {
 
   /**
    * Submit a new exam tracker event with image.
-   * Only HEADMASTER (Center Superintendent) can submit events.
+   * Only users with is_center_superintendent flag can submit events.
+   * A Teacher or Headmaster can be assigned this role.
    */
   @Post('events')
-  @Roles(UserRole.HEADMASTER)
+  @Roles(UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT)
   @UseInterceptors(FileInterceptor('image', multerOptions))
   async createEvent(
     @Body() createDto: CreateExamTrackerEventDto,

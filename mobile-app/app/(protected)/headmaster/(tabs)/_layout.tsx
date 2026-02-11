@@ -4,6 +4,7 @@
  * Bottom tab navigation for headmaster with:
  * - Home
  * - Events
+ * - QPT (if user is Center Superintendent)
  * - Circulars
  * - Profile
  */
@@ -12,9 +13,12 @@ import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, Platform, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../../../src/contexts/AuthContext';
 
 export default function HeadmasterTabsLayout() {
     const insets = useSafeAreaInsets();
+    const { user } = useAuth();
+    const isCenterSuperintendent = user?.is_center_superintendent ?? false;
     
     return (
         <Tabs
@@ -79,6 +83,18 @@ export default function HeadmasterTabsLayout() {
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="document-text-outline" size={24} color={color} />
                     ),
+                }}
+            />
+            <Tabs.Screen
+                name="qpt"
+                options={{
+                    title: 'QPT',
+                    tabBarLabel: 'QPT',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="newspaper-outline" size={24} color={color} />
+                    ),
+                    // Only show tab if user is Center Superintendent
+                    href: isCenterSuperintendent ? '/(protected)/headmaster/(tabs)/qpt' : null,
                 }}
             />
             <Tabs.Screen

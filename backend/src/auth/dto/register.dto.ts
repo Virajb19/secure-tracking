@@ -29,13 +29,12 @@ export const RegisterSchema = z.object({
         .min(8, 'Password must be at least 8 characters')
         .max(15, 'Password cannot exceed 15 characters'),
 
-    // Role - only non-admin roles allowed
+    // Role - only non-admin roles allowed (CENTER_SUPERINTENDENT is assigned, not registered)
     role:  z
   .enum([
     "SEBA_OFFICER",
     "HEADMASTER",
     "TEACHER",
-    "CENTER_SUPERINTENDENT",
   ])
   .refine((val) => val !== undefined, {
     message: "Role is required",

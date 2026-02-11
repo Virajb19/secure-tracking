@@ -78,17 +78,15 @@ export default function ProtectedLayout() {
                 if (!currentRoute.includes('headmaster')) {
                     router.replace('/(protected)/headmaster');
                 }
-            } else if (user.role === 'CENTER_SUPERINTENDENT') {
-                // Center Superintendents go to their own home
-                if (!currentRoute.includes('center-superintendent')) {
-                    router.replace('/(protected)/center-superintendent');
-                }
             } else if (user.role === 'SEBA_OFFICER') {
                 // SEBA officers use the delivery/tasks flow
                 if (!currentRoute.includes('tasks')) {
                     router.replace('/(protected)/tasks');
                 }
             }
+            // Note: CENTER_SUPERINTENDENT is now an assignable role flag, not a separate
+            // user type. Users with is_center_superintendent=true see QPT within their
+            // original role (TEACHER/HEADMASTER) tab layout.
         }
     }, [isAuthenticated, isLoading, user, segments]);
 
