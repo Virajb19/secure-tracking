@@ -229,6 +229,41 @@ export class PaperSetterService {
     }
 
     /**
+     * Send a reminder notification to a teacher who hasn't accepted their invitation.
+     * Only works for selections with INVITED status.
+     */
+    async remindTeacher(selectionId: string, adminId: string) {
+        const selection = await this.db.paperSetterSelection.findUnique({
+            where: { id: selectionId },
+            include: {
+                teacher: {
+                    select: { id: true, name: true },
+                },
+            },
+        });
+
+        if (!selection) {
+            throw new NotFoundException('Selection not found');
+        }
+
+        if (selection.status !== SelectionStatus.INVITED) {
+            throw new BadRequestException('Cannot send reminder — teacher has already accepted the invitation');
+        }
+
+        // Send reminder notification
+        const typeLabel = selection.selection_type === 'PAPER_SETTER' ? 'Paper Setter' : 'Examiner';
+        await this.notifications.sendToUser({
+            userId: selection.teacher_id,
+            title: `Reminder: ${typeLabel} Invitation`,
+            body: `This is a reminder that you have been selected as ${typeLabel} for ${selection.subject} Class ${selection.class_level}. Please accept to proceed.`,
+            type: NotificationType.PAPER_SETTER_INVITE,
+            data: { selectionId: selection.id },
+        });
+
+        return { success: true, message: `Reminder sent to ${selection.teacher?.name}` };
+    }
+
+    /**
      * Get all selections made by a coordinator
      */
     async getCoordinatorSelections(coordinatorId: string) {

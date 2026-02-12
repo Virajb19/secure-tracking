@@ -22,6 +22,8 @@ function getGreeting(): string {
 export default function Header() {
     const role = useAuthStore((state) => state.role);
     const userName = useAuthStore((state) => state.userName);
+    const coordinatorSubject = useAuthStore((state) => state.coordinatorSubject);
+    const coordinatorClassGroup = useAuthStore((state) => state.coordinatorClassGroup);
     const rawProfilePic = useAuthStore((state) => state.userProfilePic);
     // Guard against non-URL values (e.g. stale "[object Object]" in localStorage)
     const userProfilePic = (typeof rawProfilePic === 'string' && rawProfilePic.startsWith('http')) ? rawProfilePic : null;
@@ -84,7 +86,7 @@ export default function Header() {
                     animate="visible"
                 >
 
-                   <motion.span
+                    <motion.span
                         className="text-2xl md:text-4xl"
                         variants={waveVariants}
                         animate="wave"
@@ -142,8 +144,8 @@ export default function Header() {
                                     )}
                                 </button>
                             </TooltipTrigger>
-                            <TooltipContent 
-                                side="bottom" 
+                            <TooltipContent
+                                side="bottom"
                                 sideOffset={8}
                                 className="bg-[#F3F4F6] dark:bg-slate-800 text-gray-400 dark:text-white px-3 py-2 rounded-lg shadow-lg border border-transparent dark:border-slate-700"
                             >
@@ -166,7 +168,9 @@ export default function Header() {
                         {/* User Name & Role */}
                         <div className="hidden sm:block">
                             <p className="text-sm font-medium text-slate-900 dark:text-white">{userName || 'Administrator'}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{role?.replace('_', ' ')}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {role?.replace('_', ' ')}
+                            </p>
                         </div>
                     </div>
 
@@ -179,9 +183,9 @@ export default function Header() {
             </div>
 
             {/* Profile Photo Dialog */}
-            <ProfilePhotoDialog 
-                open={isPhotoDialogOpen} 
-                onOpenChange={setIsPhotoDialogOpen} 
+            <ProfilePhotoDialog
+                open={isPhotoDialogOpen}
+                onOpenChange={setIsPhotoDialogOpen}
             />
         </header>
     );

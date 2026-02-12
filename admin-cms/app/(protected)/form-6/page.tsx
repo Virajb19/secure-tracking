@@ -560,15 +560,34 @@ export default function Form6Page() {
           <button
             type="button"
             onClick={handleDownloadPdf}
+            aria-busy={downloadingPdf}
             disabled={downloadingPdf || submissions.length === 0}
             className={twMerge(
-              "group gap-3 hover:-translate-y-1 cursor-pointer relative overflow-hidden border-slate-600 bg-slate-800 text-white flex items-center justify-center px-6 py-2 rounded-lg hover:bg-slate-700 duration-200 font-semibold",
+              "group gap-3 hover:-translate-y-1 cursor-pointer relative overflow-hidden border-slate-600 bg-slate-800 text-white flex items-center justify-center px-7 py-2 rounded-lg hover:bg-slate-700 duration-200 font-semibold text-lg",
               (downloadingPdf || submissions.length === 0) ? "pointer-events-none opacity-50 cursor-not-allowed hover:translate-y-0" : ""
             )}
           >
-            <span className="relative z-10 inline-flex items-center gap-2">
-              <span className="grid place-items-center rounded-md bg-slate-700 p-2">
-                {downloadingPdf ? (<RefreshCw className="animate-spin size-4" />) : (<FileText className="size-4" />)}
+            {!downloadingPdf && (
+              <span
+                className="pointer-events-none absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-[200%] transition-transform duration-700"
+                style={{ width: "50%" }}
+              />
+            )}
+            <span
+              className={
+                "relative z-10 inline-flex items-center gap-2 " +
+                "motion-reduce:transform-none " +
+                (downloadingPdf ? "opacity-80" : "")
+              }
+            >
+              <span
+                className={
+                  "grid place-items-center rounded-md bg-slate-700 p-2 " +
+                  "transition-transform duration-200 group-hover:scale-105 group-active:scale-100 " +
+                  "motion-reduce:transition-none"
+                }
+              >
+                {downloadingPdf ? (<RefreshCw className="animate-spin size-5" />) : (<FileText className="size-5" />)}
               </span>
               <span className="tracking-tight">{downloadingPdf ? "Downloading…" : "Download PDF"}</span>
             </span>

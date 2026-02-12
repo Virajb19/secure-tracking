@@ -41,6 +41,7 @@ export class ExamTrackerService {
    * - User must have an associated school (exam center)
    * - Each event type can only be submitted once per exam date
    * - Image hash is calculated for integrity verification
+   * - Current date must be >= exam date (server-side date validation)
    */
   async create(
     createDto: CreateExamTrackerEventDto,
@@ -55,7 +56,7 @@ export class ExamTrackerService {
           select: { school_id: true },
         },
         exam_center_assignment: {
-          select: { school_id: true },
+          select: { id: true, school_id: true },
         },
       },
     });
@@ -66,11 +67,40 @@ export class ExamTrackerService {
 
     // Use the exam center assignment school, falling back to faculty school
     const schoolId = user.exam_center_assignment?.school_id || user.faculty?.school_id;
+    const examCenterId = user.exam_center_assignment?.id;
 
     if (!schoolId) {
       throw new ForbiddenException('You must be associated with an exam center to submit tracker events');
     }
+
+    // Server-side exam date validation: current date must match exam date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const examDate = new Date(createDto.exam_date);
+    examDate.setHours(0, 0, 0, 0);
+
+    if (today < examDate) {
+      throw new ForbiddenException(
+        `Question Paper Tracking is not available yet. It will be accessible on ${createDto.exam_date}.`,
+      );
+    }
+
+    // Additionally verify this exam date exists in the schedule for this center
+    if (examCenterId) {
+      const schedulesForDate = await this.db.examSchedule.findMany({
+        where: {
+          exam_center_id: examCenterId,
+          exam_date: new Date(createDto.exam_date),
+          is_active: true,
+        },
+      });
+
+      if (schedulesForDate.length === 0) {
+        throw new BadRequestException(
+          `No exam is scheduled for ${createDto.exam_date} at your exam center.`,
+        );
+      }
+    }
 
     // Check if this event type has already been submitted for this date
     const existingEvent = await this.db.examTrackerEvent.findUnique({
@@ -173,6 +203,7 @@ export class ExamTrackerService {
    * Get today's tracker events for the current user's school.
    * Used by headmaster to view their own exam center status.
    * Only accessible to Center Superintendents.
+   * Server-side date validation: only allows access on or after exam date.
    */
   async getMySchoolEvents(userId: string, examDate?: string): Promise<{
     events: ExamTrackerEvent[];
@@ -188,6 +219,9 @@ export class ExamTrackerService {
             school: true,
           },
         },
+        exam_center_assignment: {
+          select: { id: true },
+        },
       },
     });
 
@@ -198,6 +232,19 @@ export class ExamTrackerService {
     // Server-side check: user must be a Center Superintendent
     if (!user.is_center_superintendent) {
       throw new ForbiddenException('You must be assigned as a Center Superintendent to access Question Paper Tracking');
+    }
+
+    // Server-side exam date validation
+    const examCenterId = user.exam_center_assignment?.id;
+    if (examCenterId) {
+      const examDayCheck = await this.examSchedulerService.isExamDayForCenter(examCenterId);
+      if (!examDayCheck.isExamDay) {
+        throw new ForbiddenException(
+          examDayCheck.nextExamDate
+            ? `Question Paper Tracking will be available on ${examDayCheck.nextExamDate}. Please come back on the exam date.`
+            : 'No upcoming exams scheduled for your exam center.',
+        );
+      }
     }
 
     const schoolId = user.faculty.school_id;

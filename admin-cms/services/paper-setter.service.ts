@@ -138,6 +138,12 @@ export const paperSetterApi = {
     await api.delete(`/paper-setter/${selectionId}`);
   },
 
+  // Send reminder to teacher who hasn't accepted
+  remindTeacher: async (selectionId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post(`/paper-setter/remind/${selectionId}`);
+    return response.data;
+  },
+
   // Get stats
   getStats: async (): Promise<{
     totalInvited: number;

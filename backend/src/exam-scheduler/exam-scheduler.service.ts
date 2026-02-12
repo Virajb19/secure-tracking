@@ -405,4 +405,63 @@ export class ExamSchedulerService {
     await this.findById(id); // Ensure it exists
     await this.db.examSchedule.delete({ where: { id } });
   }
+
+  /**
+   * Check if today is an exam day for a specific exam center.
+   * Used to enforce date-based access control for QPT.
+   * Returns the exam date if access is allowed, null if not.
+   */
+  async isExamDayForCenter(examCenterId: string): Promise<{
+    isExamDay: boolean;
+    nextExamDate: string | null;
+    todaySchedules: ExamSchedule[];
+  }> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Check if there's an active exam scheduled for today at this center
+    const todaySchedules = await this.db.examSchedule.findMany({
+      where: {
+        exam_center_id: examCenterId,
+        exam_date: today,
+        is_active: true,
+      },
+      orderBy: { exam_date: 'asc' },
+    });
+
+    if (todaySchedules.length > 0) {
+      return {
+        isExamDay: true,
+        nextExamDate: today.toISOString().split('T')[0],
+        todaySchedules,
+      };
+    }
+
+    // Find the next upcoming exam date for this center
+    const nextSchedule = await this.db.examSchedule.findFirst({
+      where: {
+        exam_center_id: examCenterId,
+        exam_date: { gte: today },
+        is_active: true,
+      },
+      orderBy: { exam_date: 'asc' },
+    });
+
+    return {
+      isExamDay: false,
+      nextExamDate: nextSchedule ? nextSchedule.exam_date.toISOString().split('T')[0] : null,
+      todaySchedules: [],
+    };
+  }
+
+  /**
+   * Get the exam center ID for a Center Superintendent user.
+   * Looks up by superintendent_id.
+   */
+  async getExamCenterForSuperintendent(userId: string): Promise<string | null> {
+    const center = await this.db.examCenter.findUnique({
+      where: { superintendent_id: userId },
+    });
+    return center?.id || null;
+  }
 }

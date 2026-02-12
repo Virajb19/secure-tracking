@@ -189,6 +189,7 @@ export interface UserFilterParams {
   is_active?: boolean;
   approval_status?: string;
   exclude_roles?: string[];
+  is_center_superintendent?: boolean;
 }
 
 export interface PaginatedUsersResponse {
@@ -218,6 +219,7 @@ export const usersApi = {
     if (filters?.exclude_roles && filters.exclude_roles.length > 0) {
       params.exclude_roles = filters.exclude_roles.join(',');
     }
+    if (filters?.is_center_superintendent) params.is_center_superintendent = 'true';
 
     const response = await api.get<PaginatedUsersResponse>('/admin/users', { params });
     return response.data;

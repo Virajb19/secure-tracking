@@ -149,6 +149,41 @@ export function isWithinTimeWindowLocal(window: TimeWindow): boolean {
 }
 
 /**
+ * Exam day status response from API
+ */
+export interface ExamDayStatusResponse {
+    isExamDay: boolean;
+    nextExamDate: string | null;
+    todaySchedules: ExamScheduleEntry[];
+}
+
+/**
+ * Check if today is an exam day for the current Center Superintendent.
+ * Used to show locked/unlocked QPT state.
+ */
+export async function getExamDayStatus(): Promise<{
+    success: boolean;
+    data?: ExamDayStatusResponse;
+    error?: string;
+}> {
+    try {
+        const response = await apiClient.get('/exam-scheduler/exam-day-status');
+
+        if (response.data.success) {
+            return {
+                success: true,
+                data: response.data.data,
+            };
+        }
+
+        return { success: false, error: 'Failed to fetch exam day status' };
+    } catch (error) {
+        console.error('[ExamScheduler] Error fetching exam day status:', error);
+        return { success: false, error: getErrorMessage(error) };
+    }
+}
+
+/**
  * Map event type to time window key.
  */
 export function getTimeWindowForEvent(

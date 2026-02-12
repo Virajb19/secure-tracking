@@ -74,6 +74,19 @@ export class PaperSetterController {
     }
 
     /**
+     * Send reminder to a teacher who hasn't accepted
+     * POST /api/paper-setter/remind/:id
+     */
+    @Post('remind/:id')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUBJECT_COORDINATOR, UserRole.ASSISTANT)
+    async remindTeacher(
+        @CurrentUser() user: User,
+        @Param('id') selectionId: string,
+    ) {
+        return this.paperSetterService.remindTeacher(selectionId, user.id);
+    }
+
+    /**
      * Get coordinator's selections
      * GET /api/paper-setter/my-selections
      */

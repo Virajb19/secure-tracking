@@ -30,6 +30,7 @@ import {
   User as UserIcon,
   ChevronLeft,
   ChevronRight,
+  X,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -103,7 +104,6 @@ const cardVariants = {
 
 // Role display labels
 const roleLabels: Record<string, string> = {
-  [UserRole.SEBA_OFFICER]: 'SEBA Officers / Staff',
   [UserRole.HEADMASTER]: 'Headmasters',
   [UserRole.TEACHER]: 'Teachers',
   [UserRole.CENTER_SUPERINTENDENT]: 'Center Superintendent',
@@ -111,7 +111,6 @@ const roleLabels: Record<string, string> = {
 
 // Filter out admin roles for display
 const displayRoles = [
-  UserRole.SEBA_OFFICER,
   UserRole.HEADMASTER,
   UserRole.TEACHER,
   UserRole.CENTER_SUPERINTENDENT,
@@ -182,7 +181,14 @@ export default function UsersPage() {
       if (subjectFilter !== 'all') filters.subject = subjectFilter;
     }
 
-    if (roleFilter !== 'all') filters.role = roleFilter;
+    if (roleFilter !== 'all') {
+      if (roleFilter === UserRole.CENTER_SUPERINTENDENT) {
+        // CENTER_SUPERINTENDENT is not a real role - filter by is_center_superintendent flag
+        filters.is_center_superintendent = true;
+      } else {
+        filters.role = roleFilter;
+      }
+    }
     if (districtFilter !== 'all') filters.district_id = districtFilter;
     if (schoolFilter !== 'all') filters.school_id = schoolFilter;
     if (debouncedSearch) filters.search = debouncedSearch;
@@ -673,9 +679,16 @@ export default function UsersPage() {
 
           {/* Subject Filter - for SUBJECT_COORDINATOR, show locked to their subject */}
           {isSubjectCoordinator ? (
-            <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg px-3 py-2 text-sm text-blue-400">
-              <span className="font-medium">Subject:</span> {coordinatorSubject || 'Not set'}
-            </div>
+            <>
+              <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg px-3 py-2 text-sm text-blue-400">
+                <span className="font-medium">Subject:</span> {coordinatorSubject || 'Not set'}
+              </div>
+              {coordinatorClassGroup && (
+                <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg px-3 py-2 text-sm text-blue-400">
+                  <span className="font-medium">Class:</span> {coordinatorClassGroup}
+                </div>
+              )}
+            </>
           ) : (
             <Select value={subjectFilter} onValueChange={(v) => { setSubjectFilter(v); resetPage(); }}>
               <SelectTrigger className="bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:border-blue-500 transition-all">
@@ -741,15 +754,27 @@ export default function UsersPage() {
                   {selectedUsers.length} selected
                 </span>
               </div>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button
-                  onClick={() => openNotificationDialog()}
-                  className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-blue-500/20"
-                >
-                  <Bell className="h-4 w-4 mr-2" />
-                  Send Notification
-                </Button>
-              </motion.div>
+              <div className="flex items-center gap-2">
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedUsers([])}
+                    className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Deselect All
+                  </Button>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    onClick={() => openNotificationDialog()}
+                    className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-blue-500/20"
+                  >
+                    <Bell className="h-4 w-4 mr-2" />
+                    Send Notification
+                  </Button>
+                </motion.div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

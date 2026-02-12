@@ -29,7 +29,7 @@ const tableRowVariants = {
   visible: (i: number) => ({
     opacity: 1,
     x: 0,
-    transition: { delay: i * 0.03, duration: 0.3 }
+    transition: { delay: Math.min(i * 0.03, 0.3), duration: 0.3 }
   }),
   hover: {
     transition: { duration: 0.2 }

@@ -98,6 +98,41 @@ export class ExamSchedulerController {
   }
 
   /**
+   * Check if today is an exam day for the current Center Superintendent.
+   * Used by mobile app to show locked/unlocked QPT state.
+   * GET /api/exam-scheduler/exam-day-status
+   */
+  @Get('exam-day-status')
+  @Roles(UserRole.HEADMASTER, UserRole.TEACHER, UserRole.CENTER_SUPERINTENDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async getExamDayStatus(
+    @CurrentUser() user: User,
+  ) {
+    // Admins always have access
+    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
+      return {
+        success: true,
+        data: { isExamDay: true, nextExamDate: null, todaySchedules: [] },
+      };
+    }
+
+    const examCenterId = await this.examSchedulerService.getExamCenterForSuperintendent(user.id);
+
+    if (!examCenterId) {
+      return {
+        success: true,
+        data: { isExamDay: false, nextExamDate: null, todaySchedules: [] },
+      };
+    }
+
+    const result = await this.examSchedulerService.isExamDayForCenter(examCenterId);
+
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  /**
    * Get time windows for QPT tracker events on a specific date.
    * Used by mobile app to show allowed time windows and enforce restrictions.
    */

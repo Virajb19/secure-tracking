@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useAuth } from '../../../../src/contexts/AuthContext';
 import apiClient from '../../../../src/api/client';
+import { getExamDayStatus } from '../../../../src/services/exam-scheduler.service';
 
 interface EventShift {
     id: string;
@@ -39,6 +40,19 @@ export default function QPTScreen() {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const isCenterSuperintendent = user?.is_center_superintendent ?? false;
 
+    // Check if today is an exam day
+    const {
+        data: examDayResult,
+        isLoading: loadingExamDay,
+    } = useQuery({
+        queryKey: ['exam-day-status'],
+        queryFn: () => getExamDayStatus(),
+        enabled: isCenterSuperintendent,
+    });
+
+    const isExamDay = examDayResult?.data?.isExamDay ?? false;
+    const nextExamDate = examDayResult?.data?.nextExamDate ?? null;
+
     const { data, isLoading, error, refetch, isRefetching } = useQuery({
         queryKey: ['qpt-events', user?.id],
         queryFn: async () => {
@@ -56,6 +70,46 @@ export default function QPTScreen() {
                 <Text style={styles.restrictedText}>
                     This feature is only available for Center Superintendents.
                 </Text>
+            </View>
+        );
+    }
+
+    // Loading exam day status
+    if (loadingExamDay) {
+        return (
+            <View style={styles.centerContainer}>
+                <ActivityIndicator size="large" color="#1e3a5f" />
+                <Text style={styles.loadingText}>Checking exam schedule...</Text>
+            </View>
+        );
+    }
+
+    // Locked: Not exam day
+    if (!isExamDay) {
+        const formatDate = (dateStr: string) => {
+            const d = new Date(dateStr + 'T00:00:00');
+            const day = d.getDate();
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${day} ${months[d.getMonth()]}, ${d.getFullYear()}`;
+        };
+
+        return (
+            <View style={styles.centerContainer}>
+                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#fef3c7', justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}>
+                    <Ionicons name="lock-closed" size={48} color="#f59e0b" />
+                </View>
+                <Text style={styles.restrictedTitle}>Not Available Yet</Text>
+                <Text style={styles.restrictedText}>
+                    {nextExamDate
+                        ? `Question Paper Tracking will be available on ${formatDate(nextExamDate)}.`
+                        : 'No upcoming exams scheduled for your exam center.'}
+                </Text>
+                {nextExamDate && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, paddingVertical: 10, paddingHorizontal: 16, backgroundColor: '#eff6ff', borderRadius: 10, borderWidth: 1, borderColor: '#bfdbfe' }}>
+                        <Ionicons name="calendar-outline" size={18} color="#2563eb" />
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#2563eb' }}>Next Exam: {formatDate(nextExamDate)}</Text>
+                    </View>
+                )}
             </View>
         );
     }

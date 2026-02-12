@@ -45,6 +45,7 @@ import {
     isWithinTimeWindowLocal,
     TrackerTimeWindows,
     TimeWindow,
+    getExamDayStatus,
 } from '../../../../src/services/exam-scheduler.service';
 import { API_CONFIG } from '../../../../src/constants/config';
 import * as ImagePicker from 'expo-image-picker';
@@ -235,6 +236,19 @@ export default function QPTTabScreen() {
 
     const today = new Date().toISOString().split('T')[0];
 
+    // Check if today is an exam day for this CS
+    const {
+        data: examDayResult,
+        isLoading: loadingExamDay,
+    } = useQuery({
+        queryKey: ['exam-day-status'],
+        queryFn: () => getExamDayStatus(),
+        enabled: user?.is_center_superintendent ?? false,
+    });
+
+    const isExamDay = examDayResult?.data?.isExamDay ?? false;
+    const nextExamDate = examDayResult?.data?.nextExamDate ?? null;
+
     // Fetch event summary
     const {
         data: summaryResult,
@@ -350,6 +364,53 @@ export default function QPTTabScreen() {
                 <Text style={styles.noAccessText}>
                     You need to be assigned as a Center Superintendent to access Question Paper Tracking.
                 </Text>
+            </View>
+        );
+    }
+
+    // ─── Loading exam day status ────────────────────────────────────
+    if (loadingExamDay) {
+        return (
+            <View style={styles.centerContainer}>
+                <ActivityIndicator size="large" color="#374151" />
+                <Text style={styles.loadingText}>Checking exam schedule...</Text>
+            </View>
+        );
+    }
+
+    // ─── Locked: Not exam day ───────────────────────────────────────
+    if (!isExamDay) {
+        const formatExamDate = (dateStr: string) => {
+            const date = new Date(dateStr + 'T00:00:00');
+            const day = date.getDate();
+            const months = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December',
+            ];
+            const suffix =
+                day === 1 || day === 21 || day === 31 ? 'st' :
+                day === 2 || day === 22 ? 'nd' :
+                day === 3 || day === 23 ? 'rd' : 'th';
+            return `${day}${suffix} ${months[date.getMonth()]}, ${date.getFullYear()}`;
+        };
+
+        return (
+            <View style={styles.centerContainer}>
+                <View style={styles.lockedIconContainer}>
+                    <Ionicons name="lock-closed" size={48} color="#f59e0b" />
+                </View>
+                <Text style={styles.noAccessTitle}>Not Available Yet</Text>
+                <Text style={styles.noAccessText}>
+                    {nextExamDate
+                        ? `Question Paper Tracking will be available on ${formatExamDate(nextExamDate)}. Please check back on the exam date.`
+                        : 'No upcoming exams are scheduled for your exam center. Contact your admin for more information.'}
+                </Text>
+                {nextExamDate && (
+                    <View style={styles.nextExamBadge}>
+                        <Ionicons name="calendar-outline" size={18} color="#2563eb" />
+                        <Text style={styles.nextExamText}>Next Exam: {formatExamDate(nextExamDate)}</Text>
+                    </View>
+                )}
             </View>
         );
     }
@@ -492,6 +553,32 @@ const styles = StyleSheet.create({
         color: '#6b7280',
         textAlign: 'center',
         marginTop: 8,
+    },
+    lockedIconContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#fef3c7',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    nextExamBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 20,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        backgroundColor: '#eff6ff',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#bfdbfe',
+    },
+    nextExamText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#2563eb',
     },
 
     // Header

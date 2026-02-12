@@ -124,6 +124,7 @@ export class UsersService {
         is_active?: boolean;
         approval_status?: string;
         exclude_roles?: string[];
+        is_center_superintendent?: boolean;
     }): Promise<{
         data: User[];
         total: number;
@@ -131,7 +132,7 @@ export class UsersService {
         limit: number;
         totalPages: number;
     }> {
-        const { page, limit, role, district_id, school_id, class_level, class_levels, subject, search, is_active, approval_status, exclude_roles } = params;
+        const { page, limit, role, district_id, school_id, class_level, class_levels, subject, search, is_active, approval_status, exclude_roles, is_center_superintendent } = params;
 
         // Build the list of roles to exclude (always exclude ADMIN and SUPER_ADMIN)
         const rolesToExclude: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
@@ -154,6 +155,16 @@ export class UsersService {
         // Role filter
         if (role) {
             where.role = role as UserRole;
+        }
+
+        // Center Superintendent filter - show headmasters/teachers who are assigned as CS
+        if (is_center_superintendent) {
+            where.is_center_superintendent = true;
+            // Don't filter by role if looking for center superintendents
+            // (they can be either HEADMASTER or TEACHER)
+            if (!role) {
+                where.role = { in: [UserRole.HEADMASTER, UserRole.TEACHER], notIn: rolesToExclude };
+            }
         }
 
         // Active status filter

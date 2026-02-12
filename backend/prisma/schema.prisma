@@ -148,6 +148,7 @@ model User {
   // These are optionally set for SUBJECT_COORDINATOR role users
   coordinator_subject     String?               @db.VarChar(100) // e.g., "Mathematics", "English"
   coordinator_class_group String?               @db.VarChar(10) // e.g., "8-10" or "11-12"
+  
   agentCurrentLocation    AgentCurrentLocation?
 
   // Center Superintendent assignment (role layer, not a separate user type)
@@ -534,6 +535,7 @@ model Circular {
   district_id    String?   @db.Uuid // For district-level circulars
   school_id      String?   @db.Uuid // For school-level circulars
   created_by     String?   @db.Uuid
+  target_subject String?   @db.VarChar(100) // When set (by Subject Coordinator), only teachers of this subject can see the circular
   created_at     DateTime  @default(now())
   updated_at     DateTime  @default(now()) @updatedAt
 

@@ -92,6 +92,7 @@ export class UsersController {
         @Query('is_active') is_active?: string,
         @Query('approval_status') approval_status?: string,
         @Query('exclude_roles') exclude_roles?: string,
+        @Query('is_center_superintendent') is_center_superintendent?: string,
     ) {
         return this.usersService.findAllPaginated({
             page: page ? parseInt(page, 10) : 1,
@@ -106,6 +107,7 @@ export class UsersController {
             is_active: is_active === 'true' ? true : is_active === 'false' ? false : undefined,
             approval_status,
             exclude_roles: exclude_roles ? exclude_roles.split(',') : undefined,
+            is_center_superintendent: is_center_superintendent === 'true' ? true : undefined,
         });
     }
 

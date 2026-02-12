@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Search, FileText, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, FileText, Users, ChevronLeft, ChevronRight, Bell } from 'lucide-react';
 import { paperSetterApi, PaperSetterSelection, BankDetailsInfo } from '@/services/paper-setter.service';
 import { masterDataApi } from '@/services/api';
 import { toast } from 'sonner';
@@ -102,6 +102,17 @@ export default function PaperSettersPage() {
     }
     return <Badge variant="outline" className="text-orange-400 border-orange-400">Pending</Badge>;
   };
+
+  // Remind mutation
+  const remindMutation = useMutation({
+    mutationFn: (selectionId: string) => paperSetterApi.remindTeacher(selectionId),
+    onSuccess: (data) => {
+      toast.success(data.message || 'Reminder sent successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to send reminder');
+    },
+  });
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -283,7 +294,17 @@ export default function PaperSettersPage() {
                               </a>
                             )}
                             {selection.status === 'INVITED' && (
-                              <DeleteSchoolRecordButton schoolId={selection.teacher?.school?.id || ''} schoolName={selection.teacher?.school?.name || ''} />
+                              <>
+                                <button
+                                  onClick={() => remindMutation.mutate(selection.id)}
+                                  disabled={remindMutation.isPending}
+                                  className="p-1.5 text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 transition-colors disabled:opacity-50"
+                                  title="Send Reminder"
+                                >
+                                  <Bell className="h-5 w-5" />
+                                </button>
+                                <DeleteSchoolRecordButton schoolId={selection.teacher?.school?.id || ''} schoolName={selection.teacher?.school?.name || ''} />
+                              </>
                             )}
                           </div>
                         </td>

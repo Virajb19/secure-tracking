@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma';
 import { AppwriteService } from '../appwrite';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -23,7 +24,8 @@ export class CircularsService {
             where: { user_id: userId },
             select: {
                 school_id: true,
-                school: { select: { district_id: true } }
+                school: { select: { district_id: true } },
+                teaching_assignments: { select: { subject: true } },
             },
         });
 
@@ -104,9 +106,31 @@ export class CircularsService {
             orConditions.push({ targetedSchools: { some: { school_id: schoolId } } });
         }
 
+        // Subject-based filtering for Subject Coordinator circulars:
+        // If user is TEACHER, they can only see SC circulars that match their subject.
+        // If user is HEADMASTER, they should NOT see SC circulars at all.
+        // SC circulars have target_subject set.
+        const userSubjects = faculty?.teaching_assignments?.map(ta => ta.subject) || [];
+        const isTeacher = user?.role === UserRole.TEACHER;
+
+        // Build the main where clause
+        // For circulars WITHOUT target_subject (admin circulars): normal visibility
+        // For circulars WITH target_subject (SC circulars): only visible to teachers of that subject
+        const subjectFilter: object[] = [
+            // Admin circulars (no target_subject): visible to all eligible users
+            { target_subject: null },
+        ];
+
+        // SC circulars (with target_subject): only visible to teachers teaching that subject
+        if (isTeacher && userSubjects.length > 0) {
+            subjectFilter.push({ target_subject: { in: userSubjects } });
+        }
+        // Headmasters & others: only see circulars where target_subject is null (admin circulars)
+
         const where: any = {
             is_active: true,
             OR: orConditions,
+            AND: [{ OR: subjectFilter }],
         };
 
         const [data, total] = await Promise.all([
@@ -154,7 +178,8 @@ export class CircularsService {
             where: { user_id: userId },
             select: {
                 school_id: true,
-                school: { select: { district_id: true } }
+                school: { select: { district_id: true } },
+                teaching_assignments: { select: { subject: true } },
             },
         });
 
@@ -181,23 +206,41 @@ export class CircularsService {
             }
             if (schoolId) {
                 orConditions.push({ school_id: schoolId });
+                orConditions.push({ targetedSchools: { some: { school_id: schoolId } } });
             }
             visibilityFilter = { OR: orConditions };
+        }
+
+        // Subject-based filtering for SC circulars
+        const userSubjects = faculty?.teaching_assignments?.map(ta => ta.subject) || [];
+        const isTeacher = user?.role === UserRole.TEACHER;
+        let subjectFilter: object = {};
+        if (!isCmsRole) {
+            const subjectConditions: object[] = [{ target_subject: null }];
+            if (isTeacher && userSubjects.length > 0) {
+                subjectConditions.push({ target_subject: { in: userSubjects } });
+            }
+            subjectFilter = { OR: subjectConditions };
+        }
+
+        const andConditions: object[] = [
+            {
+                OR: [
+                    { title: { contains: query, mode: 'insensitive' } },
+                    { circular_no: { contains: query, mode: 'insensitive' } },
+                    { description: { contains: query, mode: 'insensitive' } },
+                ],
+            },
+            visibilityFilter,
+        ];
+        if (!isCmsRole) {
+            andConditions.push(subjectFilter);
         }
 
         return this.db.circular.findMany({
             where: {
                 is_active: true,
-                AND: [
-                    {
-                        OR: [
-                            { title: { contains: query, mode: 'insensitive' } },
-                            { circular_no: { contains: query, mode: 'insensitive' } },
-                            { description: { contains: query, mode: 'insensitive' } },
-                        ],
-                    },
-                    visibilityFilter,
-                ],
+                AND: andConditions,
             },
             orderBy: [{ issued_date: 'desc' }, { created_at: 'desc' }],
             include: {
@@ -209,7 +252,8 @@ export class CircularsService {
     }
 
     /**
-     * Create a new circular (Admin only).
+     * Create a new circular.
+     * When created by Subject Coordinator, auto-targets their subject.
      * Supports creating circulars for multiple schools and sends Firebase notifications.
      */
     async createCircular(
@@ -221,6 +265,15 @@ export class CircularsService {
         if (!dto.title || !dto.issued_by || !dto.issued_date) {
             throw new BadRequestException('Title, issued_by, and issued_date are required');
         }
+
+        // Check if creator is a Subject Coordinator — auto-set target_subject
+        const creator = await this.db.user.findUnique({
+            where: { id: userId },
+            select: { role: true, coordinator_subject: true },
+        });
+        const targetSubject = creator?.role === UserRole.SUBJECT_COORDINATOR
+            ? creator.coordinator_subject
+            : null;
 
         // Handle file upload to Appwrite bucket
         let fileUrl: string | null = null;
@@ -277,6 +330,7 @@ export class CircularsService {
                 district_id: dto.district_id || null,
                 school_id: singleSchoolId, // Only set if exactly 1 school selected
                 created_by: userId,
+                target_subject: targetSubject || null,
             },
             include: {
                 district: { select: { name: true } },
@@ -391,5 +445,4 @@ export class CircularsService {
             reason: reason || null,
         };
     }
-
 }
