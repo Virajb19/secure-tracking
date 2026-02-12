@@ -12,7 +12,7 @@
  * - Description box with time window for pending steps
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -43,6 +43,7 @@ import {
 } from '../../../src/services/exam-scheduler.service';
 import { API_CONFIG } from '../../../src/constants/config';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 
@@ -212,6 +213,17 @@ export default function QuestionPaperScreen() {
     const insets = useSafeAreaInsets();
     const { user } = useAuth();
     const queryClient = useQueryClient();
+
+    // Guard: redirect if not a Center Superintendent
+    useEffect(() => {
+        if (user && !user.is_center_superintendent) {
+            Alert.alert(
+                'Access Denied',
+                'You must be assigned as a Center Superintendent to access Question Paper Tracking.',
+                [{ text: 'OK', onPress: () => router.back() }],
+            );
+        }
+    }, [user]);
 
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [submittingEventId, setSubmittingEventId] = useState<string | null>(null);

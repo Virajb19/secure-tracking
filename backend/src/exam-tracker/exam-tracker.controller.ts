@@ -16,7 +16,7 @@ import { memoryStorage } from 'multer';
 import { User, UserRole } from '@prisma/client';
 import { ExamTrackerService } from './exam-tracker.service';
 import { CreateExamTrackerEventDto, ExamTrackerEventType } from './dto/create-exam-tracker-event.dto';
-import { JwtAuthGuard, RolesGuard } from '../shared/guards';
+import { JwtAuthGuard, RolesGuard, CenterSuperintendentGuard } from '../shared/guards';
 import { Roles, CurrentUser } from '../shared/decorators';
 
 /**
@@ -53,7 +53,7 @@ const multerOptions = {
  * - GET /exam-tracker/all - Get all events (admin only)
  */
 @Controller('exam-tracker')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, CenterSuperintendentGuard)
 export class ExamTrackerController {
   constructor(private readonly examTrackerService: ExamTrackerService) {}
 

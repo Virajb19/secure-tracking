@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { examSchedulerApi, CreateExamSchedulePayload } from '@/services/exam-scheduler.service';
 import { examCentersApi } from '@/services/exam-center.service';
@@ -31,7 +31,8 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { CalendarClock, Plus, Loader2, Trash2, Pencil, Eye, Upload, X } from 'lucide-react';
+import { CalendarClock, Plus, Loader2, Trash2, Pencil, Eye, Upload, X, Search, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
@@ -55,6 +56,123 @@ import {
     FormControl,
     FormMessage,
 } from '@/components/ui/form';
+
+// ============================
+// SEARCHABLE EXAM CENTER SELECT
+// ============================
+
+function SearchableExamCenterSelect({
+    value,
+    onChange,
+    examCenters,
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    examCenters: ExamCenter[];
+}) {
+    const [open, setOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const containerRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Close on outside click
+    useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+                setOpen(false);
+            }
+        };
+        if (open) document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [open]);
+
+    // Auto-focus search when opened
+    useEffect(() => {
+        if (open && inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [open]);
+
+    const filtered = searchQuery
+        ? examCenters.filter((c) =>
+            (c.school?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        : examCenters;
+
+    const selectedCenter = examCenters.find((c) => c.id === value);
+
+    return (
+        <div className="relative" ref={containerRef}>
+            <button
+                type="button"
+                role="combobox"
+                aria-expanded={open}
+                onClick={() => { setOpen(!open); setSearchQuery(''); }}
+                className={cn(
+                    'flex h-10 w-full items-center justify-between rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                    !value && 'text-slate-500'
+                )}
+            >
+                <span className="truncate">
+                    {selectedCenter ? (selectedCenter.school?.name || 'Unknown School') : 'Select exam center'}
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </button>
+
+            {open && (
+                <div className="absolute z-50 mt-1 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
+                    {/* Search input */}
+                    <div className="flex items-center border-b border-slate-200 dark:border-slate-700 px-3">
+                        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            placeholder="Search school..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="flex h-9 w-full bg-transparent py-3 text-sm outline-none placeholder:text-slate-400 dark:text-white"
+                        />
+                    </div>
+
+                    {/* Options */}
+                    <div className="max-h-48 overflow-y-auto p-1">
+                        {filtered.length === 0 ? (
+                            <div className="py-4 text-center text-sm text-slate-400">
+                                No exam centers found
+                            </div>
+                        ) : (
+                            filtered.map((center) => (
+                                <button
+                                    key={center.id}
+                                    type="button"
+                                    onClick={() => {
+                                        onChange(center.id);
+                                        setOpen(false);
+                                        setSearchQuery('');
+                                    }}
+                                    className={cn(
+                                        'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-2 text-sm outline-none transition-colors',
+                                        value === center.id
+                                            ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                                    )}
+                                >
+                                    <Check
+                                        className={cn(
+                                            'mr-2 h-4 w-4',
+                                            value === center.id ? 'opacity-100' : 'opacity-0'
+                                        )}
+                                    />
+                                    <span className="truncate">{center.school?.name || 'Unknown School'}</span>
+                                </button>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 // ============================
 // HELPERS
@@ -664,20 +782,13 @@ export default function ExamSchedulerPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Exam Center</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select exam center" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {activeExamCenters.map((center) => (
-                                                    <SelectItem key={center.id} value={center.id}>
-                                                        {center.school?.name || 'Unknown School'}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <FormControl>
+                                            <SearchableExamCenterSelect
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                examCenters={activeExamCenters}
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -796,20 +907,13 @@ export default function ExamSchedulerPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Exam Center</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select exam center" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {activeExamCenters.map((center) => (
-                                                    <SelectItem key={center.id} value={center.id}>
-                                                        {center.school?.name || 'Unknown School'}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <FormControl>
+                                            <SearchableExamCenterSelect
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                examCenters={activeExamCenters}
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -1070,20 +1174,13 @@ export default function ExamSchedulerPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Exam Center</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select exam center" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {activeExamCenters.map((center) => (
-                                                    <SelectItem key={center.id} value={center.id}>
-                                                        {center.school?.name || 'Unknown School'}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <FormControl>
+                                            <SearchableExamCenterSelect
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                examCenters={activeExamCenters}
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}

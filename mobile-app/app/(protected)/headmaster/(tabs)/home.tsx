@@ -46,6 +46,7 @@ function ActionCard({ title, icon, onPress, disabled = false }: ActionCardProps)
 
 export default function HeadmasterHomeScreen() {
     const { user } = useAuth();
+    const isCenterSuperintendent = user?.is_center_superintendent ?? false;
 
     // Fetch profile status
     const { data: profileStatus, isLoading: loadingProfile, refetch: refetchProfile } = useQuery({
@@ -143,11 +144,13 @@ export default function HeadmasterHomeScreen() {
                     />
                 </View>
                 <View style={styles.actionRow}>
+                    {isCenterSuperintendent && (
                     <ActionCard
                         title="Question Paper"
                         icon={<Ionicons name="document-text-outline" size={40} color="#0d9488" />}
                         onPress={handleQuestionPaper}
                     />
+                    )}
                     <ActionCard
                         title="Form 6 Submit"
                         icon={<Ionicons name="clipboard-outline" size={40} color="#0d9488" />}

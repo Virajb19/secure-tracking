@@ -172,6 +172,7 @@ export class ExamTrackerService {
   /**
    * Get today's tracker events for the current user's school.
    * Used by headmaster to view their own exam center status.
+   * Only accessible to Center Superintendents.
    */
   async getMySchoolEvents(userId: string, examDate?: string): Promise<{
     events: ExamTrackerEvent[];
@@ -192,6 +193,11 @@ export class ExamTrackerService {
 
     if (!user || !user.faculty || !user.faculty.school_id) {
       throw new ForbiddenException('You must be associated with a school');
+    }
+
+    // Server-side check: user must be a Center Superintendent
+    if (!user.is_center_superintendent) {
+      throw new ForbiddenException('You must be assigned as a Center Superintendent to access Question Paper Tracking');
     }
 
     const schoolId = user.faculty.school_id;

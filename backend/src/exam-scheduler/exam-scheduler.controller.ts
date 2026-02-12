@@ -13,7 +13,7 @@ import {
 import { User, UserRole } from '@prisma/client';
 import { ExamSchedulerService } from './exam-scheduler.service';
 import { CreateExamScheduleDto, UpdateExamScheduleDto, BulkCreateExamScheduleDto, ExamClass, SubjectCategory } from './dto/create-exam-schedule.dto';
-import { JwtAuthGuard, RolesGuard } from '../shared/guards';
+import { JwtAuthGuard, RolesGuard, CenterSuperintendentGuard } from '../shared/guards';
 import { Roles, CurrentUser } from '../shared/decorators';
 
 /**
@@ -33,7 +33,7 @@ import { Roles, CurrentUser } from '../shared/decorators';
  * - DELETE /api/exam-scheduler/:id - Delete schedule (Admin)
  */
 @Controller('exam-scheduler')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, CenterSuperintendentGuard)
 export class ExamSchedulerController {
   constructor(private readonly examSchedulerService: ExamSchedulerService) {}
 
