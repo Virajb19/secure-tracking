@@ -11,6 +11,7 @@ import * as path from 'path';
 import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../prisma';
 import { CreateExamTrackerEventDto, ExamTrackerEventType } from './dto/create-exam-tracker-event.dto';
+import { ExamSchedulerService } from '../exam-scheduler/exam-scheduler.service';
 
 /**
  * Exam Tracker Service.
@@ -22,10 +23,15 @@ import { CreateExamTrackerEventDto, ExamTrackerEventType } from './dto/create-ex
  * - Question paper opening (per shift)
  * - Answer sheet packing (per shift)
  * - Post office delivery (per shift)
+ * 
+ * Time-frame restrictions are enforced based on exam scheduler.
  */
 @Injectable()
 export class ExamTrackerService {
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly examSchedulerService: ExamSchedulerService,
+  ) {}
 
   /**
    * Create a new exam tracker event.
@@ -82,6 +88,17 @@ export class ExamTrackerService {
       throw new BadRequestException(
         `Event ${createDto.event_type} has already been submitted for ${createDto.exam_date}`,
       );
+    }
+
+    // Validate time window based on exam schedule
+    const subjectCategory = await this.examSchedulerService.getSubjectCategoryForDate(createDto.exam_date);
+    const timeValidation = this.examSchedulerService.isWithinTimeWindow(
+      createDto.event_type,
+      subjectCategory,
+    );
+
+    if (!timeValidation.allowed) {
+      throw new BadRequestException(timeValidation.message);
     }
 
     // Calculate image hash for integrity
@@ -255,15 +272,21 @@ export class ExamTrackerService {
   /**
    * Get a summary of all events for a school grouped by date.
    * Returns which events are completed and which are pending.
+   * Includes time window information based on exam scheduler.
    */
   async getEventSummary(schoolId: string, examDate: string): Promise<{
     examDate: string;
+    subjectCategory: string;
     completedEvents: ExamTrackerEventType[];
     pendingEvents: ExamTrackerEventType[];
+    timeWindows: any;
     eventDetails: Record<string, {
       completed: boolean;
       submitted_at?: Date;
       image_url?: string;
+      latitude?: number;
+      longitude?: number;
+      address?: string;
     }>;
   }> {
     const allEventTypes = Object.values(ExamTrackerEventType);
@@ -275,13 +298,17 @@ export class ExamTrackerService {
       },
     });
 
+    // Get subject category and time windows from scheduler
+    const subjectCategory = await this.examSchedulerService.getSubjectCategoryForDate(examDate);
+    const timeWindows = this.examSchedulerService.getTimeWindows(subjectCategory);
+
     const completedEventTypes = events.map(e => e.event_type as string);
     const completedEvents = completedEventTypes as ExamTrackerEventType[];
     const pendingEvents = allEventTypes.filter(
       type => !completedEventTypes.includes(type),
     );
 
-    const eventDetails: Record<string, { completed: boolean; submitted_at?: Date; image_url?: string }> = {};
+    const eventDetails: Record<string, { completed: boolean; submitted_at?: Date; image_url?: string; latitude?: number; longitude?: number }> = {};
 
     for (const type of allEventTypes) {
       const event = events.find(e => e.event_type === type);
@@ -289,13 +316,17 @@ export class ExamTrackerService {
         completed: !!event,
         submitted_at: event?.submitted_at,
         image_url: event?.image_url,
+        latitude: event?.latitude ? Number(event.latitude) : undefined,
+        longitude: event?.longitude ? Number(event.longitude) : undefined,
       };
     }
 
     return {
       examDate,
+      subjectCategory,
       completedEvents,
       pendingEvents,
+      timeWindows,
       eventDetails,
     };
   }

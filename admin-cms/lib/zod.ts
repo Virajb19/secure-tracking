@@ -203,3 +203,85 @@ export const createTaskSchema = z.object({
 );
 
 export type CreateTaskSchema = z.infer<typeof createTaskSchema>;
+
+// ============================
+// REASSIGN SUPERINTENDENT SCHEMA
+// ============================
+export const reassignSuperintendentSchema = z.object({
+  email: z.
+    email({ message: 'Please enter a valid email address' })
+    .refine(val => val.length > 0, {
+      message: 'Email is required',
+    }),
+});
+
+export type ReassignSuperintendentSchema = z.infer<typeof reassignSuperintendentSchema>;
+
+// ============================
+// EXAM SCHEDULER SCHEMAS
+// ============================
+
+export const EXAM_CLASSES = ['CLASS_10', 'CLASS_12'] as const;
+export type ExamClassValue = typeof EXAM_CLASSES[number];
+
+export const SUBJECT_CATEGORIES = ['CORE', 'VOCATIONAL'] as const;
+export type SubjectCategoryValue = typeof SUBJECT_CATEGORIES[number];
+
+export const createExamScheduleSchema = z.object({
+  exam_date: z
+    .string()
+    .min(1, 'Exam date is required'),
+  class: z.enum(EXAM_CLASSES, { message: 'Class is required' }),
+  subject: z.enum(SUBJECTS, { message: 'Subject is required' }),
+  subject_category: z.enum(SUBJECT_CATEGORIES, { message: 'Subject category is required' }),
+  exam_center_id: z
+    .string()
+    .min(1, 'Exam center is required'),
+});
+
+export type CreateExamScheduleSchema = z.infer<typeof createExamScheduleSchema>;
+
+export const editExamScheduleSchema = z.object({
+  exam_date: z
+    .string()
+    .min(1, 'Exam date is required'),
+  class: z.enum(EXAM_CLASSES, { message: 'Class is required' }),
+  subject: z.enum(SUBJECTS, { message: 'Subject is required' }),
+  subject_category: z.enum(SUBJECT_CATEGORIES, { message: 'Subject category is required' }),
+  exam_center_id: z
+    .string()
+    .min(1, 'Exam center is required'),
+  exam_start_time: z
+    .string()
+    .min(1, 'Start time is required')
+    .refine(
+      (val) => /^\d{2}:\d{2}$/.test(val),
+      'Start time must be in HH:MM format'
+    ),
+  exam_end_time: z
+    .string()
+    .min(1, 'End time is required')
+    .refine(
+      (val) => /^\d{2}:\d{2}$/.test(val),
+      'End time must be in HH:MM format'
+    ),
+}).refine(
+  (data) => {
+    if (!data.exam_start_time || !data.exam_end_time) return true;
+    return data.exam_end_time > data.exam_start_time;
+  },
+  {
+    message: 'End time must be after start time',
+    path: ['exam_end_time'],
+  }
+);
+
+export type EditExamScheduleSchema = z.infer<typeof editExamScheduleSchema>;
+
+export const bulkExamScheduleSchema = z.object({
+  schedules: z
+    .array(createExamScheduleSchema)
+    .min(1, 'At least one exam schedule is required'),
+});
+
+export type BulkExamScheduleSchema = z.infer<typeof bulkExamScheduleSchema>;

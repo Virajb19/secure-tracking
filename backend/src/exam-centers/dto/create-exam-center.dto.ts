@@ -7,7 +7,7 @@ import { z } from 'zod';
  * the headmaster auto-becomes Center Superintendent.
  */
 export const CreateExamCenterSchema = z.object({
-  school_id: z.string().uuid('Invalid school ID'),
+  school_id: z.uuid('Invalid school ID'),
 });
 
 export class CreateExamCenterDto extends createZodDto(CreateExamCenterSchema) {}

@@ -38,6 +38,7 @@ import { RefreshTableButton } from '@/components/RefreshTableButton';
 import { TableRowsSkeleton } from '@/components/TableSkeleton';
 import { ApproveFormButton } from '@/components/ApproveFormButton';
 import { RejectFormButton } from '@/components/RejectFormButton';
+import { ClearFiltersButton } from '@/components/ClearFiltersButton';
 import { twMerge } from 'tailwind-merge';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -658,6 +659,18 @@ export default function Form6Page() {
               </SelectContent>
             </Select>
           </div>
+
+          <ClearFiltersButton
+            hasActiveFilters={!!(formType !== 'all' || districtId !== 'all' || statusFilter !== 'all' || searchInput)}
+            onClear={() => {
+              setFormType('all');
+              setDistrictId('all');
+              setStatusFilter('all');
+              setSearchInput('');
+              setSearchQuery('');
+              setPage(1);
+            }}
+          />
         </div>
 
         {/* Table */}

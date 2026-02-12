@@ -735,6 +735,8 @@ model ExamCenter {
   superintendent User   @relation("CenterSuperintendent", fields: [superintendent_id], references: [id])
   assigned_admin User   @relation("AssignedByAdmin", fields: [assigned_by], references: [id])
 
+  exam_schedules ExamSchedule[]
+
   @@index([school_id])
   @@index([superintendent_id])
   @@map("exam_centers")
@@ -789,4 +791,47 @@ model ExamTrackerEvent {
   @@index([school_id])
   @@index([exam_date])
   @@map("exam_tracker_events")
+}
+
+// ============================================================
+// EXAM SCHEDULER
+// Defines exam schedule per date, class, subject, and category
+// Used to determine time windows for QPT tracker events
+// ============================================================
+
+enum SubjectCategory {
+  CORE // Core subject: exam 9:00 AM - 12:00 PM (3 hours)
+  VOCATIONAL // Vocational subject: exam 9:00 AM - 11:00 AM (2 hours)
+}
+
+enum ExamClass {
+  CLASS_10
+  CLASS_12
+}
+
+/// Exam Schedule entry.
+/// Each row represents one exam on a specific date for a class/subject.
+/// The subject_category determines exam duration and thereby
+/// the allowed time windows for packing/sealing and delivery events.
+model ExamSchedule {
+  id               String          @id @default(uuid()) @db.Uuid
+  exam_date        DateTime        @db.Date
+  class            ExamClass
+  subject          String          @db.VarChar(150) // e.g. "Mathematics", "English"
+  subject_category SubjectCategory // CORE or VOCATIONAL
+  exam_start_time  String          @db.VarChar(10) // e.g. "09:00" (24h format)
+  exam_end_time    String          @db.VarChar(10) // e.g. "12:00" or "11:00"
+  exam_center_id   String          @db.Uuid
+  is_active        Boolean         @default(true)
+  created_by       String?         @db.Uuid
+  created_at       DateTime        @default(now()) @db.Timestamp()
+  updated_at       DateTime        @default(now()) @updatedAt
+
+  exam_center ExamCenter @relation(fields: [exam_center_id], references: [id])
+
+  @@unique([exam_date, class, subject, exam_center_id])
+  @@index([exam_date])
+  @@index([class])
+  @@index([exam_center_id])
+  @@map("exam_schedules")
 }

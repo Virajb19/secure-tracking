@@ -239,6 +239,12 @@ export interface ExamCenter {
         name: string;
         email?: string;
     };
+    exam_schedules?: {
+        subject: string;
+        exam_date: string;
+        class: string;
+        subject_category: string;
+    }[];
 }
 
 // ========================================
@@ -259,4 +265,34 @@ export interface HelpdeskTicket {
         email?: string;
         role: UserRole;
     };
+}
+
+// ========================================
+// EXAM SCHEDULE TYPES
+// ========================================
+
+export enum SubjectCategory {
+    CORE = 'CORE',
+    VOCATIONAL = 'VOCATIONAL',
+}
+
+export enum ExamClass {
+    CLASS_10 = 'CLASS_10',
+    CLASS_12 = 'CLASS_12',
+}
+
+export interface ExamSchedule {
+    id: string;
+    exam_date: string;
+    class: ExamClass;
+    subject: string;
+    subject_category: SubjectCategory;
+    exam_start_time: string;
+    exam_end_time: string;
+    exam_center_id: string;
+    is_active: boolean;
+    created_by?: string;
+    created_at: string;
+    updated_at: string;
+    exam_center?: ExamCenter;
 }

@@ -1,14 +1,5 @@
-import {
-  IsEnum,
-  IsUUID,
-  IsDateString,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Min,
-  Max,
-} from 'class-validator';
-import { Transform } from 'class-transformer';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
 /**
  * Enum for Exam Tracker Event Types
@@ -25,34 +16,36 @@ export enum ExamTrackerEventType {
   DELIVERY_AFTERNOON = 'DELIVERY_AFTERNOON',
 }
 
+// ============================
+// CREATE EXAM TRACKER EVENT SCHEMA
+// ============================
+
+export const CreateExamTrackerEventSchema = z.object({
+  event_type: z.enum([
+    'TREASURY_ARRIVAL',
+    'CUSTODIAN_HANDOVER',
+    'OPENING_MORNING',
+    'PACKING_MORNING',
+    'DELIVERY_MORNING',
+    'OPENING_AFTERNOON',
+    'PACKING_AFTERNOON',
+    'DELIVERY_AFTERNOON',
+  ], { message: 'Invalid event type' }),
+
+  exam_date: z.iso.date({ message: 'exam_date must be a valid date (YYYY-MM-DD)' }),
+
+  shift: z.string().optional(), // MORNING, AFTERNOON, or GENERAL
+
+  latitude: z.coerce.number().min(-90, 'Latitude must be >= -90').max(90, 'Latitude must be <= 90'),
+
+  longitude: z.coerce.number().min(-180, 'Longitude must be >= -180').max(180, 'Longitude must be <= 180'),
+
+  captured_at: z.iso.datetime({ message: 'captured_at must be a valid ISO datetime' }).optional(),
+});
+
 /**
  * DTO for creating an exam tracker event.
  * Used by Center Superintendents to record question paper events.
  */
-export class CreateExamTrackerEventDto {
-  @IsEnum(ExamTrackerEventType)
-  event_type: ExamTrackerEventType;
+export class CreateExamTrackerEventDto extends createZodDto(CreateExamTrackerEventSchema) {}
 
-  @IsDateString()
-  exam_date: string; // ISO date string YYYY-MM-DD
-
-  @IsOptional()
-  @IsString()
-  shift?: string; // MORNING, AFTERNOON, or GENERAL
-
-  @IsNumber()
-  @Min(-90)
-  @Max(90)
-  @Transform(({ value }) => parseFloat(value))
-  latitude: number;
-
-  @IsNumber()
-  @Min(-180)
-  @Max(180)
-  @Transform(({ value }) => parseFloat(value))
-  longitude: number;
-
-  @IsOptional()
-  @IsDateString()
-  captured_at?: string; // When the photo was captured
-}

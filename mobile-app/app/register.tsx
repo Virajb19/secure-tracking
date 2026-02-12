@@ -74,6 +74,7 @@ export default function RegisterScreen() {
             fullName: '',
             email: '',
             password: '',
+            confirmPassword: '',
             role: 'TEACHER',
             phone: '',
         },
@@ -321,6 +322,31 @@ export default function RegisterScreen() {
                     />
                     {errors.password && (
                         <Text style={styles.errorText}>{errors.password.message}</Text>
+                    )}
+                </View>
+
+                {/* Confirm Password */}
+                <View style={styles.fieldContainer}>
+                    <Text style={styles.label}>Confirm Password</Text>
+                    <Controller
+                        control={control}
+                        name="confirmPassword"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                            <TextInput
+                                style={[styles.input, errors.confirmPassword && styles.inputError]}
+                                placeholder="Confirm your password"
+                                placeholderTextColor="#6b7280"
+                                value={value}
+                                onChangeText={onChange}
+                                onBlur={onBlur}
+                                secureTextEntry
+                                autoCapitalize="none"
+                                editable={!isSubmitting}
+                            />
+                        )}
+                    />
+                    {errors.confirmPassword && (
+                        <Text style={styles.errorText}>{errors.confirmPassword.message}</Text>
                     )}
                 </View>
 

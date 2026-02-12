@@ -23,10 +23,14 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { School as SchoolIcon, Plus, Loader2, ChevronLeft, ChevronRight, UserCog, Trash2, Search, AlertTriangle, X, Check } from 'lucide-react';
-import { toast } from 'sonner';
+import { showSuccessToast, showErrorToast } from '@/components/ui/custom-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
 import { AnimatedCheckbox } from '@/components/AnimatedCheckbox';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { reassignSuperintendentSchema, type ReassignSuperintendentSchema } from '@/lib/zod';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -42,7 +46,7 @@ function TableSkeleton() {
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {[...Array(5)].map((_, i) => (
+                    {[...Array(15)].map((_, i) => (
                         <tr key={i}>
                             <td className="px-4 py-4"><Skeleton className="h-4 w-40" /></td>
                             <td className="px-4 py-4"><Skeleton className="h-4 w-28" /></td>
@@ -74,10 +78,14 @@ export default function ExamCentersPage() {
     // Create form state — multi-select
     const [selectedDistrictForCreate, setSelectedDistrictForCreate] = useState('');
     const [selectedSchoolIds, setSelectedSchoolIds] = useState<string[]>([]);
+    const [selectedSchoolNames, setSelectedSchoolNames] = useState<Record<string, string>>({});
     const [schoolSearchQuery, setSchoolSearchQuery] = useState('');
 
     // Override form state
-    const [overrideEmail, setOverrideEmail] = useState('');
+    const overrideForm = useForm<ReassignSuperintendentSchema>({
+        resolver: zodResolver(reassignSuperintendentSchema),
+        defaultValues: { email: '' },
+    });
 
     // Track bulk creation progress
     const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number } | null>(null);
@@ -100,19 +108,13 @@ export default function ExamCentersPage() {
     });
 
     // Fetch schools for create dialog
-    const { data: schoolsForCreate } = useQuery({
+    const { data: schoolsForCreate, isFetching: isFetchingSchoolsForCreate } = useQuery({
         queryKey: ['schools', selectedDistrictForCreate],
         queryFn: () => masterDataApi.getSchools(selectedDistrictForCreate || undefined),
         enabled: showCreateDialog,
     });
 
-    // Create exam center mutation (single)
-    const createMutation = useMutation({
-        mutationFn: (schoolId: string) => examCentersApi.create(schoolId),
-        onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to create exam center');
-        },
-    });
+
 
     // Bulk create handler
     const handleBulkCreate = async () => {
@@ -131,7 +133,7 @@ export default function ExamCentersPage() {
             } catch (error: any) {
                 failCount++;
                 const msg = error.response?.data?.message || 'Failed';
-                toast.error(`School ${i + 1}: ${msg}`);
+                showErrorToast(`School ${i + 1}: ${msg}`);
             }
             setBulkProgress({ current: i + 1, total });
         }
@@ -140,12 +142,13 @@ export default function ExamCentersPage() {
         setBulkProgress(null);
 
         if (successCount > 0) {
-            toast.success(`${successCount} exam center${successCount > 1 ? 's' : ''} created successfully`);
+            showSuccessToast(`${successCount} exam center${successCount > 1 ? 's' : ''} created successfully`);
         }
         if (failCount === 0) {
             setShowCreateDialog(false);
             setSelectedDistrictForCreate('');
             setSelectedSchoolIds([]);
+            setSelectedSchoolNames({});
             setSchoolSearchQuery('');
         }
     };
@@ -155,14 +158,14 @@ export default function ExamCentersPage() {
         mutationFn: ({ examCenterId, email }: { examCenterId: string; email: string }) =>
             examCentersApi.overrideSuperintendent(examCenterId, email),
         onSuccess: (data) => {
-            toast.success(data.message);
+            showSuccessToast(data.message);
             queryClient.invalidateQueries({ queryKey: ['exam-centers'] });
             setShowOverrideDialog(false);
-            setOverrideEmail('');
+            overrideForm.reset();
             setSelectedCenter(null);
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to reassign superintendent');
+            showErrorToast(error.response?.data?.message || 'Failed to reassign superintendent');
         },
     });
 
@@ -170,13 +173,13 @@ export default function ExamCentersPage() {
     const deleteMutation = useMutation({
         mutationFn: (examCenterId: string) => examCentersApi.delete(examCenterId),
         onSuccess: () => {
-            toast.success('Exam center deleted');
+            showSuccessToast('Exam center deleted');
             queryClient.invalidateQueries({ queryKey: ['exam-centers'] });
             setShowDeleteDialog(false);
             setSelectedCenter(null);
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to delete exam center');
+            showErrorToast(error.response?.data?.message || 'Failed to delete exam center');
         },
     });
 
@@ -185,12 +188,15 @@ export default function ExamCentersPage() {
     const total = centersData?.total || 0;
 
     // Toggle school selection
-    const toggleSchool = (schoolId: string) => {
+    const toggleSchool = (schoolId: string, schoolName?: string) => {
         setSelectedSchoolIds(prev =>
             prev.includes(schoolId)
                 ? prev.filter(id => id !== schoolId)
                 : [...prev, schoolId]
         );
+        if (schoolName) {
+            setSelectedSchoolNames(prev => ({ ...prev, [schoolId]: schoolName }));
+        }
     };
 
     // Select / deselect all visible schools
@@ -298,7 +304,7 @@ export default function ExamCentersPage() {
                                     <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Center Superintendent</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Original Role</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Status</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Assigned By</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Exam Subject</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Actions</th>
                                 </tr>
                             </thead>
@@ -342,7 +348,9 @@ export default function ExamCentersPage() {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
-                                                {center.assigned_admin?.name || '—'}
+                                                {center.exam_schedules && center.exam_schedules.length > 0
+                                                    ? [...new Set(center.exam_schedules.map((s: any) => s.subject))].join(', ')
+                                                    : '—'}
                                             </td>
                                             <td className="px-4 py-4">
                                                 <div className="flex gap-2">
@@ -351,7 +359,7 @@ export default function ExamCentersPage() {
                                                         size="sm"
                                                         onClick={() => {
                                                             setSelectedCenter(center);
-                                                            setOverrideEmail('');
+                                                            overrideForm.reset();
                                                             setShowOverrideDialog(true);
                                                         }}
                                                         className="gap-1 text-xs"
@@ -414,11 +422,12 @@ export default function ExamCentersPage() {
                 if (!open) {
                     setSelectedDistrictForCreate('');
                     setSelectedSchoolIds([]);
+                    setSelectedSchoolNames({});
                     setSchoolSearchQuery('');
                     setBulkProgress(null);
                 }
             }}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <div className="p-1.5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg">
@@ -439,7 +448,6 @@ export default function ExamCentersPage() {
                                 value={selectedDistrictForCreate}
                                 onValueChange={(v) => {
                                     setSelectedDistrictForCreate(v);
-                                    setSelectedSchoolIds([]);
                                     setSchoolSearchQuery('');
                                 }}
                             >
@@ -485,6 +493,11 @@ export default function ExamCentersPage() {
                                     <div className="py-8 text-center text-sm text-slate-400">
                                         Select a district first
                                     </div>
+                                ) : isFetchingSchoolsForCreate ? (
+                                    <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
+                                        <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
+                                        <span className="text-sm">Loading schools...</span>
+                                    </div>
                                 ) : (
                                     <>
                                         {/* Select all header */}
@@ -517,11 +530,11 @@ export default function ExamCentersPage() {
                                                                 ? 'bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/30'
                                                                 : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                                                                 }`}
-                                                            onClick={() => toggleSchool(s.id)}
+                                                            onClick={() => toggleSchool(s.id, s.name?.trim())}
                                                         >
                                                             <AnimatedCheckbox
                                                                 checked={isSelected}
-                                                                onCheckedChange={() => toggleSchool(s.id)}
+                                                                onCheckedChange={() => toggleSchool(s.id, s.name?.trim())}
                                                             />
                                                             <div className="flex-1 min-w-0">
                                                                 <div className={`text-sm truncate ${isSelected ? 'text-emerald-700 dark:text-emerald-400 font-medium' : 'text-slate-700 dark:text-slate-300'}`}>
@@ -554,8 +567,8 @@ export default function ExamCentersPage() {
                                     className="flex flex-wrap gap-1.5"
                                 >
                                     {selectedSchoolIds.map(id => {
-                                        const school = schoolsForCreate?.find((s: School) => s.id === id);
-                                        if (!school) return null;
+                                        const name = selectedSchoolNames[id];
+                                        if (!name) return null;
                                         return (
                                             <motion.span
                                                 key={id}
@@ -564,7 +577,7 @@ export default function ExamCentersPage() {
                                                 exit={{ opacity: 0, scale: 0.8 }}
                                                 className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-md text-xs font-medium"
                                             >
-                                                {school.name?.trim()?.substring(0, 25)}{(school.name?.length || 0) > 25 ? '…' : ''}
+                                                {name.substring(0, 25)}{name.length > 25 ? '…' : ''}
                                                 <button
                                                     onClick={() => toggleSchool(id)}
                                                     className="hover:bg-emerald-200 dark:hover:bg-emerald-800/50 rounded-full p-0.5 transition-colors"
@@ -610,10 +623,8 @@ export default function ExamCentersPage() {
                                 disabled={selectedSchoolIds.length === 0 || !!bulkProgress}
                                 className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/20 border-0"
                             >
-                                {bulkProgress ? (
+                                {bulkProgress && (
                                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                ) : (
-                                    <Plus className="w-4 h-4 mr-2" />
                                 )}
                                 Create {selectedSchoolIds.length > 1 ? `${selectedSchoolIds.length} Exam Centers` : 'Exam Center'}
                             </Button>
@@ -623,7 +634,13 @@ export default function ExamCentersPage() {
             </Dialog>
 
             {/* ===== OVERRIDE CS DIALOG ===== */}
-            <Dialog open={showOverrideDialog} onOpenChange={setShowOverrideDialog}>
+            <Dialog open={showOverrideDialog} onOpenChange={(open) => {
+                setShowOverrideDialog(open);
+                if (!open) {
+                    overrideForm.reset();
+                    setSelectedCenter(null);
+                }
+            }}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Change Center Superintendent</DialogTitle>
@@ -632,46 +649,72 @@ export default function ExamCentersPage() {
                             The current CS ({selectedCenter?.superintendent?.name}) will lose access.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 pt-4">
-                        <div>
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
-                                New Superintendent&apos;s Email
-                            </label>
-                            <Input
-                                type="email"
-                                placeholder="Enter the email of the new CS"
-                                value={overrideEmail}
-                                onChange={(e) => setOverrideEmail(e.target.value)}
+                    <Form {...overrideForm}>
+                        <form
+                            onSubmit={overrideForm.handleSubmit((values) => {
+                                if (selectedCenter) {
+                                    overrideMutation.mutate({
+                                        examCenterId: selectedCenter.id,
+                                        email: values.email,
+                                    });
+                                }
+                            })}
+                            className="space-y-4 pt-4"
+                        >
+                            <FormField
+                                control={overrideForm.control}
+                                name="email"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-slate-700 dark:text-slate-300">
+                                            New Superintendent&apos;s Email
+                                        </FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="email"
+                                                placeholder="Enter the email of the new CS"
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormDescription className="text-xs">
+                                            The user must be a registered Teacher or Headmaster.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
                             />
-                            <p className="text-xs text-slate-500 mt-1.5">
-                                The user must be a registered Teacher or Headmaster.
-                            </p>
-                        </div>
 
-                        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-300 flex gap-2">
-                            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                            <div>
-                                <p className="font-medium">Warning:</p>
-                                <p className="mt-1">The current superintendent ({selectedCenter?.superintendent?.name}) will immediately lose Center Superintendent access.</p>
+                            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-300 flex gap-2">
+                                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-medium">Warning:</p>
+                                    <p className="mt-1">The current superintendent ({selectedCenter?.superintendent?.name}) will immediately lose Center Superintendent access.</p>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="flex justify-end gap-3 pt-2">
-                            <Button variant="outline" onClick={() => setShowOverrideDialog(false)}>
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={() => selectedCenter && overrideEmail && overrideMutation.mutate({
-                                    examCenterId: selectedCenter.id,
-                                    email: overrideEmail,
-                                })}
-                                disabled={!overrideEmail || overrideMutation.isPending}
-                            >
-                                {overrideMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                                Reassign
-                            </Button>
-                        </div>
-                    </div>
+                            <div className="flex justify-end gap-3 pt-2">
+                                <Button variant="outline" type="button" onClick={() => setShowOverrideDialog(false)}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={overrideMutation.isPending}
+                                    className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-lg shadow-amber-500/20 border-0"
+                                >
+                                    {overrideMutation.isPending ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                                            Reassigning
+                                        </>
+                                    ) : (
+                                        <>
+                                            Reassign
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
                 </DialogContent>
             </Dialog>
 
@@ -694,8 +737,16 @@ export default function ExamCentersPage() {
                             onClick={() => selectedCenter && deleteMutation.mutate(selectedCenter.id)}
                             disabled={deleteMutation.isPending}
                         >
-                            {deleteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                            Delete
+                            {deleteMutation.isPending ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    Deleting
+                                </>
+                            ) : (
+                                <>
+                                    Delete
+                                </>
+                            )}
                         </Button>
                     </div>
                 </DialogContent>

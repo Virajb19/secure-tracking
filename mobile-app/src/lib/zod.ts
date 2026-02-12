@@ -35,10 +35,14 @@ export const RegisterSchema = z.object({
         .string()
         .min(8, 'Password must be at least 8 characters')
         .max(15, 'Password cannot exceed 15 characters'),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
     role: RegistrationRoleEnum,
     phone: z
         .string()
         .regex(/^[+]?[\d\s-]{10,15}$/, 'Please enter a valid phone number (10-15 digits)'),
+}).refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
 });
 
 export type RegisterFormData = z.infer<typeof RegisterSchema>;

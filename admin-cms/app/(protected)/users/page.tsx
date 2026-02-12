@@ -52,6 +52,7 @@ import { RetryButton } from '@/components/RetryButton';
 import { TableRowsSkeleton } from '@/components/TableSkeleton';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
 import { ResetDeviceButton } from '@/components/ResetDeviceButton';
+import { ClearFiltersButton } from '@/components/ClearFiltersButton';
 import {
   Dialog,
   DialogContent,
@@ -60,7 +61,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { toast } from 'sonner';
 import CopyEmailButton from '@/components/CopyEmailButton';
 
 // Animation variants
@@ -80,10 +80,10 @@ const itemVariants = {
 };
 
 const tableRowVariants = {
-  hidden: { opacity: 0, y: -10 },
+  hidden: { opacity: 0, x: -20 },
   visible: (i: number) => ({
     opacity: 1,
-    y: 0,
+    x: 0,
     transition: {
       delay: i * 0.02,
       duration: 0.15,
@@ -465,7 +465,7 @@ export default function UsersPage() {
               <span className="line-clamp-2">{getSchoolAndDistrict(user)}</span>
             </td>
             <td className="py-4 px-5 text-slate-700 dark:text-slate-300 max-w-xs">
-              <span className="line-clamp-2">{getClassesAndSubjects(user)}</span>
+              <span>{getClassesAndSubjects(user)}</span>
             </td>
             <td className="py-4 px-5">
               <div className="flex items-center gap-2">
@@ -608,7 +608,7 @@ export default function UsersPage() {
                 <SelectValue placeholder="School" />
               )}
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 p-0" position="popper" sideOffset={4}>
               {isFetchingSchools ? (
                 <div className="flex items-center justify-center gap-2 py-6 text-slate-400">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -616,7 +616,7 @@ export default function UsersPage() {
                 </div>
               ) : (
                 <>
-                  <div className="sticky top-0 bg-white dark:bg-slate-800 p-2 border-b border-slate-200 dark:border-slate-700">
+                  <div className="bg-white dark:bg-slate-800 p-2 border-b border-slate-200 dark:border-slate-700">
                     <input
                       type="text"
                       placeholder="Search schools..."
@@ -626,27 +626,29 @@ export default function UsersPage() {
                       onKeyDown={(e) => e.stopPropagation()}
                     />
                   </div>
-                  <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Schools</SelectItem>
-                  {(() => {
-                    const filtered = schoolSearchQuery
-                      ? schools.filter(s => s.name?.toLowerCase().includes(schoolSearchQuery.toLowerCase()))
-                      : schools;
-                    const capped = filtered.slice(0, 50);
-                    return (
-                      <>
-                        {capped.map((school) => (
-                          <SelectItem key={school.id} value={school.id} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
-                            {school.name?.trim()}
-                          </SelectItem>
-                        ))}
-                        {filtered.length > 50 && (
-                          <div className="px-3 py-2 text-xs text-slate-400 text-center">
-                            Showing 50 of {filtered.length} — type to search
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
+                  <div className="max-h-60 overflow-y-auto p-1">
+                    <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Schools</SelectItem>
+                    {(() => {
+                      const filtered = schoolSearchQuery
+                        ? schools.filter(s => s.name?.toLowerCase().includes(schoolSearchQuery.toLowerCase()))
+                        : schools;
+                      const capped = filtered.slice(0, 50);
+                      return (
+                        <>
+                          {capped.map((school) => (
+                            <SelectItem key={school.id} value={school.id} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
+                              {school.name?.trim()}
+                            </SelectItem>
+                          ))}
+                          {filtered.length > 50 && (
+                            <div className="px-3 py-2 text-xs text-slate-400 text-center">
+                              Showing 50 of {filtered.length} — type to search
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
                 </>
               )}
             </SelectContent>
@@ -707,6 +709,21 @@ export default function UsersPage() {
               {showOnlyInactive ? 'Show All' : 'Show Inactive Only'}
             </button>
           </motion.div>
+
+          <ClearFiltersButton
+            hasActiveFilters={!!(searchQuery || debouncedSearch || roleFilter !== 'all' || districtFilter !== 'all' || schoolFilter !== 'all' || classFilter !== 'all' || subjectFilter !== 'all' || showOnlyInactive)}
+            onClear={() => {
+              setSearchQuery('');
+              setDebouncedSearch('');
+              setRoleFilter('all');
+              setDistrictFilter('all');
+              setSchoolFilter('all');
+              setClassFilter('all');
+              setSubjectFilter('all');
+              setShowOnlyInactive(false);
+              resetPage();
+            }}
+          />
         </motion.div>
 
         {/* Bulk Actions */}

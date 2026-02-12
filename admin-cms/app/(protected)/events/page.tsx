@@ -26,6 +26,7 @@ import { useGetEventsInfinite, useGetEventById } from '@/services/events.service
 import { DeleteEventButton } from '@/components/DeleteEventButton';
 import { useGetDistricts } from '@/services/user.service';
 import { RefreshTableButton } from '@/components/RefreshTableButton';
+import { ClearFiltersButton } from '@/components/ClearFiltersButton';
 import { EventFilterParams, SchoolEventType, EventWithStats } from '@/services/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -447,6 +448,18 @@ export default function EventsPage() {
               </>
             )}
           </Button>
+
+          <ClearFiltersButton
+            hasActiveFilters={!!(fromDate || toDate || districtFilter !== 'all' || eventTypeFilter !== 'all' || searchInput)}
+            onClear={() => {
+              setFromDate('');
+              setToDate('');
+              setDistrictFilter('all');
+              setEventTypeFilter('all');
+              setSearchInput('');
+              setSearchQuery('');
+            }}
+          />
         </div>
       </motion.div>
 

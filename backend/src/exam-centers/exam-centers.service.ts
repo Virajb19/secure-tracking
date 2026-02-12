@@ -308,6 +308,11 @@ export class ExamCentersService {
           assigned_admin: {
             select: { id: true, name: true, email: true },
           },
+          exam_schedules: {
+            where: { is_active: true },
+            select: { subject: true, exam_date: true, class: true, subject_category: true },
+            orderBy: { exam_date: 'desc' },
+          },
         },
         orderBy: { created_at: 'desc' },
         skip: (page - 1) * limit,
