@@ -351,7 +351,7 @@ function SchoolsTab() {
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onSubmit={handleCreateSchool}
-        isLoading={createMutation.isPending}
+
         districts={districts ?? []}
         title="Add New School"
         description="Enter the school details below."
@@ -362,7 +362,7 @@ function SchoolsTab() {
         open={!!editingSchool}
         onClose={() => setEditingSchool(null)}
         onSubmit={handleUpdateSchool}
-        isLoading={updateMutation.isPending}
+
         districts={districts ?? []}
         title="Edit School"
         description="Update the school details."
@@ -408,12 +408,11 @@ function SchoolsTab() {
 // ========================================
 
 function SchoolFormDialog({
-  open, onClose, onSubmit, isLoading, districts, title, description, defaultValues
+  open, onClose, onSubmit, districts, title, description, defaultValues
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (values: any) => Promise<void>;
-  isLoading: boolean;
   districts: District[];
   title: string;
   description: string;
@@ -494,9 +493,14 @@ function SchoolFormDialog({
             />
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-              <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
-                {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                {defaultValues ? 'Update' : 'Create'}
+              <Button type="submit" disabled={form.formState.isSubmitting} className="bg-blue-600 hover:bg-blue-700">
+                {form.formState.isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> {defaultValues ? 'Updating...' : 'Creating...'}
+                  </>
+                ) : (
+                  defaultValues ? 'Update' : 'Create'
+                )}
               </Button>
             </div>
           </form>
@@ -531,8 +535,14 @@ function SubjectsTab() {
   const handleCreateSubject = async (values: CreateSubjectFormValues) => {
     try {
       const result = await createMutation.mutateAsync(values);
-      if (result.errors.length > 0) {
-        showErrorToast(result.errors[0]);
+      if (result.errors.length > 0 && result.created.length === 0) {
+        // All selected classes already exist — show a combined message
+        const classNums = result.errors.map((e: string) => e.match(/class (\d+)/)?.[1]).filter(Boolean);
+        showErrorToast(`Subject "${values.name}" already exists for class ${classNums.join(', ')}`);
+      } else if (result.errors.length > 0) {
+        // Partial success — some created, some already existed
+        const classNums = result.errors.map((e: string) => e.match(/class (\d+)/)?.[1]).filter(Boolean);
+        showErrorToast(`Already exists for class ${classNums.join(', ')}`);
       }
       if (result.created.length > 0) {
         showSuccessToast(`Created "${values.name}" for ${result.created.length} class(es)`);
@@ -687,7 +697,7 @@ function SubjectsTab() {
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onSubmit={handleCreateSubject}
-        isLoading={createMutation.isPending}
+
       />
 
       {/* Edit Subject Dialog */}
@@ -695,7 +705,7 @@ function SubjectsTab() {
         open={!!editingSubject}
         onClose={() => setEditingSubject(null)}
         onSubmit={handleUpdateSubject}
-        isLoading={updateMutation.isPending}
+
         subject={editingSubject}
       />
 
@@ -734,12 +744,11 @@ function SubjectsTab() {
 // ========================================
 
 function SubjectCreateDialog({
-  open, onClose, onSubmit, isLoading
+  open, onClose, onSubmit
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (values: CreateSubjectFormValues) => Promise<void>;
-  isLoading: boolean;
 }) {
   const form = useForm<CreateSubjectFormValues>({
     resolver: zodResolver(createSubjectSchema),
@@ -815,9 +824,16 @@ function SubjectCreateDialog({
             />
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-              <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
-                {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Create
+              <Button type="submit" disabled={form.formState.isSubmitting} className="bg-blue-600 hover:bg-blue-700">
+                {form.formState.isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...
+                  </>
+                ) : (
+                  <>
+                    Create
+                  </>
+                )}
               </Button>
             </div>
           </form>
@@ -832,12 +848,11 @@ function SubjectCreateDialog({
 // ========================================
 
 function SubjectEditDialog({
-  open, onClose, onSubmit, isLoading, subject
+  open, onClose, onSubmit, subject
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (values: EditSubjectFormValues) => Promise<void>;
-  isLoading: boolean;
   subject: Subject | null;
 }) {
 
@@ -939,9 +954,14 @@ function SubjectEditDialog({
             />
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-              <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
-                {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Update
+              <Button type="submit" disabled={form.formState.isSubmitting} className="bg-blue-600 hover:bg-blue-700">
+                {form.formState.isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Updating...
+                  </>
+                ) : (
+                  'Update'
+                )}
               </Button>
             </div>
           </form>
