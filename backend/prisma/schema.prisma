@@ -811,6 +811,30 @@ enum ExamClass {
   CLASS_12
 }
 
+// ============================================================
+// SUBJECT MANAGEMENT
+// Configurable subjects with class-level associations
+// Managed by Admin/Super Admin from CMS
+// ============================================================
+
+/// Subject entity.
+/// Represents a subject that can be taught at specific class levels.
+/// Subjects are configurable from the Admin CMS and replace all
+/// hardcoded subject lists throughout the application.
+model Subject {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @db.VarChar(150)
+  class_level Int     // e.g., 8, 9, 10, 11, 12
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamp()
+  updated_at DateTime @default(now()) @updatedAt
+
+  @@unique([name, class_level]) // No duplicate subject per class
+  @@index([class_level])
+  @@index([is_active])
+  @@map("subjects")
+}
+
 /// Exam Schedule entry.
 /// Each row represents one exam on a specific date for a class/subject.
 /// The subject_category determines exam duration and thereby

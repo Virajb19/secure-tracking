@@ -1,7 +1,7 @@
 'use client';
 
 import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
-import { LoginResponse, Task, TaskEvent, AuditLog, User, CreateTaskDto, District, School, Circular, CreateCircularDto } from '@/types';
+import { LoginResponse, Task, TaskEvent, AuditLog, User, CreateTaskDto, District, School, Subject, Circular, CreateCircularDto } from '@/types';
 import { toast } from 'sonner';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -200,6 +200,12 @@ export interface PaginatedUsersResponse {
   totalPages: number;
 }
 
+export interface PaginatedSchoolsResponse {
+  data: School[];
+  total: number;
+  hasMore: boolean;
+}
+
 export const usersApi = {
   getAll: async (filters?: UserFilterParams): Promise<PaginatedUsersResponse> => {
     const params: Record<string, string> = {};
@@ -292,13 +298,68 @@ export const masterDataApi = {
     const response = await api.get<School[]>('/admin/master-data/schools', { params });
     return response.data;
   },
+  getSchoolsPaginated: async (params: {
+    limit?: number;
+    offset?: number;
+    districtId?: string;
+    search?: string;
+  }): Promise<PaginatedSchoolsResponse> => {
+    const queryParams: Record<string, string> = {};
+    if (params.limit) queryParams.limit = String(params.limit);
+    if (params.offset) queryParams.offset = String(params.offset);
+    if (params.districtId) queryParams.districtId = params.districtId;
+    if (params.search) queryParams.search = params.search;
+    const response = await api.get<PaginatedSchoolsResponse>('/admin/master-data/schools/paginated', { params: queryParams });
+    return response.data;
+  },
   getClasses: async (): Promise<number[]> => {
     const response = await api.get<number[]>('/admin/master-data/classes');
     return response.data;
   },
-  getSubjects: async (): Promise<string[]> => {
-    const response = await api.get<string[]>('/admin/master-data/subjects');
+  getSubjects: async (classLevel?: number): Promise<string[]> => {
+    const params = classLevel ? { classLevel: String(classLevel) } : {};
+    const response = await api.get<string[]>('/admin/master-data/subjects', { params });
     return response.data;
+  },
+  getSubjectsDetailed: async (classLevel?: number): Promise<Subject[]> => {
+    const params = classLevel ? { classLevel: String(classLevel) } : {};
+    const response = await api.get<Subject[]>('/admin/master-data/subjects/detailed', { params });
+    return response.data;
+  },
+};
+
+// ============================
+// ADMIN MANAGE API (Schools & Subjects CRUD)
+// ============================
+export const adminManageApi = {
+  // School CRUD
+  createSchool: async (data: { name: string; registration_code: string; district_id: string }): Promise<School> => {
+    const response = await api.post<School>('/admin/manage/schools', data);
+    return response.data;
+  },
+  updateSchool: async (id: string, data: { name?: string; registration_code?: string; district_id?: string }): Promise<School> => {
+    const response = await api.patch<School>(`/admin/manage/schools/${id}`, data);
+    return response.data;
+  },
+  deleteSchool: async (id: string): Promise<void> => {
+    await api.delete(`/admin/manage/schools/${id}`);
+  },
+
+  // Subject CRUD
+  createSubject: async (data: { name: string; class_level: number }): Promise<Subject> => {
+    const response = await api.post<Subject>('/admin/manage/subjects', data);
+    return response.data;
+  },
+  createSubjectBulk: async (data: { name: string; class_levels: number[] }): Promise<{ created: Subject[]; errors: string[] }> => {
+    const response = await api.post<{ created: Subject[]; errors: string[] }>('/admin/manage/subjects/bulk', data);
+    return response.data;
+  },
+  updateSubject: async (id: string, data: { name?: string; class_level?: number; is_active?: boolean }): Promise<Subject> => {
+    const response = await api.patch<Subject>(`/admin/manage/subjects/${id}`, data);
+    return response.data;
+  },
+  deleteSubject: async (id: string): Promise<void> => {
+    await api.delete(`/admin/manage/subjects/${id}`);
   },
 };
 

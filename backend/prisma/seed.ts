@@ -225,6 +225,7 @@ async function main() {
 
     // Clear existing data
     console.log('🗑️  Clearing existing data...');
+    await prisma.examSchedule.deleteMany();
     await prisma.formSubmission.deleteMany();
     await prisma.userStar.deleteMany();
     await prisma.bankDetails.deleteMany();
@@ -248,6 +249,8 @@ async function main() {
     await prisma.teachingAssignment.deleteMany();
     await prisma.faculty.deleteMany();
     await prisma.examTrackerEvent.deleteMany();
+    await prisma.examCenter.deleteMany();
+    await prisma.subject.deleteMany();
     await prisma.school.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.district.deleteMany();
@@ -276,7 +279,23 @@ async function main() {
         }
     });
     await prisma.user.create({ data: { name: 'Bittu Raja', email: 'bittu@gmail.com', password: plainPassword, role: 'ASSISTANT', is_active: true, phone: '9876543210', gender: 'MALE', profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin', created_at: new Date() } });
-    console.log('✅ Admin, Subject Coordinator, Assistant created\n');
+    // Second Subject Coordinator
+    await prisma.user.create({
+        data: {
+            name: 'Priyanshu Gupta',
+            email: 'pri@gmail.com',
+            password: plainPassword,
+            role: 'SUBJECT_COORDINATOR',
+            is_active: true,
+            phone: '9876501234',
+            gender: 'MALE',
+            profile_image_url: 'https://cloud.appwrite.io/v1/storage/buckets/69713da5003bc351cdad/files/6987171300319c9aa594/view?project=69711b25002e71bb9eae&mode=admin',
+            coordinator_subject: 'Economics',
+            coordinator_class_group: '8-10',
+            created_at: new Date()
+        }
+    });
+    console.log('✅ Admin, Subject Coordinators, Assistant created\n');
 
     // ==================== DISTRICTS (16 Nagaland Districts) ====================
     console.log('🗺️  Creating 16 Nagaland districts...');
@@ -332,6 +351,25 @@ async function main() {
         console.log(`   ${d.name}: ${count} schools`);
     }
     console.log('');
+
+    // ==================== SUBJECTS (all subjects × class levels 8-12) ====================
+    console.log('📖 Creating subjects for class levels 8-12...');
+    const subjectClassLevels = [8, 9, 10, 11, 12];
+    const subjectData: { name: string; class_level: number; is_active: boolean; created_at: Date }[] = [];
+
+    for (const subjectName of subjects) {
+        for (const classLevel of subjectClassLevels) {
+            subjectData.push({
+                name: subjectName,
+                class_level: classLevel,
+                is_active: true,
+                created_at: generateDate(2023, 2025),
+            });
+        }
+    }
+
+    await prisma.subject.createMany({ data: subjectData });
+    console.log(`✅ Created ${subjectData.length} subjects (${subjects.length} subjects × ${subjectClassLevels.length} class levels)\n`);
 
     // ==================== USERS (18000+ records with VERY UNEVEN distribution) ====================
     console.log('👥 Creating 18000+ users with uneven district distribution...');

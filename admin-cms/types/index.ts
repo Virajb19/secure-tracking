@@ -214,6 +214,19 @@ export interface CreateCircularDto {
 }
 
 // ========================================
+// SUBJECT TYPES
+// ========================================
+
+export interface Subject {
+    id: string;
+    name: string;
+    class_level: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+// ========================================
 // EXAM CENTER TYPES
 // ========================================
 

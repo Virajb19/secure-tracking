@@ -61,6 +61,7 @@ export const ROLE_TAB_ACCESS: Record<UserRole, string[]> = {
 export const NAV_ITEM_PATHS: Record<string, string> = {
   'Home': '/dashboard',
   'Users': '/users',
+  'Manage': '/manage',
   'Form 6': '/form-6',
   'Circulars': '/circulars',
   'Events': '/events',

@@ -42,7 +42,7 @@ export default function HomePage() {
 
         {/* Pulsing Loading Text */}
         <p className="text-blue-500 dark:text-blue-400 text-lg font-medium animate-pulse">
-          Loading...
+          Loading page...
         </p>
       </div>
     </div>

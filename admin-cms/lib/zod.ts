@@ -285,3 +285,34 @@ export const bulkExamScheduleSchema = z.object({
 });
 
 export type BulkExamScheduleSchema = z.infer<typeof bulkExamScheduleSchema>;
+
+// ============================
+// MANAGE PAGE SCHEMAS
+// ============================
+
+export const createSchoolSchema = z.object({
+  name: z.string().min(1, 'School name is required').max(255),
+  registration_code: z.string().min(4, 'Min 4 characters').max(50),
+  district_id: z.string().min(1, 'District is required'),
+});
+
+export type CreateSchoolFormValues = z.infer<typeof createSchoolSchema>;
+
+export const createSubjectSchema = z.object({
+  name: z.string().min(1, 'Subject name is required').max(150),
+  class_levels: z.array(z.number()).min(1, 'Select at least one class'),
+});
+
+export type CreateSubjectFormValues = z.infer<typeof createSubjectSchema>;
+
+export const editSchoolSchema = createSchoolSchema.partial();
+
+export type EditSchoolFormValues = z.infer<typeof editSchoolSchema>;
+
+export const editSubjectSchema = z.object({
+  name: z.string().min(1, 'Subject name is required').max(150),
+  class_level: z.number().int().min(1).max(12),
+  is_active: z.boolean(),
+});
+
+export type EditSubjectFormValues = z.infer<typeof editSubjectSchema>;

@@ -53,25 +53,7 @@ interface SendNotificationDialogProps {
   singleUser?: boolean;
 }
 
-// Subject options for Paper Setter and Paper Checker
-const SUBJECTS = [
-  'Alternative English',
-  'English',
-  'Hindi',
-  'Mathematics',
-  'Science',
-  'Social Science',
-  'Physics',
-  'Chemistry',
-  'Biology',
-  'History',
-  'Geography',
-  'Economics',
-  'Political Science',
-  'Computer Science',
-  'Accountancy',
-  'Business Studies',
-];
+// Subjects are now fetched from the database via API
 
 export function SendNotificationDialog({
   open,
@@ -96,11 +78,9 @@ export function SendNotificationDialog({
     queryFn: async () => {
       try {
         const data = await masterDataApi.getSubjects();
-        // toast.success(JSON.stringify(data));
         return data;
       } catch {
-        // Fallback to default subjects if API fails
-        return SUBJECTS;
+        return [];
       }
     },
     staleTime: 1000 * 60 * 5,
@@ -138,7 +118,7 @@ export function SendNotificationDialog({
     return commonClasses.sort((a, b) => a - b);
   }, [selectedUsers, isPaperSetterOrChecker]);
 
-  const subjects = subjectsData || SUBJECTS;
+  const subjects = subjectsData || [];
 
   const getDefaultValues = (type: NotificationType): SendNotificationSchema => {
     switch (type) {

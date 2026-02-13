@@ -443,7 +443,10 @@ export default function UsersPage() {
             variants={tableRowVariants}
             initial="hidden"
             animate="visible"
-            className="border-b border-slate-100 dark:border-slate-800/50 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-500/5 transition-colors duration-150"
+            className={`border-b border-slate-100 dark:border-slate-800/50 cursor-pointer transition-colors duration-150 ${selectedUsers.includes(user.id)
+              ? 'bg-blue-50/80 dark:bg-blue-500/10 hover:bg-blue-100/80 dark:hover:bg-blue-500/15'
+              : 'hover:bg-blue-50/50 dark:hover:bg-blue-500/5'
+              }`}
           >
             <td className="py-4 px-5">
               <div className="flex items-center gap-3">
@@ -696,7 +699,7 @@ export default function UsersPage() {
               </SelectTrigger>
               <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                 <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">All Subjects</SelectItem>
-                {subjects.map((subject) => {
+                {subjects.map((subject: string) => {
                   // Handle both string and object formats
                   return (
                     <SelectItem key={subject} value={subject} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">

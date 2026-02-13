@@ -1,7 +1,8 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { usersApi, masterDataApi, UserFilterParams } from "./api";
+import { useQuery, useMutation, useQueryClient, keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { usersApi, masterDataApi, adminManageApi, UserFilterParams, PaginatedSchoolsResponse } from "./api";
+import { Subject } from "@/types";
 
 export const useGetUsers = (filters?: UserFilterParams) => {
   return useQuery({
@@ -63,6 +64,30 @@ export const useGetSchools = (districtId?: string) => {
   });
 }
 
+export const useGetSchoolsInfinite = (params: {
+  pageSize?: number;
+  districtId?: string;
+  search?: string;
+} = {}) => {
+  const { pageSize = 50, districtId, search } = params;
+  return useInfiniteQuery<PaginatedSchoolsResponse>({
+    queryKey: ['schools-paginated', districtId, search],
+    queryFn: ({ pageParam = 0 }) =>
+      masterDataApi.getSchoolsPaginated({
+        limit: pageSize,
+        offset: pageParam as number,
+        districtId,
+        search: search || undefined,
+      }),
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined;
+      return allPages.length * pageSize;
+    },
+    initialPageParam: 0,
+    maxPages: 5,
+  });
+}
+
 export const useGetClasses = () => {
   return useQuery({
     queryKey: ["classes"],
@@ -73,6 +98,104 @@ export const useGetClasses = () => {
 export const useGetSubjects = () => {
   return useQuery({
     queryKey: ["subjects"],
-    queryFn: masterDataApi.getSubjects,
+    queryFn: () => masterDataApi.getSubjects(),
+  });
+}
+
+// ========================================
+// SUBJECTS DETAILED (for management page)
+// ========================================
+
+export const useGetSubjectsDetailed = (classLevel?: number) => {
+  return useQuery({
+    queryKey: ["subjects-detailed", classLevel],
+    queryFn: () => masterDataApi.getSubjectsDetailed(classLevel),
+  });
+}
+
+// ========================================
+// SCHOOL MANAGEMENT HOOKS
+// ========================================
+
+export const useCreateSchool = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; registration_code: string; district_id: string }) =>
+      adminManageApi.createSchool(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["schools"], exact: false });
+    },
+  });
+}
+
+export const useUpdateSchool = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { name?: string; registration_code?: string; district_id?: string } }) =>
+      adminManageApi.updateSchool(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["schools"], exact: false });
+    },
+  });
+}
+
+export const useDeleteSchool = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminManageApi.deleteSchool(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["schools"], exact: false });
+    },
+  });
+}
+
+// ========================================
+// SUBJECT MANAGEMENT HOOKS
+// ========================================
+
+export const useCreateSubject = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; class_level: number }) =>
+      adminManageApi.createSubject(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subjects"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["subjects-detailed"], exact: false });
+    },
+  });
+}
+
+export const useCreateSubjectBulk = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; class_levels: number[] }) =>
+      adminManageApi.createSubjectBulk(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subjects"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["subjects-detailed"], exact: false });
+    },
+  });
+}
+
+export const useUpdateSubject = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { name?: string; class_level?: number; is_active?: boolean } }) =>
+      adminManageApi.updateSubject(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subjects"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["subjects-detailed"], exact: false });
+    },
+  });
+}
+
+export const useDeleteSubject = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminManageApi.deleteSubject(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subjects"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["subjects-detailed"], exact: false });
+    },
   });
 }
