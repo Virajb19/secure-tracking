@@ -18,15 +18,14 @@ import { useAuth } from '../../../../src/contexts/AuthContext';
 export default function HeadmasterTabsLayout() {
     const insets = useSafeAreaInsets();
     const { user } = useAuth();
-    const isCenterSuperintendent = user?.is_center_superintendent ?? false;
-    
+
     return (
         <Tabs
             screenOptions={{
                 headerStyle: {
                     backgroundColor: '#374151',
                     // Add extra height for status bar on Android
-                    height: Platform.OS === 'android' 
+                    height: Platform.OS === 'android'
                         ? 56 + (StatusBar.currentHeight || insets.top)
                         : undefined,
                 },
@@ -35,7 +34,7 @@ export default function HeadmasterTabsLayout() {
                     fontWeight: '600',
                 },
                 // Add padding to header title for Android status bar
-                headerStatusBarHeight: Platform.OS === 'android' 
+                headerStatusBarHeight: Platform.OS === 'android'
                     ? (StatusBar.currentHeight || insets.top)
                     : undefined,
                 tabBarStyle: {
@@ -93,8 +92,8 @@ export default function HeadmasterTabsLayout() {
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="newspaper-outline" size={24} color={color} />
                     ),
-                    // Only show tab if user is Center Superintendent
-                    href: isCenterSuperintendent ? '/(protected)/headmaster/(tabs)/qpt' : null,
+                    // QPT is accessed from home screen, not from tab bar
+                    href: null,
                 }}
             />
             <Tabs.Screen

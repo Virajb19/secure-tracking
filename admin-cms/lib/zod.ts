@@ -232,7 +232,7 @@ export const createExamScheduleSchema = z.object({
     .string()
     .min(1, 'Exam date is required'),
   class: z.enum(EXAM_CLASSES, { message: 'Class is required' }),
-  subject: z.enum(SUBJECTS, { message: 'Subject is required' }),
+  subject: z.string().min(1, 'Subject is required'),
   subject_category: z.enum(SUBJECT_CATEGORIES, { message: 'Subject category is required' }),
   exam_center_id: z
     .string()
@@ -246,7 +246,7 @@ export const editExamScheduleSchema = z.object({
     .string()
     .min(1, 'Exam date is required'),
   class: z.enum(EXAM_CLASSES, { message: 'Class is required' }),
-  subject: z.enum(SUBJECTS, { message: 'Subject is required' }),
+  subject: z.string().min(1, 'Subject is required'),
   subject_category: z.enum(SUBJECT_CATEGORIES, { message: 'Subject category is required' }),
   exam_center_id: z
     .string()

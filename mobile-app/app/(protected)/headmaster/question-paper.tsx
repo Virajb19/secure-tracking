@@ -40,6 +40,7 @@ import {
     isWithinTimeWindowLocal,
     TrackerTimeWindows,
     TimeWindow,
+    getExamDayStatus,
 } from '../../../src/services/exam-scheduler.service';
 import { API_CONFIG } from '../../../src/constants/config';
 import { useAuth } from '../../../src/contexts/AuthContext';
@@ -119,8 +120,8 @@ function formatSubmissionTime(dateStr: string): string {
 
     const suffix =
         day === 1 || day === 21 || day === 31 ? 'st' :
-        day === 2 || day === 22 ? 'nd' :
-        day === 3 || day === 23 ? 'rd' : 'th';
+            day === 2 || day === 22 ? 'nd' :
+                day === 3 || day === 23 ? 'rd' : 'th';
 
     return `${displayHours}:${displayMinutes}${ampm}, ${day}${suffix} ${month}, ${year}`;
 }
@@ -229,6 +230,20 @@ export default function QuestionPaperScreen() {
     const [submittingEventId, setSubmittingEventId] = useState<string | null>(null);
 
     const today = new Date().toISOString().split('T')[0];
+    const isCenterSuperintendent = user?.is_center_superintendent ?? false;
+
+    // Check if today is an exam day (server-side validation)
+    const {
+        data: examDayResult,
+        isLoading: loadingExamDay,
+    } = useQuery({
+        queryKey: ['exam-day-status'],
+        queryFn: () => getExamDayStatus(),
+        enabled: isCenterSuperintendent,
+    });
+
+    const isExamDay = examDayResult?.data?.isExamDay ?? false;
+    const nextExamDate = examDayResult?.data?.nextExamDate ?? null;
 
     const {
         data: summaryResult,
@@ -240,11 +255,13 @@ export default function QuestionPaperScreen() {
     } = useQuery({
         queryKey: ['exam-tracker-summary', today],
         queryFn: () => getEventSummary(today),
+        enabled: isCenterSuperintendent && isExamDay,
     });
 
     const { data: timeWindowsResult } = useQuery({
         queryKey: ['exam-scheduler-time-windows', today],
         queryFn: () => getTimeWindows(today),
+        enabled: isCenterSuperintendent && isExamDay,
     });
 
     const eventDetails: Partial<Record<ExamTrackerEventType, EventDetail>> =
@@ -256,8 +273,6 @@ export default function QuestionPaperScreen() {
         'CORE';
 
     const completedCount = summaryResult?.data?.completedEvents?.length || 0;
-
-    const isCenterSuperintendent = user?.is_center_superintendent ?? false;
 
     // ─── Submit handler ─────────────────────────────────────────────
     const handleSubmitEvent = async (event: TrackerEventConfig) => {
@@ -319,6 +334,57 @@ export default function QuestionPaperScreen() {
         const fullUrl = imageUrl.startsWith('http') ? imageUrl : `${API_CONFIG.BASE_URL}${imageUrl}`;
         setSelectedImage(fullUrl);
     };
+
+    // ─── Loading exam day status ────────────────────────────────────
+    if (loadingExamDay) {
+        return (
+            <View style={styles.centerContainer}>
+                <ActivityIndicator size="large" color="#3b82f6" />
+                <Text style={styles.loadingText}>Checking exam schedule...</Text>
+            </View>
+        );
+    }
+
+    // ─── Locked: Not exam day ───────────────────────────────────────
+    if (!isExamDay) {
+        const formatExamDate = (dateStr: string) => {
+            const date = new Date(dateStr + 'T00:00:00');
+            const day = date.getDate();
+            const months = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December',
+            ];
+            const suffix =
+                day === 1 || day === 21 || day === 31 ? 'st' :
+                    day === 2 || day === 22 ? 'nd' :
+                        day === 3 || day === 23 ? 'rd' : 'th';
+            return `${day}${suffix} ${months[date.getMonth()]}, ${date.getFullYear()}`;
+        };
+
+        return (
+            <View style={styles.centerContainer}>
+                <View style={styles.lockedIconContainer}>
+                    <Ionicons name="lock-closed" size={48} color="#f59e0b" />
+                </View>
+                <Text style={styles.lockedTitle}>Not Available Yet</Text>
+                <Text style={styles.lockedText}>
+                    {nextExamDate
+                        ? `Question Paper Tracking will be available on ${formatExamDate(nextExamDate)}. Please check back on the exam date.`
+                        : 'No upcoming exams are scheduled for your exam center. Contact your admin for more information.'}
+                </Text>
+                {nextExamDate && (
+                    <View style={styles.nextExamBadge}>
+                        <Ionicons name="calendar-outline" size={18} color="#2563eb" />
+                        <Text style={styles.nextExamBadgeText}>Next Exam: {formatExamDate(nextExamDate)}</Text>
+                    </View>
+                )}
+                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                    <Ionicons name="arrow-back" size={18} color="#fff" />
+                    <Text style={styles.backButtonText}>Go Back</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     if (isLoading) {
         return (
@@ -442,6 +508,15 @@ const styles = StyleSheet.create({
     errorSubtext: { marginTop: 8, fontSize: 14, color: '#6b7280', textAlign: 'center' },
     retryButton: { marginTop: 24, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#3b82f6', borderRadius: 8 },
     retryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+
+    // Locked state
+    lockedIconContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#fef3c7', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+    lockedTitle: { fontSize: 20, fontWeight: '600', color: '#374151', marginTop: 16 },
+    lockedText: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginTop: 8, lineHeight: 22, paddingHorizontal: 16 },
+    nextExamBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20, paddingVertical: 10, paddingHorizontal: 16, backgroundColor: '#eff6ff', borderRadius: 10, borderWidth: 1, borderColor: '#bfdbfe' },
+    nextExamBadgeText: { fontSize: 14, fontWeight: '600', color: '#2563eb' },
+    backButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 20, paddingVertical: 12, paddingHorizontal: 20, backgroundColor: '#374151', borderRadius: 10 },
+    backButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 
     pageTitle: { fontSize: 24, fontWeight: '700', color: '#1f2937', marginBottom: 4 },
     pageSubtitle: { fontSize: 14, color: '#6b7280', marginBottom: 20 },

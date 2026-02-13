@@ -59,7 +59,7 @@ export default function QPTScreen() {
             const response = await apiClient.get('/exam-tracker/events/my-assigned');
             return response.data as EventSummary[];
         },
-        enabled: isCenterSuperintendent,
+        enabled: isCenterSuperintendent && isExamDay,
     });
 
     if (!isCenterSuperintendent) {
@@ -229,8 +229,8 @@ export default function QPTScreen() {
             ) : (
                 events.map((event) => {
                     const groupedShifts = groupShiftsByType(event.shifts);
-                    const progressPercent = event.total_shifts > 0 
-                        ? (event.completed_shifts / event.total_shifts) * 100 
+                    const progressPercent = event.total_shifts > 0
+                        ? (event.completed_shifts / event.total_shifts) * 100
                         : 0;
 
                     return (

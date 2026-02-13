@@ -10,6 +10,7 @@ import {
   UploadedFile,
   ParseUUIDPipe,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -55,7 +56,7 @@ const multerOptions = {
 @Controller('exam-tracker')
 @UseGuards(JwtAuthGuard, RolesGuard, CenterSuperintendentGuard)
 export class ExamTrackerController {
-  constructor(private readonly examTrackerService: ExamTrackerService) {}
+  constructor(private readonly examTrackerService: ExamTrackerService) { }
 
   /**
    * Submit a new exam tracker event with image.
@@ -114,6 +115,26 @@ export class ExamTrackerController {
     @CurrentUser() user: User,
     @Query('date') examDate?: string,
   ) {
+    // Explicit exam-day validation for non-admin users
+    if (user.role !== UserRole.ADMIN && user.role !== ('SUPER_ADMIN' as UserRole)) {
+      const userWithAssignment = await this.examTrackerService['db'].user.findUnique({
+        where: { id: user.id },
+        select: { exam_center_assignment: { select: { id: true } } },
+      });
+
+      const examCenterId = userWithAssignment?.exam_center_assignment?.id;
+      if (examCenterId) {
+        const examDayCheck = await this.examTrackerService['examSchedulerService'].isExamDayForCenter(examCenterId);
+        if (!examDayCheck.isExamDay) {
+          throw new ForbiddenException(
+            examDayCheck.nextExamDate
+              ? `Question Paper Tracking will be available on ${examDayCheck.nextExamDate}. Please come back on the exam date.`
+              : 'No upcoming exams scheduled for your exam center.',
+          );
+        }
+      }
+    }
+
     // First get the school info
     const schoolData = await this.examTrackerService.getMySchoolEvents(
       user.id,

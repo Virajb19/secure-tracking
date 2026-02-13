@@ -136,7 +136,14 @@ export async function getMySchoolEvents(
             success: false,
             error: 'Failed to fetch events',
         };
-    } catch (error) {
+    } catch (error: any) {
+        // Surface the server's descriptive 403 message (e.g. "QPT will be available on...")
+        const status = error?.response?.status;
+        const serverMessage = error?.response?.data?.message;
+        if (status === 403 && serverMessage) {
+            console.log('[ExamTracker] Access denied:', serverMessage);
+            return { success: false, error: serverMessage };
+        }
         console.error('[ExamTracker] Error fetching events:', error);
         return {
             success: false,
@@ -170,7 +177,14 @@ export async function getEventSummary(
             success: false,
             error: 'Failed to fetch summary',
         };
-    } catch (error) {
+    } catch (error: any) {
+        // Surface the server's descriptive 403 message
+        const status = error?.response?.status;
+        const serverMessage = error?.response?.data?.message;
+        if (status === 403 && serverMessage) {
+            console.log('[ExamTracker] Access denied:', serverMessage);
+            return { success: false, error: serverMessage };
+        }
         console.error('[ExamTracker] Error fetching summary:', error);
         return {
             success: false,
@@ -209,7 +223,7 @@ export async function submitEvent(
         formData.append('latitude', String(latitude));
         formData.append('longitude', String(longitude));
         formData.append('captured_at', new Date().toISOString());
-        
+
         if (shift) {
             formData.append('shift', shift);
         }

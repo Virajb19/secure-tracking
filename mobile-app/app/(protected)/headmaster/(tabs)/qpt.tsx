@@ -123,8 +123,8 @@ function formatSubmissionTime(dateStr: string): string {
 
     const suffix =
         day === 1 || day === 21 || day === 31 ? 'st' :
-        day === 2 || day === 22 ? 'nd' :
-        day === 3 || day === 23 ? 'rd' : 'th';
+            day === 2 || day === 22 ? 'nd' :
+                day === 3 || day === 23 ? 'rd' : 'th';
 
     return `${displayHours}:${displayMinutes}${ampm}, ${day}${suffix} ${month}, ${year}`;
 }
@@ -258,14 +258,14 @@ export default function QPTTabScreen() {
     } = useQuery({
         queryKey: ['exam-tracker-summary', today],
         queryFn: () => getEventSummary(today),
-        enabled: user?.is_center_superintendent ?? false,
+        enabled: (user?.is_center_superintendent ?? false) && isExamDay,
     });
 
     // Fetch time windows from scheduler
     const { data: timeWindowsResult, isLoading: loadingWindows } = useQuery({
         queryKey: ['exam-scheduler-time-windows', today],
         queryFn: () => getTimeWindows(today),
-        enabled: user?.is_center_superintendent ?? false,
+        enabled: (user?.is_center_superintendent ?? false) && isExamDay,
     });
 
     const eventDetails: Partial<Record<ExamTrackerEventType, EventDetail>> =
@@ -389,8 +389,8 @@ export default function QPTTabScreen() {
             ];
             const suffix =
                 day === 1 || day === 21 || day === 31 ? 'st' :
-                day === 2 || day === 22 ? 'nd' :
-                day === 3 || day === 23 ? 'rd' : 'th';
+                    day === 2 || day === 22 ? 'nd' :
+                        day === 3 || day === 23 ? 'rd' : 'th';
             return `${day}${suffix} ${months[date.getMonth()]}, ${date.getFullYear()}`;
         };
 

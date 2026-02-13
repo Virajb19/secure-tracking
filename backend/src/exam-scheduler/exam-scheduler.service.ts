@@ -38,7 +38,7 @@ export interface TrackerTimeWindows {
 
 @Injectable()
 export class ExamSchedulerService {
-  constructor(private readonly db: PrismaService) {}
+  constructor(private readonly db: PrismaService) { }
 
   /**
    * Get time windows for tracker events based on exam schedule for a date.
@@ -416,8 +416,12 @@ export class ExamSchedulerService {
     nextExamDate: string | null;
     todaySchedules: ExamSchedule[];
   }> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Build today as UTC midnight from local date parts
+    // This ensures correct comparison with @db.Date columns
+    // (setHours(0,0,0,0) creates local midnight which in IST becomes previous day in UTC)
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const today = new Date(todayStr + 'T00:00:00.000Z');
 
     // Check if there's an active exam scheduled for today at this center
     const todaySchedules = await this.db.examSchedule.findMany({

@@ -46,8 +46,8 @@ import {
     type EditExamScheduleSchema,
     EXAM_CLASSES,
     SUBJECT_CATEGORIES,
-    SUBJECTS,
 } from '@/lib/zod';
+import { useGetSubjects } from '@/services/user.service';
 import {
     Form,
     FormField,
@@ -337,6 +337,9 @@ export default function ExamSchedulerPage() {
 
     const activeExamCenters: ExamCenter[] = examCentersData?.data || [];
 
+    // Fetch subjects from DB
+    const { data: subjectNames = [] } = useGetSubjects();
+
     // ============================
     // MUTATIONS
     // ============================
@@ -437,7 +440,7 @@ export default function ExamSchedulerPage() {
         editForm.reset({
             exam_date: examDate,
             class: schedule.class as typeof EXAM_CLASSES[number],
-            subject: schedule.subject as typeof SUBJECTS[number],
+            subject: schedule.subject,
             subject_category: schedule.subject_category as typeof SUBJECT_CATEGORIES[number],
             exam_center_id: schedule.exam_center_id,
             exam_start_time: schedule.exam_start_time || '',
@@ -746,7 +749,7 @@ export default function ExamSchedulerPage() {
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                {SUBJECTS.map((subj) => (
+                                                {subjectNames.map((subj) => (
                                                     <SelectItem key={subj} value={subj}>{subj}</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -871,7 +874,7 @@ export default function ExamSchedulerPage() {
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                {SUBJECTS.map((subj) => (
+                                                {subjectNames.map((subj) => (
                                                     <SelectItem key={subj} value={subj}>{subj}</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -1137,7 +1140,7 @@ export default function ExamSchedulerPage() {
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    {SUBJECTS.map((subj) => (
+                                                    {subjectNames.map((subj) => (
                                                         <SelectItem key={subj} value={subj}>{subj}</SelectItem>
                                                     ))}
                                                 </SelectContent>

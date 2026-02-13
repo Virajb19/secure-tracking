@@ -31,7 +31,7 @@ export class ExamTrackerService {
   constructor(
     private readonly db: PrismaService,
     private readonly examSchedulerService: ExamSchedulerService,
-  ) {}
+  ) { }
 
   /**
    * Create a new exam tracker event.
@@ -74,10 +74,11 @@ export class ExamTrackerService {
     }
 
     // Server-side exam date validation: current date must match exam date
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const examDate = new Date(createDto.exam_date);
-    examDate.setHours(0, 0, 0, 0);
+    // Use UTC midnight to avoid timezone mismatches with @db.Date
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const today = new Date(todayStr + 'T00:00:00.000Z');
+    const examDate = new Date(createDto.exam_date + 'T00:00:00.000Z');
 
     if (today < examDate) {
       throw new ForbiddenException(
