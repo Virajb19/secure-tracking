@@ -27,6 +27,11 @@ export interface BulkCreateResult {
     skipped: number;
 }
 
+/**
+ * Exam Scheduler API
+ * @see Backend Controller: backend/src/exam-scheduler/exam-scheduler.controller.ts
+ * @see Backend Service:    backend/src/exam-scheduler/exam-scheduler.service.ts
+ */
 export const examSchedulerApi = {
     getAll: async (filters?: ExamScheduleFilterParams): Promise<{ success: boolean; data: ExamSchedule[] }> => {
         const params: Record<string, string> = {};

@@ -66,6 +66,11 @@ export interface SelectTeacherDto {
 // ============================
 // PAPER SETTER API
 // ============================
+/**
+ * Paper Setter API
+ * @see Backend Controller: backend/src/paper-setter/paper-setter.controller.ts
+ * @see Backend Service:    backend/src/paper-setter/paper-setter.service.ts
+ */
 export const paperSetterApi = {
   // Search teachers for selection
   searchTeachers: async (
@@ -248,6 +253,12 @@ export interface FormSubmission {
   };
 }
 
+/**
+ * Form Submissions API
+ * @see Backend Controller: backend/src/form-submissions/form-submissions.controller.ts
+ * @see Backend Service:    backend/src/form-submissions/form-submissions.service.ts
+ * @see Form 6 Controller:  backend/src/form-6/form-6.controller.ts
+ */
 export const formSubmissionsApi = {
   // Get form submission stats for admin dashboard
   getStats: async (): Promise<{
@@ -443,6 +454,11 @@ export interface HelpdeskSummary {
   resolved: number;
 }
 
+/**
+ * Analytics API
+ * @see Backend Controller: backend/src/analytics/analytics.controller.ts
+ * @see Backend Service:    backend/src/analytics/analytics.service.ts
+ */
 export const analyticsApi = {
   // Get overall teacher-student ratio
   getTeacherStudentRatio: async (): Promise<TeacherStudentRatio> => {
@@ -502,6 +518,11 @@ export const analyticsApi = {
 // ============================
 // USER STARS API
 // ============================
+/**
+ * User Stars API
+ * @see Backend Controller: backend/src/user-stars/user-stars.controller.ts
+ * @see Backend Service:    backend/src/user-stars/user-stars.service.ts
+ */
 export const userStarsApi = {
   // Toggle star for a user
   toggleStar: async (userId: string): Promise<{ starred: boolean }> => {
@@ -536,6 +557,11 @@ export interface BankDetails {
   upi_id?: string;
 }
 
+/**
+ * Bank Details API
+ * @see Backend Controller: backend/src/bank-details/bank-details.controller.ts
+ * @see Backend Service:    backend/src/bank-details/bank-details.service.ts
+ */
 export const bankDetailsApi = {
   // Get bank details for a user
   getByUserId: async (userId: string): Promise<BankDetails | null> => {

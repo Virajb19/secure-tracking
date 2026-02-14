@@ -1,0 +1,337 @@
+{
+    "_description": "Route map: maps every backend API route to its controller file, method, and line number. Regenerate by scanning @Controller and @Get/@Post/@Patch/@Delete decorators.",
+    "_generated": "2026-02-14",
+    "admin/analytics": {
+        "controller": "backend/src/analytics/analytics.controller.ts",
+        "basePath": "/api/admin/analytics"
+    },
+    "admin/audit-logs": {
+        "controller": "backend/src/audit-logs/audit-logs.controller.ts",
+        "basePath": "/api/admin/audit-logs"
+    },
+    "admin/events": {
+        "controller": "backend/src/events/events.controller.ts",
+        "basePath": "/api/admin/events",
+        "note": "Admin events controller (line 25). User-facing controller at line 166 uses @Controller('events')."
+    },
+    "admin/exam-centers": {
+        "controller": "backend/src/exam-centers/exam-centers.controller.ts",
+        "basePath": "/api/admin/exam-centers",
+        "routes": {
+            "POST /": {
+                "method": "create",
+                "line": 49,
+                "description": "Designate a school as exam center"
+            },
+            "GET /": {
+                "method": "findAll",
+                "line": 72,
+                "description": "List all exam centers"
+            },
+            "GET /:id": {
+                "method": "findOne",
+                "line": 92,
+                "description": "Get a single exam center"
+            },
+            "PATCH /:id/superintendent": {
+                "method": "overrideSuperintendent",
+                "line": 103,
+                "description": "Override CS assignment (by email)"
+            },
+            "PATCH /:id/deactivate": {
+                "method": "deactivate",
+                "line": 129,
+                "description": "Deactivate an exam center"
+            },
+            "DELETE /:id": {
+                "method": "remove",
+                "line": 143,
+                "description": "Delete an exam center"
+            }
+        }
+    },
+    "admin/manage": {
+        "controller": "backend/src/master-data/master-data.controller.ts",
+        "basePath": "/api/admin/manage",
+        "note": "Second controller class in master-data.controller.ts (line 71)"
+    },
+    "admin/master-data": {
+        "controller": "backend/src/master-data/master-data.controller.ts",
+        "basePath": "/api/admin/master-data",
+        "note": "First controller class (line 14). User-facing master-data controller at line 130 uses @Controller('master-data')."
+    },
+    "admin/notices": {
+        "controller": "backend/src/notices/admin-notices.controller.ts",
+        "basePath": "/api/admin/notices"
+    },
+    "admin/notifications": {
+        "controller": "backend/src/notifications/admin-notifications.controller.ts",
+        "basePath": "/api/admin/notifications",
+        "routes": {
+            "POST /send": {
+                "method": "sendNotification",
+                "line": 67,
+                "description": "Send notification to users"
+            }
+        }
+    },
+    "admin/tasks": {
+        "controller": "backend/src/tasks/tasks.controller.ts",
+        "basePath": "/api/admin/tasks",
+        "note": "Admin tasks controller (line 43). User-facing controller at line 167 uses @Controller('tasks').",
+        "routes": {
+            "POST /": {
+                "method": "create",
+                "line": 57
+            },
+            "GET /": {
+                "method": "findAll",
+                "line": 76
+            },
+            "GET /overview": {
+                "method": "getOverview",
+                "line": 103
+            },
+            "GET /:taskId": {
+                "method": "findOne",
+                "line": 119
+            },
+            "GET /:taskId/events": {
+                "method": "getTaskEvents",
+                "line": 130
+            },
+            "PATCH /:taskId/reset-for-testing": {
+                "method": "resetForTesting",
+                "line": 143
+            }
+        }
+    },
+    "admin/user-stars": {
+        "controller": "backend/src/user-stars/user-stars.controller.ts",
+        "basePath": "/api/admin/user-stars",
+        "routes": {
+            "POST /toggle/:userId": {
+                "method": "toggleStar",
+                "line": 28
+            },
+            "GET /": {
+                "method": "getStarredUsers",
+                "line": 40
+            },
+            "GET /ids": {
+                "method": "getStarredUserIds",
+                "line": 49
+            }
+        }
+    },
+    "admin/users": {
+        "controller": "backend/src/users/users.controller.ts",
+        "basePath": "/api/admin/users",
+        "routes": {
+            "POST /": {
+                "method": "create",
+                "line": 57
+            },
+            "GET /": {
+                "method": "findAll",
+                "line": 81
+            },
+            "PATCH /:userId/status": {
+                "method": "updateStatus",
+                "line": 124
+            },
+            "POST /me/profile-photo/upload": {
+                "method": "uploadProfilePhoto",
+                "line": 150
+            },
+            "PATCH /me/profile-photo": {
+                "method": "updateProfilePhoto",
+                "line": 218
+            },
+            "PATCH /:userId/reset-device": {
+                "method": "resetDevice",
+                "line": 243
+            },
+            "GET /:userId/teaching-assignments": {
+                "method": "getTeachingAssignments",
+                "line": 265
+            },
+            "PATCH /:userId/approve": {
+                "method": "approve",
+                "line": 283
+            }
+        }
+    },
+    "auth": {
+        "controller": "backend/src/auth/auth.controller.ts",
+        "basePath": "/api/auth"
+    },
+    "bank-details": {
+        "controller": "backend/src/bank-details/bank-details.controller.ts",
+        "basePath": "/api/bank-details"
+    },
+    "circulars": {
+        "controller": "backend/src/circulars/circulars.controller.ts",
+        "basePath": "/api/circulars"
+    },
+    "events": {
+        "controller": "backend/src/events/events.controller.ts",
+        "basePath": "/api/events",
+        "note": "User-facing events controller (line 166)"
+    },
+    "exam-scheduler": {
+        "controller": "backend/src/exam-scheduler/exam-scheduler.controller.ts",
+        "basePath": "/api/exam-scheduler"
+    },
+    "exam-tracker": {
+        "controller": "backend/src/exam-tracker/exam-tracker.controller.ts",
+        "basePath": "/api/exam-tracker"
+    },
+    "faculty": {
+        "controller": "backend/src/faculty/faculty.controller.ts",
+        "basePath": "/api/faculty"
+    },
+    "form-6": {
+        "controller": "backend/src/form-6/form-6.controller.ts",
+        "basePath": "/api/form-6"
+    },
+    "form-submissions": {
+        "controller": "backend/src/form-submissions/form-submissions.controller.ts",
+        "basePath": "/api/form-submissions"
+    },
+    "helpdesk": {
+        "controller": "backend/src/helpdesk/helpdesk.controller.ts",
+        "basePath": "/api/helpdesk"
+    },
+    "master-data": {
+        "controller": "backend/src/master-data/master-data.controller.ts",
+        "basePath": "/api/master-data",
+        "note": "User-facing master-data controller (line 130)"
+    },
+    "notices": {
+        "controller": "backend/src/notices/notices.controller.ts",
+        "basePath": "/api/notices"
+    },
+    "notifications": {
+        "controller": "backend/src/notifications/notifications.controller.ts",
+        "basePath": "/api/notifications",
+        "routes": {
+            "POST /push-token": {
+                "method": "registerPushToken",
+                "line": 32
+            },
+            "POST /push-token/remove": {
+                "method": "removePushToken",
+                "line": 45
+            },
+            "GET /": {
+                "method": "getNotifications",
+                "line": 55
+            },
+            "GET /unread-count": {
+                "method": "getUnreadCount",
+                "line": 72
+            },
+            "PATCH /:id/read": {
+                "method": "markAsRead",
+                "line": 82
+            },
+            "PATCH /read-all": {
+                "method": "markAllAsRead",
+                "line": 95
+            }
+        }
+    },
+    "paper-setter": {
+        "controller": "backend/src/paper-setter/paper-setter.controller.ts",
+        "basePath": "/api/paper-setter",
+        "routes": {
+            "GET /search": {
+                "method": "search",
+                "line": 34
+            },
+            "POST /select": {
+                "method": "select",
+                "line": 56
+            },
+            "POST /remind/:id": {
+                "method": "remind",
+                "line": 80
+            },
+            "GET /my-selections": {
+                "method": "getMySelections",
+                "line": 93
+            },
+            "GET /invitations": {
+                "method": "getInvitations",
+                "line": 103
+            },
+            "POST /accept/:id": {
+                "method": "accept",
+                "line": 113
+            },
+            "POST /:id/official-order": {
+                "method": "uploadOfficialOrder",
+                "line": 126
+            },
+            "GET /school-count/:schoolId": {
+                "method": "getSchoolCount",
+                "line": 141
+            },
+            "GET /check-duplicate": {
+                "method": "checkDuplicate",
+                "line": 151
+            },
+            "GET /all": {
+                "method": "getAll",
+                "line": 171
+            },
+            "GET /school-wise": {
+                "method": "getSchoolWise",
+                "line": 197
+            },
+            "DELETE /school/:schoolId": {
+                "method": "removeBySchool",
+                "line": 221
+            },
+            "DELETE /:id": {
+                "method": "remove",
+                "line": 232
+            }
+        }
+    },
+    "tasks": {
+        "controller": "backend/src/tasks/tasks.controller.ts",
+        "basePath": "/api/tasks",
+        "note": "User-facing tasks controller (line 167). Task events at backend/src/task-events/task-events.controller.ts (line 66).",
+        "routes": {
+            "GET /my": {
+                "method": "getMyTasks",
+                "line": 176
+            },
+            "GET /:taskId": {
+                "method": "findOne",
+                "line": 185
+            },
+            "POST /:taskId/events": {
+                "method": "submitEvent",
+                "line": 85,
+                "controller": "backend/src/task-events/task-events.controller.ts"
+            },
+            "GET /:taskId/events": {
+                "method": "getTaskEvents",
+                "line": 119,
+                "controller": "backend/src/task-events/task-events.controller.ts"
+            },
+            "GET /:taskId/events/allowed-types": {
+                "method": "getAllowedTypes",
+                "line": 137,
+                "controller": "backend/src/task-events/task-events.controller.ts"
+            }
+        }
+    },
+    "tasks/:taskId/attendance": {
+        "controller": "backend/src/attendance/attendance.controller.ts",
+        "basePath": "/api/tasks/:taskId/attendance"
+    }
+}

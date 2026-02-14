@@ -45,6 +45,7 @@ import {
     isWithinTimeWindowLocal,
     TrackerTimeWindows,
     TimeWindow,
+    ExamScheduleEntry,
     getExamDayStatus,
 } from '../../../../src/services/exam-scheduler.service';
 import { API_CONFIG } from '../../../../src/constants/config';
@@ -248,6 +249,8 @@ export default function QPTTabScreen() {
 
     const isExamDay = examDayResult?.data?.isExamDay ?? false;
     const nextExamDate = examDayResult?.data?.nextExamDate ?? null;
+    const todaySchedules: ExamScheduleEntry[] = (examDayResult?.data?.todaySchedules || []) as ExamScheduleEntry[];
+    const upcomingExams: ExamScheduleEntry[] = (examDayResult?.data?.upcomingSchedules || []) as ExamScheduleEntry[];
 
     // Fetch event summary
     const {
@@ -271,17 +274,40 @@ export default function QPTTabScreen() {
     const eventDetails: Partial<Record<ExamTrackerEventType, EventDetail>> =
         summaryResult?.data?.eventDetails || {};
     const timeWindows = timeWindowsResult?.data?.time_windows;
+    const bypassTimeCheck = timeWindowsResult?.data?.bypass_time_check ?? false;
     const subjectCategory =
         timeWindowsResult?.data?.subject_category ||
         (summaryResult?.data as any)?.subjectCategory ||
         'CORE';
 
+    const completedCount = summaryResult?.data?.completedEvents?.length || 0;
+    const allStepsCompleted = completedCount >= TRACKER_EVENTS.length;
+
     // ─── Submit event handler ───────────────────────────────────────
     const handleSubmitEvent = async (event: TrackerEventConfig) => {
+        // Prevent duplicate uploads
+        if (eventDetails[event.id]?.completed) {
+            Alert.alert('Already Submitted', `"${event.title}" has already been uploaded for today. You cannot upload the same photo twice.`);
+            return;
+        }
+
+        // Sequential order check: previous step must be completed first
+        const eventIndex = TRACKER_EVENTS.findIndex(e => e.id === event.id);
+        if (eventIndex > 0) {
+            const previousEvent = TRACKER_EVENTS[eventIndex - 1];
+            if (!eventDetails[previousEvent.id]?.completed) {
+                Alert.alert(
+                    'Step Not Completed',
+                    `You must complete "${previousEvent.title}" before proceeding to "${event.title}". Please upload the photos in sequence.`,
+                );
+                return;
+            }
+        }
+
         // Client-side time check
         if (timeWindows) {
             const tw = timeWindows[event.timeWindowKey];
-            if (!isWithinTimeWindowLocal(tw)) {
+            if (!isWithinTimeWindowLocal(tw, bypassTimeCheck)) {
                 Alert.alert(
                     'Time Restriction',
                     `This event can only be submitted between ${tw.label}. Please wait until the allowed time window.`,
@@ -333,7 +359,16 @@ export default function QPTTabScreen() {
             );
 
             if (submitResult.success) {
-                Alert.alert('Success', `${event.title} submitted successfully!`);
+                // Check if this was the last step
+                const currentCompleted = summaryResult?.data?.completedEvents?.length || 0;
+                if (currentCompleted + 1 >= TRACKER_EVENTS.length) {
+                    Alert.alert(
+                        '🎉 All Steps Completed!',
+                        'Congratulations! You have successfully completed all Question Paper Tracking steps for today. All photos have been uploaded and verified.',
+                    );
+                } else {
+                    Alert.alert('Success', `${event.title} submitted successfully!`);
+                }
                 queryClient.invalidateQueries({ queryKey: ['exam-tracker-summary'] });
                 refetchSummary();
             } else {
@@ -425,7 +460,7 @@ export default function QPTTabScreen() {
         );
     }
 
-    const completedCount = summaryResult?.data?.completedEvents?.length || 0;
+    // completedCount already computed above
 
     return (
         <View style={styles.container}>
@@ -454,7 +489,7 @@ export default function QPTTabScreen() {
                 {/* Event Cards */}
                 {TRACKER_EVENTS.map((event) => {
                     const tw = timeWindows?.[event.timeWindowKey];
-                    const isWithinWindow = tw ? isWithinTimeWindowLocal(tw) : true;
+                    const isWithinWindow = tw ? isWithinTimeWindowLocal(tw, bypassTimeCheck) : true;
 
                     return (
                         <EventCard
@@ -470,8 +505,21 @@ export default function QPTTabScreen() {
                     );
                 })}
 
-                {/* Progress */}
+                {/* Progress + Exam Details */}
                 <View style={styles.progressCard}>
+                    {todaySchedules.length > 0 && (
+                        <View style={styles.examDetailsBox}>
+                            <Ionicons name="school-outline" size={18} color="#2563eb" />
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.examDetailsTitle}>Today's Exam</Text>
+                                {todaySchedules.map((s, idx) => (
+                                    <Text key={idx} style={styles.examDetailsText}>
+                                        {s.subject} — {s.class === 'CLASS_10' ? 'Class 10' : 'Class 12'} ({s.subject_category})
+                                    </Text>
+                                ))}
+                            </View>
+                        </View>
+                    )}
                     <Text style={styles.progressText}>
                         {completedCount} of {TRACKER_EVENTS.length} steps completed
                     </Text>
@@ -484,6 +532,56 @@ export default function QPTTabScreen() {
                         />
                     </View>
                 </View>
+
+                {/* All Steps Completed Banner */}
+                {allStepsCompleted && (
+                    <View style={styles.completionBanner}>
+                        <View style={styles.completionIconContainer}>
+                            <Ionicons name="checkmark-circle" size={48} color="#10b981" />
+                        </View>
+                        <Text style={styles.completionTitle}>All Steps Completed! 🎉</Text>
+                        <Text style={styles.completionSubtitle}>
+                            You have successfully completed all Question Paper Tracking steps for today.
+                            All photos have been uploaded and verified.
+                        </Text>
+
+                        {/* Upcoming Exams */}
+                        {upcomingExams.length > 0 && (
+                            <View style={styles.upcomingSection}>
+                                <Text style={styles.upcomingSectionTitle}>
+                                    <Ionicons name="calendar-outline" size={16} color="#374151" />
+                                    {'  '}Upcoming Exams
+                                </Text>
+                                {upcomingExams.map((exam: ExamScheduleEntry) => {
+                                    const examDate = new Date(exam.exam_date.split('T')[0] + 'T00:00:00');
+                                    const day = examDate.getDate();
+                                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                    const suffix = day === 1 || day === 21 || day === 31 ? 'st' : day === 2 || day === 22 ? 'nd' : day === 3 || day === 23 ? 'rd' : 'th';
+                                    const dateLabel = `${day}${suffix} ${months[examDate.getMonth()]}`;
+                                    const classLabel = exam.class === 'CLASS_10' ? 'Class 10' : 'Class 12';
+                                    return (
+                                        <View key={exam.id} style={styles.upcomingExamRow}>
+                                            <View style={styles.upcomingDateBadge}>
+                                                <Text style={styles.upcomingDateText}>{dateLabel}</Text>
+                                            </View>
+                                            <View style={styles.upcomingExamInfo}>
+                                                <Text style={styles.upcomingSubject}>{exam.subject}</Text>
+                                                <Text style={styles.upcomingMeta}>{classLabel} • {exam.subject_category}</Text>
+                                            </View>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        )}
+
+                        {upcomingExams.length === 0 && (
+                            <View style={styles.noUpcomingBox}>
+                                <Ionicons name="checkmark-done-circle-outline" size={24} color="#6b7280" />
+                                <Text style={styles.noUpcomingText}>No more upcoming exams scheduled.</Text>
+                            </View>
+                        )}
+                    </View>
+                )}
             </ScrollView>
 
             {/* Image Preview Modal */}
@@ -725,6 +823,26 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#e5e7eb',
     },
+    examDetailsBox: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+        marginBottom: 14,
+        paddingBottom: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    examDetailsTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#2563eb',
+        marginBottom: 2,
+    },
+    examDetailsText: {
+        fontSize: 13,
+        color: '#374151',
+        lineHeight: 20,
+    },
     progressText: {
         fontSize: 13,
         color: '#6b7280',
@@ -741,6 +859,103 @@ const styles = StyleSheet.create({
         height: '100%',
         backgroundColor: '#10b981',
         borderRadius: 3,
+    },
+
+    // Completion Banner
+    completionBanner: {
+        backgroundColor: '#f0fdf4',
+        borderRadius: 16,
+        padding: 24,
+        marginTop: 16,
+        borderWidth: 1,
+        borderColor: '#bbf7d0',
+        alignItems: 'center',
+    },
+    completionIconContainer: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: '#dcfce7',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    completionTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#166534',
+        marginBottom: 8,
+    },
+    completionSubtitle: {
+        fontSize: 14,
+        color: '#4b5563',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 4,
+    },
+    upcomingSection: {
+        width: '100%',
+        marginTop: 20,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#d1fae5',
+    },
+    upcomingSectionTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 12,
+    },
+    upcomingExamRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ffffff',
+        borderRadius: 10,
+        padding: 12,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+    },
+    upcomingDateBadge: {
+        backgroundColor: '#eff6ff',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        marginRight: 12,
+    },
+    upcomingDateText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#2563eb',
+    },
+    upcomingExamInfo: {
+        flex: 1,
+    },
+    upcomingSubject: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1f2937',
+    },
+    upcomingMeta: {
+        fontSize: 12,
+        color: '#6b7280',
+        marginTop: 2,
+    },
+    noUpcomingBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: '#f9fafb',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+    },
+    noUpcomingText: {
+        fontSize: 13,
+        color: '#6b7280',
     },
 
     // Modal

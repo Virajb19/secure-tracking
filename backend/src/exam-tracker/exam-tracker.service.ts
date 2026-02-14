@@ -12,6 +12,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../prisma';
 import { CreateExamTrackerEventDto, ExamTrackerEventType } from './dto/create-exam-tracker-event.dto';
 import { ExamSchedulerService } from '../exam-scheduler/exam-scheduler.service';
+import { AppwriteService } from '../appwrite/appwrite.service';
 
 /**
  * Exam Tracker Service.
@@ -31,6 +32,7 @@ export class ExamTrackerService {
   constructor(
     private readonly db: PrismaService,
     private readonly examSchedulerService: ExamSchedulerService,
+    private readonly appwriteService: AppwriteService,
   ) { }
 
   /**
@@ -121,6 +123,43 @@ export class ExamTrackerService {
       );
     }
 
+    // Enforce sequential order: previous event must be completed first
+    const EVENT_SEQUENCE: PrismaExamTrackerEventType[] = [
+      'TREASURY_ARRIVAL' as PrismaExamTrackerEventType,
+      'CUSTODIAN_HANDOVER' as PrismaExamTrackerEventType,
+      'OPENING_MORNING' as PrismaExamTrackerEventType,
+      'PACKING_MORNING' as PrismaExamTrackerEventType,
+      'DELIVERY_MORNING' as PrismaExamTrackerEventType,
+    ];
+
+    const currentIndex = EVENT_SEQUENCE.indexOf(createDto.event_type as PrismaExamTrackerEventType);
+    if (currentIndex > 0) {
+      const previousEventType = EVENT_SEQUENCE[currentIndex - 1];
+      const previousEvent = await this.db.examTrackerEvent.findUnique({
+        where: {
+          user_id_school_id_event_type_exam_date: {
+            user_id: userId,
+            school_id: schoolId,
+            event_type: previousEventType,
+            exam_date: examDate,
+          },
+        },
+      });
+
+      if (!previousEvent) {
+        const eventLabels: Record<string, string> = {
+          TREASURY_ARRIVAL: 'Treasury / Bank Arrival',
+          CUSTODIAN_HANDOVER: 'Custodian Handover',
+          OPENING_MORNING: 'Opening of Question Paper',
+          PACKING_MORNING: 'Packing & Sealing of Answerbooks',
+          DELIVERY_MORNING: 'Delivery at Post Office',
+        };
+        throw new BadRequestException(
+          `You must complete "${eventLabels[previousEventType] || previousEventType}" before submitting "${eventLabels[createDto.event_type] || createDto.event_type}". Photos must be uploaded in sequence.`,
+        );
+      }
+    }
+
     // Validate time window based on exam schedule
     const subjectCategory = await this.examSchedulerService.getSubjectCategoryForDate(createDto.exam_date);
     const timeValidation = this.examSchedulerService.isWithinTimeWindow(
@@ -135,19 +174,30 @@ export class ExamTrackerService {
     // Calculate image hash for integrity
     const imageHash = crypto.createHash('sha256').update(imageFile.buffer).digest('hex');
 
-    // Save image to disk
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'exam-tracker');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
+    // Upload image to Appwrite bucket (server-side)
     const fileExtension = path.extname(imageFile.originalname) || '.jpg';
-    const filename = `${userId}_${createDto.event_type}_${Date.now()}${fileExtension}`;
-    const filePath = path.join(uploadsDir, filename);
-    fs.writeFileSync(filePath, imageFile.buffer);
+    const filename = `qpt_${userId}_${createDto.event_type}_${Date.now()}${fileExtension}`;
 
-    // Construct relative URL for the image
-    const imageUrl = `/uploads/exam-tracker/${filename}`;
+    let imageUrl: string;
+    const appwriteUrl = await this.appwriteService.uploadFile(
+      imageFile.buffer,
+      filename,
+      imageFile.mimetype,
+    );
+
+    if (appwriteUrl) {
+      imageUrl = appwriteUrl;
+    } else {
+      // Fallback: save to local disk if Appwrite upload fails
+      console.warn('[ExamTracker] Appwrite upload failed, falling back to local storage');
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'exam-tracker');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      const filePath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filePath, imageFile.buffer);
+      imageUrl = `/uploads/exam-tracker/${filename}`;
+    }
 
     // Determine shift based on event type
     let shift = createDto.shift;

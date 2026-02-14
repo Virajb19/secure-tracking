@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,19 +10,64 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MapPin, Clock, Image as ImageIcon, CheckCircle, XCircle, Loader2, Download } from 'lucide-react';
-import { tasksApi } from '@/services/api';
-import { Task, TaskEvent, TaskStatus, EventType } from '@/types';
+import { MapPin, Clock, CheckCircle, XCircle, Loader2, Download, X, ZoomIn, ExternalLink } from 'lucide-react';
+import { examTrackerApi } from '@/services/api';
+import { ExamTrackerEvent, ExamTrackerEventType } from '@/types';
 import { toast } from 'sonner';
 
-// 5-step tracking workflow columns
+// QPT tracking steps aligned with mobile app
 const trackingSteps = [
-  { key: EventType.PICKUP_POLICE_STATION, label: 'Police Station Pickup', icon: '🚔' },
-  { key: EventType.ARRIVAL_EXAM_CENTER, label: 'Exam Center Arrival', icon: '🏫' },
-  { key: EventType.OPENING_SEAL, label: 'Opening Seal', icon: '📦' },
-  { key: EventType.SEALING_ANSWER_SHEETS, label: 'Sealing Answer Sheets', icon: '✍️' },
-  { key: EventType.SUBMISSION_POST_OFFICE, label: 'Post Office Submission', icon: '📮' },
+  { key: ExamTrackerEventType.TREASURY_ARRIVAL, label: 'Treasury / Bank', icon: '🏦' },
+  { key: ExamTrackerEventType.CUSTODIAN_HANDOVER, label: 'Custodian Handover', icon: '🤝' },
+  { key: ExamTrackerEventType.OPENING_MORNING, label: 'Opening', icon: '📦' },
+  { key: ExamTrackerEventType.PACKING_MORNING, label: 'Packing', icon: '📦' },
+  { key: ExamTrackerEventType.DELIVERY_MORNING, label: 'Delivery', icon: '📮' },
 ];
+
+// Group flat events into per-school rows
+interface SchoolRow {
+  schoolId: string;
+  schoolName: string;
+  registrationCode: string;
+  superintendent: { name: string; phone: string } | null;
+  events: Partial<Record<ExamTrackerEventType, ExamTrackerEvent>>;
+  completedCount: number;
+  lastActivity: string | null;
+}
+
+function groupBySchool(events: ExamTrackerEvent[]): SchoolRow[] {
+  const map = new Map<string, SchoolRow>();
+
+  for (const evt of events) {
+    const sid = evt.school_id;
+    if (!map.has(sid)) {
+      map.set(sid, {
+        schoolId: sid,
+        schoolName: evt.school?.name || 'Unknown',
+        registrationCode: evt.school?.registration_code || '',
+        superintendent: evt.user ? { name: evt.user.name, phone: evt.user.phone } : null,
+        events: {},
+        completedCount: 0,
+        lastActivity: null,
+      });
+    }
+    const row = map.get(sid)!;
+    row.events[evt.event_type] = evt;
+    if (evt.user) {
+      row.superintendent = { name: evt.user.name, phone: evt.user.phone };
+    }
+    // Track most recent activity
+    if (!row.lastActivity || new Date(evt.submitted_at) > new Date(row.lastActivity)) {
+      row.lastActivity = evt.submitted_at;
+    }
+  }
+
+  for (const row of map.values()) {
+    row.completedCount = Object.keys(row.events).length;
+  }
+
+  return Array.from(map.values()).sort((a, b) => a.schoolName.localeCompare(b.schoolName));
+}
 
 export default function QuestionPaperTrackingPage() {
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -30,41 +75,44 @@ export default function QuestionPaperTrackingPage() {
     return today.toISOString().split('T')[0];
   });
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [events, setEvents] = useState<ExamTrackerEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedEvent, setSelectedEvent] = useState<TaskEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<ExamTrackerEvent | null>(null);
   const [downloading, setDownloading] = useState(false);
 
-  // Fetch tasks on mount and when filters change
   useEffect(() => {
-    const fetchTasks = async () => {
+    const fetchEvents = async () => {
       setLoading(true);
       setError('');
       try {
-        const data = await tasksApi.getOverview({
-          exam_type: 'REGULAR',
-          date: selectedDate,
-        });
-        setTasks(data);
+        const data = await examTrackerApi.getAll({ date: selectedDate });
+        setEvents(data);
       } catch (err) {
-        console.error('Failed to fetch tasks:', err);
+        console.error('Failed to fetch exam tracker events:', err);
         setError('Failed to load tracking data');
       } finally {
         setLoading(false);
       }
     };
-
-    fetchTasks();
+    fetchEvents();
   }, [selectedDate]);
 
-  // Filter tasks based on status
-  const filteredTasks = tasks.filter((task) => {
-    if (filter === 'all') return true;
-    if (filter === 'completed') return task.status === TaskStatus.COMPLETED;
-    if (filter === 'pending') return task.status !== TaskStatus.COMPLETED;
-    return true;
-  });
+  const schoolRows = useMemo(() => groupBySchool(events), [events]);
+
+  const filteredRows = useMemo(() => {
+    return schoolRows.filter((row) => {
+      if (filter === 'all') return true;
+      if (filter === 'completed') return row.completedCount >= trackingSteps.length;
+      if (filter === 'pending') return row.completedCount < trackingSteps.length;
+      return true;
+    });
+  }, [schoolRows, filter]);
+
+  // Summary stats
+  const totalCenters = schoolRows.length;
+  const completedCenters = schoolRows.filter(r => r.completedCount >= trackingSteps.length).length;
+  const totalEventsSubmitted = events.length;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -76,41 +124,36 @@ export default function QuestionPaperTrackingPage() {
     return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Get event by type for a task
-  const getEventByType = (task: Task, eventType: EventType): TaskEvent | undefined => {
-    return task.events?.find(e => e.event_type === eventType);
+  const getProgress = (row: SchoolRow): number => {
+    return Math.round((row.completedCount / trackingSteps.length) * 100);
   };
 
-  // Get progress percentage
-  const getProgress = (task: Task): number => {
-    if (!task.events || task.events.length === 0) return 0;
-    return Math.round((task.events.length / 5) * 100);
-  };
-
-  // Download CSV function
   const handleDownload = async () => {
-    if (filteredTasks.length === 0) {
+    if (filteredRows.length === 0) {
       toast.error('No data to download');
       return;
     }
-
     setDownloading(true);
     try {
-      // Build CSV content
-      const headers = ['Sl.', 'Pack Code', 'Assigned To', 'Phone', 'Progress', ...trackingSteps.map(s => s.label), 'Status'];
-      const rows = filteredTasks.map((task, index) => {
-        const stepStatuses = trackingSteps.map(step => {
-          const event = getEventByType(task, step.key);
-          return event ? 'Completed' : 'Pending';
+      const headers = ['Sl.', 'Exam Center', 'Reg Code', 'Superintendent', 'Phone', 'Progress', ...trackingSteps.map(s => s.label), ...trackingSteps.map(s => `${s.label} Time`), 'Last Activity', 'Status'];
+      const rows = filteredRows.map((row, index) => {
+        const stepStatuses = trackingSteps.map(step => row.events[step.key] ? 'Done' : 'Pending');
+        const stepTimes = trackingSteps.map(step => {
+          const evt = row.events[step.key];
+          return evt ? formatTime(evt.submitted_at) : '-';
         });
+        const isComplete = row.completedCount >= trackingSteps.length;
         return [
           index + 1,
-          task.sealed_pack_code,
-          task.assigned_user?.name || 'N/A',
-          task.assigned_user?.phone || 'N/A',
-          `${getProgress(task)}%`,
+          `"${row.schoolName}"`,
+          row.registrationCode,
+          row.superintendent?.name || 'N/A',
+          row.superintendent?.phone || 'N/A',
+          `${getProgress(row)}%`,
           ...stepStatuses,
-          task.status
+          ...stepTimes,
+          row.lastActivity ? formatTime(row.lastActivity) : '-',
+          isComplete ? 'COMPLETED' : 'IN_PROGRESS',
         ];
       });
 
@@ -119,7 +162,7 @@ export default function QuestionPaperTrackingPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `regular-exam-tracking-${selectedDate}.csv`;
+      link.download = `qpt-tracking-${selectedDate}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -133,15 +176,20 @@ export default function QuestionPaperTrackingPage() {
     }
   };
 
+  const getImageUrl = (imageUrl: string) => {
+    if (imageUrl.startsWith('http')) return imageUrl;
+    return `${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${imageUrl}`;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Question Paper Tracking - Regular Exams</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Question Paper Tracking</h1>
         <div className="flex items-center gap-3">
           <Button
             onClick={handleDownload}
-            disabled={downloading || filteredTasks.length === 0}
+            disabled={downloading || filteredRows.length === 0}
             className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/25 transition-all duration-300 disabled:opacity-50"
           >
             {downloading ? (
@@ -164,10 +212,27 @@ export default function QuestionPaperTrackingPage() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Summary Stats Cards */}
+      {!loading && !error && (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Total Centers</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalCenters}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-green-200 dark:border-green-800/30 p-4 shadow-sm">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Fully Completed</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{completedCenters}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-blue-200 dark:border-blue-800/30 p-4 shadow-sm">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Total Photos Uploaded</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalEventsSubmitted}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Filters + Table */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
         <div className="flex gap-4 items-end mb-6">
-          {/* Date Filter */}
           <div className="flex-1 max-w-xs">
             <label className="block text-sm text-slate-600 dark:text-slate-400 mb-2">Select Date</label>
             <div className="flex items-center gap-2 h-10 px-3 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md">
@@ -179,8 +244,6 @@ export default function QuestionPaperTrackingPage() {
               />
             </div>
           </div>
-
-          {/* Status Filter */}
           <div className="flex-1 max-w-xs">
             <label className="block text-sm text-slate-600 dark:text-slate-400 mb-2">Status</label>
             <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
@@ -188,7 +251,7 @@ export default function QuestionPaperTrackingPage() {
                 <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Tasks</SelectItem>
+                <SelectItem value="all">All Centers</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>
@@ -196,14 +259,13 @@ export default function QuestionPaperTrackingPage() {
           </div>
         </div>
 
-        {/* Paper Tracking Summary Table */}
         <div className="overflow-x-auto">
           <div className="text-center py-3 bg-gradient-to-r from-blue-100 via-blue-50 to-blue-100 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 rounded-t-lg border-b border-blue-200 dark:border-slate-700">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-              PAPER TRACKING SUMMARY - {formatDate(selectedDate)}
+              QPT TRACKING SUMMARY — {formatDate(selectedDate)}
             </h2>
             <p className="text-sm text-blue-600 dark:text-slate-400 mt-1">
-              Regular Exams • {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}
+              {filteredRows.length} exam center{filteredRows.length !== 1 ? 's' : ''} • {completedCenters}/{totalCenters} completed
             </p>
           </div>
 
@@ -216,92 +278,100 @@ export default function QuestionPaperTrackingPage() {
             <div className="py-8 text-center bg-slate-50 dark:bg-slate-800/30">
               <p className="text-red-500 dark:text-red-400">{error}</p>
             </div>
-          ) : filteredTasks.length === 0 ? (
+          ) : filteredRows.length === 0 ? (
             <div className="py-8 text-center bg-slate-50 dark:bg-slate-800/30">
               <p className="text-slate-600 dark:text-slate-500">No tracking data found for this date</p>
               <p className="text-sm text-slate-500 dark:text-slate-600 mt-2">
-                Try selecting a different date or create new tasks
+                Try selecting a different date
               </p>
             </div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50">
-                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Sl.</th>
-                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Pack Code</th>
-                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Assigned To</th>
-                  <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Progress</th>
+                  <th className="text-left py-3 px-3 text-slate-600 dark:text-slate-400 font-medium text-xs whitespace-nowrap">Sl.</th>
+                  <th className="text-left py-3 px-3 text-slate-600 dark:text-slate-400 font-medium text-xs whitespace-nowrap">Exam Center</th>
+                  <th className="text-left py-3 px-3 text-slate-600 dark:text-slate-400 font-medium text-xs whitespace-nowrap">Center Superintendent</th>
+                  <th className="text-left py-3 px-3 text-slate-600 dark:text-slate-400 font-medium text-xs whitespace-nowrap">Progress</th>
                   {trackingSteps.map((step) => (
                     <th key={step.key} className="text-center py-3 px-2 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">
-                      <span className="text-lg">{step.icon}</span>
-                      <span className="sr-only">{step.label}</span>
+                      <span className="text-lg block">{step.icon}</span>
+                      <span className="text-[10px] leading-tight block mt-0.5">{step.label}</span>
                     </th>
                   ))}
-                  <th className="text-center py-3 px-4 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">Actions</th>
+                  <th className="text-center py-3 px-3 text-slate-600 dark:text-slate-400 font-medium text-xs whitespace-nowrap">Last Activity</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredTasks.map((task, index) => (
+                {filteredRows.map((row, index) => (
                   <tr
-                    key={task.id}
-                    className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${task.status === TaskStatus.SUSPICIOUS ? 'bg-red-50 dark:bg-red-500/5' : ''
+                    key={row.schoolId}
+                    className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${row.completedCount >= trackingSteps.length ? 'bg-green-50/50 dark:bg-green-500/5' : ''
                       }`}
                   >
-                    <td className="py-4 px-4 text-slate-700 dark:text-slate-300">{index + 1}</td>
-                    <td className="py-4 px-4">
-                      <span className="font-mono text-sm text-blue-600 dark:text-blue-400">{task.sealed_pack_code}</span>
+                    <td className="py-4 px-3 text-slate-500 dark:text-slate-400 text-sm">{index + 1}</td>
+                    <td className="py-4 px-3">
+                      <span className="text-slate-900 dark:text-white font-medium text-sm">{row.schoolName}</span>
+                      <span className="block text-[11px] text-slate-400 font-mono">{row.registrationCode}</span>
                     </td>
-                    <td className="py-4 px-4">
-                      <span className="text-slate-700 dark:text-slate-300">{task.assigned_user?.name || 'N/A'}</span>
-                      <span className="block text-xs text-slate-500">{task.assigned_user?.phone}</span>
+                    <td className="py-4 px-3">
+                      <span className="text-slate-700 dark:text-slate-300 text-sm">{row.superintendent?.name || 'N/A'}</span>
+                      <span className="block text-[11px] text-slate-400">{row.superintendent?.phone}</span>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="w-24">
+                    <td className="py-4 px-3">
+                      <div className="w-28">
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                             <div
-                              className={`h-full transition-all ${task.status === TaskStatus.COMPLETED ? 'bg-green-500' :
-                                task.status === TaskStatus.SUSPICIOUS ? 'bg-red-500' : 'bg-blue-500'
+                              className={`h-full rounded-full transition-all duration-500 ${row.completedCount >= trackingSteps.length ? 'bg-green-500' : 'bg-blue-500'
                                 }`}
-                              style={{ width: `${getProgress(task)}%` }}
+                              style={{ width: `${getProgress(row)}%` }}
                             />
                           </div>
-                          <span className="text-xs text-slate-600 dark:text-slate-400 w-8">{getProgress(task)}%</span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 w-8 text-right">{getProgress(row)}%</span>
                         </div>
+                        <span className="text-[10px] text-slate-400 mt-0.5 block">{row.completedCount}/{trackingSteps.length} steps</span>
                       </div>
                     </td>
                     {trackingSteps.map((step) => {
-                      const event = getEventByType(task, step.key);
+                      const event = row.events[step.key];
                       return (
                         <td key={step.key} className="text-center py-4 px-2">
                           {event ? (
                             <button
                               onClick={() => setSelectedEvent(event)}
-                              className="group relative inline-flex items-center justify-center w-10 h-10 rounded-lg bg-green-100 dark:bg-green-500/20 border border-green-300 dark:border-green-500/30 hover:bg-green-200 dark:hover:bg-green-500/30 transition-colors"
-                              title={`${step.label} - Click for details`}
+                              className="group relative inline-flex flex-col items-center gap-0.5"
+                              title={`${step.label} — uploaded at ${formatTime(event.submitted_at)} — Click to view photo`}
                             >
-                              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                              {event.image_url && (
-                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
-                                  <ImageIcon className="h-2 w-2 text-white" />
+                              <div className="relative w-10 h-10 rounded-lg bg-green-100 dark:bg-green-500/20 border border-green-300 dark:border-green-500/30 hover:bg-green-200 dark:hover:bg-green-500/30 transition-colors flex items-center justify-center">
+                                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
+                                  <ZoomIn className="h-2.5 w-2.5 text-white" />
                                 </span>
-                              )}
+                              </div>
+                              <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">
+                                {formatTime(event.submitted_at)}
+                              </span>
                             </button>
                           ) : (
-                            <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600">
-                              <XCircle className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                            <div className="inline-flex flex-col items-center gap-0.5">
+                              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 flex items-center justify-center">
+                                <XCircle className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                              </div>
+                              <span className="text-[10px] text-slate-400">—</span>
                             </div>
                           )}
                         </td>
                       );
                     })}
-                    <td className="text-center py-4 px-4">
-                      <Link
-                        href={`/tasks/${task.id}`}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 text-sm font-medium"
-                      >
-                        View →
-                      </Link>
+                    <td className="text-center py-4 px-3">
+                      {row.lastActivity ? (
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          {formatTime(row.lastActivity)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -311,77 +381,115 @@ export default function QuestionPaperTrackingPage() {
         </div>
       </div>
 
-      {/* Event Detail Modal */}
+      {/* Photo Detail Dialog */}
       {selectedEvent && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setSelectedEvent(null)}
         >
           <div
-            className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">
-                {trackingSteps.find(s => s.key === selectedEvent.event_type)?.label}
-              </h3>
+            {/* Dialog Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  {trackingSteps.find(s => s.key === selectedEvent.event_type)?.icon}{' '}
+                  {trackingSteps.find(s => s.key === selectedEvent.event_type)?.label || selectedEvent.event_type}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                  {selectedEvent.school?.name}
+                  {selectedEvent.school?.registration_code && (
+                    <span className="ml-1 font-mono text-xs">({selectedEvent.school.registration_code})</span>
+                  )}
+                </p>
+              </div>
               <button
                 onClick={() => setSelectedEvent(null)}
-                className="text-slate-400 hover:text-white"
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
               >
-                ✕
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Timestamp */}
-            <div className="flex items-center gap-2 text-emerald-400 mb-3">
-              <Clock className="h-4 w-4" />
-              <span className="font-medium">{formatTime(selectedEvent.server_timestamp)}</span>
-              <span className="text-slate-400 text-sm">
-                ({new Date(selectedEvent.server_timestamp).toLocaleDateString('en-GB')})
-              </span>
-            </div>
-
-            {/* Location */}
-            <div className="flex items-center gap-2 text-slate-300 mb-4">
-              <MapPin className="h-4 w-4 text-blue-400" />
-              <span>📍 {Number(selectedEvent.latitude).toFixed(6)}, {Number(selectedEvent.longitude).toFixed(6)}</span>
-              <a
-                href={`https://www.google.com/maps?q=${selectedEvent.latitude},${selectedEvent.longitude}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 text-xs ml-2"
-              >
-                View on Map →
-              </a>
-            </div>
-
-            {/* Image */}
+            {/* Magnified Photo */}
             {selectedEvent.image_url && (
-              <div className="mb-4">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">📸 Evidence Photo:</p>
-                <a
-                  href={selectedEvent.image_url.startsWith('http') ? selectedEvent.image_url : `${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${selectedEvent.image_url}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <img
-                    src={selectedEvent.image_url.startsWith('http') ? selectedEvent.image_url : `${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '')}${selectedEvent.image_url}`}
-                    alt="Evidence"
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-colors cursor-pointer"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      target.parentElement!.innerHTML = '<div class="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-center"><p class="text-slate-500">Image unavailable</p></div>';
-                    }}
-                  />
-                </a>
+              <div className="p-5 bg-slate-50 dark:bg-slate-800/50">
+                <img
+                  src={getImageUrl(selectedEvent.image_url)}
+                  alt="Evidence photo"
+                  className="w-full max-h-[50vh] object-contain rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.insertAdjacentHTML('afterend', '<div class="p-8 text-center"><p class="text-slate-500">Image unavailable</p></div>');
+                  }}
+                />
               </div>
             )}
 
-            {/* Hash */}
-            <div className="text-xs text-slate-600 dark:text-slate-500 font-mono break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded border border-slate-200 dark:border-slate-800">
-              🔐 SHA-256: {selectedEvent.image_hash}
+            {/* Event Details Grid */}
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                {/* Upload Time */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="h-3.5 w-3.5 text-emerald-500" />
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Uploaded At</span>
+                  </div>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                    {formatTime(selectedEvent.submitted_at)}
+                    <span className="text-slate-400 text-xs ml-1.5">
+                      {new Date(selectedEvent.submitted_at).toLocaleDateString('en-GB')}
+                    </span>
+                  </p>
+                </div>
+
+                {/* Submitted By */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs">👤</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Submitted By</span>
+                  </div>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                    {selectedEvent.user?.name || 'Unknown'}
+                    <span className="text-slate-400 text-xs ml-1.5">{selectedEvent.user?.phone}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Location */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 mb-1">
+                    <MapPin className="h-3.5 w-3.5 text-blue-500" />
+                    <span className="text-xs text-slate-500 dark:text-slate-400">GPS Location</span>
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps?q=${selectedEvent.latitude},${selectedEvent.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:text-blue-400 text-xs flex items-center gap-1"
+                  >
+                    Open in Maps <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+                <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
+                  {Number(selectedEvent.latitude).toFixed(6)}, {Number(selectedEvent.longitude).toFixed(6)}
+                </p>
+              </div>
+
+              {/* Image Hash */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs">🔐</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">SHA-256 Image Hash</span>
+                </div>
+                <p className="text-xs font-mono text-slate-600 dark:text-slate-400 break-all">
+                  {selectedEvent.image_hash}
+                </p>
+              </div>
             </div>
           </div>
         </div>

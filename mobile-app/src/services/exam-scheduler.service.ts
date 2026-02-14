@@ -61,6 +61,7 @@ export interface TimeWindowsResponse {
     subject_category: SubjectCategory;
     schedules: ExamScheduleEntry[];
     time_windows: TrackerTimeWindows;
+    bypass_time_check?: boolean;
 }
 
 /**
@@ -140,7 +141,9 @@ export async function getExamSchedules(
  * Check if current time is within a given time window (client-side check).
  * This is used for UI state (enabling/disabling buttons) before server validation.
  */
-export function isWithinTimeWindowLocal(window: TimeWindow): boolean {
+export function isWithinTimeWindowLocal(window: TimeWindow, bypassTimeCheck?: boolean): boolean {
+    // In testing mode, bypass time window validation
+    if (bypassTimeCheck) return true;
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
     const windowStart = window.start_hour * 60 + window.start_minute;
@@ -155,6 +158,7 @@ export interface ExamDayStatusResponse {
     isExamDay: boolean;
     nextExamDate: string | null;
     todaySchedules: ExamScheduleEntry[];
+    upcomingSchedules?: ExamScheduleEntry[];
 }
 
 /**

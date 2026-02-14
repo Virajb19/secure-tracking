@@ -35,7 +35,7 @@ import { Roles, CurrentUser } from '../shared/decorators';
 @Controller('exam-scheduler')
 @UseGuards(JwtAuthGuard, RolesGuard, CenterSuperintendentGuard)
 export class ExamSchedulerController {
-  constructor(private readonly examSchedulerService: ExamSchedulerService) {}
+  constructor(private readonly examSchedulerService: ExamSchedulerService) { }
 
   /**
    * Create a new exam schedule entry.
@@ -153,6 +153,7 @@ export class ExamSchedulerController {
         subject_category: subjectCategory,
         schedules,
         time_windows: timeWindows,
+        bypass_time_check: process.env.NODE_ENV === 'testing',
       },
     };
   }

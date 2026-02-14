@@ -709,7 +709,7 @@ export default function ExamSchedulerPage() {
                                     <FormItem>
                                         <FormLabel>Exam Date</FormLabel>
                                         <FormControl>
-                                            <Input type="date" {...field} />
+                                            <Input type="date" min={new Date().toISOString().split('T')[0]} {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -834,7 +834,7 @@ export default function ExamSchedulerPage() {
                                     <FormItem>
                                         <FormLabel>Exam Date</FormLabel>
                                         <FormControl>
-                                            <Input type="date" {...field} />
+                                            <Input type="date" min={new Date().toISOString().split('T')[0]} {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -1100,7 +1100,7 @@ export default function ExamSchedulerPage() {
                                         <FormItem>
                                             <FormLabel>Date</FormLabel>
                                             <FormControl>
-                                                <Input type="date" {...field} />
+                                                <Input type="date" min={new Date().toISOString().split('T')[0]} {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

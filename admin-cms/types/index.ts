@@ -309,3 +309,43 @@ export interface ExamSchedule {
     updated_at: string;
     exam_center?: ExamCenter;
 }
+
+// ========================================
+// EXAM TRACKER TYPES (QPT Mobile App)
+// ========================================
+
+export enum ExamTrackerEventType {
+    TREASURY_ARRIVAL = 'TREASURY_ARRIVAL',
+    CUSTODIAN_HANDOVER = 'CUSTODIAN_HANDOVER',
+    OPENING_MORNING = 'OPENING_MORNING',
+    PACKING_MORNING = 'PACKING_MORNING',
+    DELIVERY_MORNING = 'DELIVERY_MORNING',
+    OPENING_AFTERNOON = 'OPENING_AFTERNOON',
+    PACKING_AFTERNOON = 'PACKING_AFTERNOON',
+    DELIVERY_AFTERNOON = 'DELIVERY_AFTERNOON',
+}
+
+export interface ExamTrackerEvent {
+    id: string;
+    user_id: string;
+    school_id: string;
+    event_type: ExamTrackerEventType;
+    exam_date: string;
+    shift: string;
+    image_url: string;
+    image_hash: string;
+    latitude: number;
+    longitude: number;
+    captured_at: string;
+    submitted_at: string;
+    user?: {
+        id: string;
+        name: string;
+        phone: string;
+    };
+    school?: {
+        id: string;
+        name: string;
+        registration_code: string;
+    };
+}

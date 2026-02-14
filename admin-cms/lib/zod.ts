@@ -230,7 +230,12 @@ export type SubjectCategoryValue = typeof SUBJECT_CATEGORIES[number];
 export const createExamScheduleSchema = z.object({
   exam_date: z
     .string()
-    .min(1, 'Exam date is required'),
+    .min(1, 'Exam date is required')
+    .refine((val) => {
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      return val >= todayStr;
+    }, 'Exam date cannot be in the past'),
   class: z.enum(EXAM_CLASSES, { message: 'Class is required' }),
   subject: z.string().min(1, 'Subject is required'),
   subject_category: z.enum(SUBJECT_CATEGORIES, { message: 'Subject category is required' }),
@@ -244,7 +249,12 @@ export type CreateExamScheduleSchema = z.infer<typeof createExamScheduleSchema>;
 export const editExamScheduleSchema = z.object({
   exam_date: z
     .string()
-    .min(1, 'Exam date is required'),
+    .min(1, 'Exam date is required')
+    .refine((val) => {
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      return val >= todayStr;
+    }, 'Exam date cannot be in the past'),
   class: z.enum(EXAM_CLASSES, { message: 'Class is required' }),
   subject: z.string().min(1, 'Subject is required'),
   subject_category: z.enum(SUBJECT_CATEGORIES, { message: 'Subject category is required' }),

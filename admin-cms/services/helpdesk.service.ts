@@ -9,6 +9,14 @@ export interface HelpdeskResponse {
   hasMore: boolean;
 }
 
+// ============================
+// HELPDESK API
+// ============================
+/**
+ * Helpdesk API
+ * @see Backend Controller: backend/src/helpdesk/helpdesk.controller.ts
+ * @see Backend Service:    backend/src/helpdesk/helpdesk.service.ts
+ */
 export const helpdeskApi = {
   /**
    * Get helpdesk tickets with pagination (Admin only)
@@ -18,7 +26,7 @@ export const helpdeskApi = {
     params.append('limit', limit.toString());
     params.append('offset', offset.toString());
     if (status) params.append('status', status);
-    
+
     const response = await api.get<HelpdeskResponse>(`/helpdesk?${params}`);
     return response.data;
   },

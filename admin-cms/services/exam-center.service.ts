@@ -21,6 +21,11 @@ export interface PaginatedExamCentersResponse {
     totalPages: number;
 }
 
+/**
+ * Exam Centers API
+ * @see Backend Controller: backend/src/exam-centers/exam-centers.controller.ts
+ * @see Backend Service:    backend/src/exam-centers/exam-centers.service.ts
+ */
 export const examCentersApi = {
     getAll: async (filters?: ExamCenterFilterParams): Promise<PaginatedExamCentersResponse> => {
         const params: Record<string, string> = {};

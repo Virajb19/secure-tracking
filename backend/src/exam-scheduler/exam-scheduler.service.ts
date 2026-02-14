@@ -92,6 +92,25 @@ export class ExamSchedulerService {
 
     const windows = this.getTimeWindows(subjectCategory);
 
+    // In testing environment, bypass time window validation
+    if (process.env.NODE_ENV === 'testing') {
+      // Still resolve the correct window key for the response
+      let windowKey: keyof TrackerTimeWindows;
+      switch (eventType) {
+        case 'TREASURY_ARRIVAL': windowKey = 'TREASURY_ARRIVAL'; break;
+        case 'CUSTODIAN_HANDOVER': windowKey = 'CUSTODIAN_HANDOVER'; break;
+        case 'OPENING_MORNING': case 'OPENING_AFTERNOON': windowKey = 'OPENING'; break;
+        case 'PACKING_MORNING': case 'PACKING_AFTERNOON': windowKey = 'PACKING'; break;
+        case 'DELIVERY_MORNING': case 'DELIVERY_AFTERNOON': windowKey = 'DELIVERY'; break;
+        default: windowKey = 'TREASURY_ARRIVAL';
+      }
+      return {
+        allowed: true,
+        timeWindow: windows[windowKey],
+        message: `[Testing] Time window validation bypassed. Normal window: ${windows[windowKey].label}`,
+      };
+    }
+
     // Map exam tracker event types to time window keys
     let windowKey: keyof TrackerTimeWindows;
     switch (eventType) {
@@ -228,6 +247,18 @@ export class ExamSchedulerService {
    * Validates that the exam center is active and no duplicate schedule exists.
    */
   async create(createDto: CreateExamScheduleDto, userId?: string): Promise<ExamSchedule> {
+    // Validate exam date is not in the past
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todayUtc = new Date(todayStr + 'T00:00:00.000Z');
+    const examDateUtc = new Date(createDto.exam_date + 'T00:00:00.000Z');
+
+    if (examDateUtc < todayUtc) {
+      throw new BadRequestException(
+        'Exam date cannot be set to a past date. Please select today or a future date.',
+      );
+    }
+
     // Validate the specific exam center
     await this.validateExamCenter(createDto.exam_center_id);
 
@@ -375,6 +406,20 @@ export class ExamSchedulerService {
       await this.validateExamCenter(updateDto.exam_center_id);
     }
 
+    // Validate exam date is not in the past (if being changed)
+    if (updateDto.exam_date) {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const todayUtc = new Date(todayStr + 'T00:00:00.000Z');
+      const newDateUtc = new Date(updateDto.exam_date + 'T00:00:00.000Z');
+
+      if (newDateUtc < todayUtc) {
+        throw new BadRequestException(
+          'Exam date cannot be set to a past date. Please select today or a future date.',
+        );
+      }
+    }
+
     const data: any = {};
     if (updateDto.exam_date) data.exam_date = new Date(updateDto.exam_date);
     if (updateDto.class) data.class = updateDto.class;
@@ -415,13 +460,14 @@ export class ExamSchedulerService {
     isExamDay: boolean;
     nextExamDate: string | null;
     todaySchedules: ExamSchedule[];
+    upcomingSchedules: ExamSchedule[];
   }> {
     // Build today as UTC midnight from local date parts
-    // This ensures correct comparison with @db.Date columns
-    // (setHours(0,0,0,0) creates local midnight which in IST becomes previous day in UTC)
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const today = new Date(todayStr + 'T00:00:00.000Z');
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
     // Check if there's an active exam scheduled for today at this center
     const todaySchedules = await this.db.examSchedule.findMany({
@@ -433,28 +479,34 @@ export class ExamSchedulerService {
       orderBy: { exam_date: 'asc' },
     });
 
+    // Fetch upcoming schedules (next 5 after today) for this center
+    const upcomingSchedules = await this.db.examSchedule.findMany({
+      where: {
+        exam_center_id: examCenterId,
+        exam_date: { gte: tomorrow },
+        is_active: true,
+      },
+      orderBy: { exam_date: 'asc' },
+      take: 5,
+    });
+
     if (todaySchedules.length > 0) {
       return {
         isExamDay: true,
         nextExamDate: today.toISOString().split('T')[0],
         todaySchedules,
+        upcomingSchedules,
       };
     }
 
     // Find the next upcoming exam date for this center
-    const nextSchedule = await this.db.examSchedule.findFirst({
-      where: {
-        exam_center_id: examCenterId,
-        exam_date: { gte: today },
-        is_active: true,
-      },
-      orderBy: { exam_date: 'asc' },
-    });
+    const nextSchedule = upcomingSchedules[0] || null;
 
     return {
       isExamDay: false,
       nextExamDate: nextSchedule ? nextSchedule.exam_date.toISOString().split('T')[0] : null,
       todaySchedules: [],
+      upcomingSchedules,
     };
   }
 

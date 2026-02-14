@@ -128,6 +128,11 @@ api.interceptors.response.use(
 // ============================
 // AUTH API
 // ============================
+/**
+ * Auth API
+ * @see Backend Controller: backend/src/auth/auth.controller.ts
+ * @see Backend Service:    backend/src/auth/auth.service.ts
+ */
 export const authApi = {
   // Admin-only login for CMS (only ADMIN/SUPER_ADMIN can login)
   login: async (email: string, password: string, phone?: string, subject?: string, classGroup?: string): Promise<LoginResponse> => {
@@ -206,6 +211,11 @@ export interface PaginatedSchoolsResponse {
   hasMore: boolean;
 }
 
+/**
+ * Users API
+ * @see Backend Controller: backend/src/users/users.controller.ts
+ * @see Backend Service:    backend/src/users/users.service.ts
+ */
 export const usersApi = {
   getAll: async (filters?: UserFilterParams): Promise<PaginatedUsersResponse> => {
     const params: Record<string, string> = {};
@@ -288,6 +298,11 @@ export const usersApi = {
 // ============================
 // MASTER DATA API
 // ============================
+/**
+ * Master Data API
+ * @see Backend Controller: backend/src/master-data/master-data.controller.ts
+ * @see Backend Service:    backend/src/master-data/master-data.service.ts
+ */
 export const masterDataApi = {
   getDistricts: async (): Promise<District[]> => {
     const response = await api.get<District[]>('/admin/master-data/districts');
@@ -331,6 +346,11 @@ export const masterDataApi = {
 // ============================
 // ADMIN MANAGE API (Schools & Subjects CRUD)
 // ============================
+/**
+ * Admin Manage API (Schools & Subjects CRUD)
+ * @see Backend Controller: backend/src/master-data/master-data.controller.ts (AdminManageController, line 71)
+ * @see Backend Service:    backend/src/master-data/master-data.service.ts
+ */
 export const adminManageApi = {
   // School CRUD
   createSchool: async (data: { name: string; registration_code: string; district_id: string }): Promise<School> => {
@@ -382,6 +402,11 @@ export interface PaginatedTasksResponse {
   totalPages: number;
 }
 
+/**
+ * Tasks API
+ * @see Backend Controller: backend/src/tasks/tasks.controller.ts
+ * @see Backend Service:    backend/src/tasks/tasks.service.ts
+ */
 export const tasksApi = {
   getAll: async (filters?: TaskFilterParams): Promise<PaginatedTasksResponse> => {
     const params: Record<string, string> = {};
@@ -433,6 +458,11 @@ export interface AuditLogsResponse {
   hasMore: boolean;
 }
 
+/**
+ * Audit Logs API
+ * @see Backend Controller: backend/src/audit-logs/audit-logs.controller.ts
+ * @see Backend Service:    backend/src/audit-logs/audit-logs.service.ts
+ */
 export const auditLogsApi = {
   getAll: async (limit = 50, offset = 0): Promise<AuditLogsResponse> => {
     const response = await api.get<AuditLogsResponse>('/admin/audit-logs', {
@@ -451,6 +481,11 @@ export interface CircularsResponse {
   hasMore: boolean;
 }
 
+/**
+ * Circulars API
+ * @see Backend Controller: backend/src/circulars/circulars.controller.ts
+ * @see Backend Service:    backend/src/circulars/circulars.service.ts
+ */
 export const circularsApi = {
   getAll: async (limit = 20, offset = 0, search?: string): Promise<CircularsResponse> => {
     const params = new URLSearchParams();
@@ -593,6 +628,11 @@ export interface EventsResponse {
   hasMore: boolean;
 }
 
+/**
+ * Events API
+ * @see Backend Controller: backend/src/events/events.controller.ts (AdminEventsController, line 25)
+ * @see Backend Service:    backend/src/events/events.service.ts
+ */
 export const eventsApi = {
   getAll: async (filters?: EventFilterParams, limit = 20, offset = 0): Promise<EventsResponse> => {
     const params: Record<string, string> = {};
@@ -661,6 +701,35 @@ export const eventsApi = {
   }): Promise<InvitableUser[]> => {
     const response = await api.get<InvitableUser[]>('/admin/events/invitable-users', { params: filters });
     return response.data;
+  },
+};
+
+// ============================
+// EXAM TRACKER API (QPT)
+// ============================
+import type { ExamTrackerEvent, ExamTrackerEventType } from '@/types';
+
+/**
+ * Exam Tracker API (QPT)
+ * @see Backend Controller: backend/src/exam-tracker/exam-tracker.controller.ts
+ * @see Backend Service:    backend/src/exam-tracker/exam-tracker.service.ts
+ */
+export const examTrackerApi = {
+  /**
+   * Get all exam tracker events across all exam centers.
+   * Admin only. Used by QPT overview page.
+   */
+  getAll: async (filters?: {
+    date?: string;
+    eventType?: ExamTrackerEventType;
+    schoolId?: string;
+  }): Promise<ExamTrackerEvent[]> => {
+    const params: Record<string, string> = {};
+    if (filters?.date) params.date = filters.date;
+    if (filters?.eventType) params.eventType = filters.eventType;
+    if (filters?.schoolId) params.schoolId = filters.schoolId;
+    const response = await api.get('/exam-tracker/all', { params });
+    return response.data.data;
   },
 };
 

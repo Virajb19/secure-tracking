@@ -177,7 +177,7 @@ export class ExamTrackerController {
    * Used for monitoring all exam centers.
    */
   @Get('all')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getAllEvents(
     @Query('date') examDate?: string,
     @Query('eventType') eventType?: ExamTrackerEventType,
